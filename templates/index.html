@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão de DP</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f6fa;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 260px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            padding: 20px 0;
+            transition: all 0.3s;
+            z-index: 1000;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-header h3 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar.collapsed .sidebar-header h3 span {
+            display: none;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 5px;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            transition: all 0.3s;
+            gap: 15px;
+        }
+
+        .sidebar-menu a:hover {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .sidebar-menu a.active {
+            background-color: rgba(255,255,255,0.2);
+            color: white;
+            border-left: 4px solid white;
+        }
+
+        .sidebar-menu a i {
+            width: 20px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .sidebar.collapsed .sidebar-menu a span {
+            display: none;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+            transition: all 0.3s;
+            min-height: 100vh;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: #333;
+            margin: 0;
+        }
+
+        .toggle-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Cards */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            background: white;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+
+        /* Stats Cards */
+        .stats-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .stats-card .icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+
+        .stats-card.blue .icon {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .stats-card.orange .icon {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .stats-card.green .icon {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .stats-card.purple .icon {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
+        .stats-card h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .stats-card p {
+            color: #666;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .filter-section h5 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        /* Tables */
+        .table-responsive {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table {
+            margin: 0;
+        }
+
+        .table thead th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            color: #333;
+            font-weight: 600;
+            padding: 15px;
+        }
+
+        .table tbody td {
+            padding: 15px;
+            vertical-align: middle;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        /* Badges */
+        .badge {
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-aberto {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .badge-finalizado {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 10px 20px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Page Sections */
+        .page-section {
+            display: none;
+        }
+
+        .page-section.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Form Styling */
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 0 2px;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .btn-edit {
+            background: #ffc107;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-view {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-confirm {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-reopen {
+            background: #fd7e14;
+            color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 80px;
+            }
+
+            .sidebar-header h3 span,
+            .sidebar-menu a span {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>
+                <i class="fas fa-briefcase"></i>
+                <span>Sistema DP</span>
+            </h3>
+        </div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="#" class="menu-link active" data-page="dashboard">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" class="menu-link" data-page="colaboradores">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Cadastrar Colaborador</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" class="menu-link" data-page="lancamentos">
+                    <i class="fas fa-dollar-sign"></i>
+                    <span>Lançamento Mensal</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        
+        <!-- Header -->
+        <div class="header">
+            <h1 id="pageTitle">Dashboard</h1>
+            <button class="toggle-btn" id="toggleSidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <!-- PÁGINA: DASHBOARD -->
+        <div class="page-section active" id="page-dashboard">
+            
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card blue">
+                        <div class="icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3 id="statTotalColaboradores">0</h3>
+                        <p>Total de Colaboradores</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card orange">
+                        <div class="icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3 id="statLancamentosAbertos">0</h3>
+                        <p>Lançamentos em Aberto</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card green">
+                        <div class="icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h3 id="statLancamentosFinalizados">0</h3>
+                        <p>Lançamentos Finalizados</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card purple">
+                        <div class="icon">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <h3 id="statTotalPago">R$ 0,00</h3>
+                        <p>Total Pago (Mês Atual)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filter-section">
+                <h5><i class="fas fa-filter"></i> Filtros de Pesquisa</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="form-label">Mês/Ano</label>
+                        <input type="month" class="form-control" id="filtroMes">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Colaborador</label>
+                        <select class="form-select" id="filtroColaborador">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="filtroStatus">
+                            <option value="">Todos</option>
+                            <option value="aberto">Em Aberto</option>
+                            <option value="finalizado">Finalizados</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-secondary w-100" id="btnLimparFiltros">
+                            <i class="fas fa-eraser"></i> Limpar Filtros
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">Resultados encontrados: <strong id="countResultados">0</strong></small>
+                </div>
+            </div>
+
+            <!-- Tabelas -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-users"></i> Colaboradores Cadastrados
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>CPF</th>
+                                            <th>Função</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaColaboradoresDash"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-list"></i> Lançamentos Recentes
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Colaborador</th>
+                                            <th>Mês</th>
+                                            <th>Valor</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaLancamentosDash"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PÁGINA: CADASTRAR COLABORADOR -->
+        <div class="page-section" id="page-colaboradores">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-user-plus"></i> <span id="formColabTitle">Cadastrar Novo Colaborador</span>
+                        </div>
+                        <div class="card-body">
+                            <form id="formColaborador">
+                                <input type="hidden" id="colabEditId">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Nome Completo *</label>
+                                        <input type="text" class="form-control" id="colabNome" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">CPF *</label>
+                                        <input type="text" class="form-control" id="colabCPF" maxlength="14" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Endereço Completo</label>
+                                    <input type="text" class="form-control" id="colabEndereco" placeholder="Rua, número, bairro, cidade">
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Função/Cargo</label>
+                                        <input type="text" class="form-control" id="colabFuncao" placeholder="Ex: Gerente, Assistente">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Tipo de Contratação</label>
+                                        <select class="form-select" id="colabContratacao">
+                                            <option value="CLT">CLT</option>
+                                            <option value="Autônomo">Autônomo</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Vale Refeição</label>
+                                        <select class="form-select" id="colabValeRefeicao">
+                                            <option value="Sim">Sim</option>
+                                            <option value="Não">Não</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Vale Transporte</label>
+                                        <select class="form-select" id="colabValeTransporte">
+                                            <option value="Sim">Sim</option>
+                                            <option value="Não">Não</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Seguro de Vida</label>
+                                        <select class="form-select" id="colabSeguroVida">
+                                            <option value="Ativo">Ativo</option>
+                                            <option value="Inativo">Inativo</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Observações</label>
+                                    <textarea class="form-control" id="colabObservacoes" rows="3" placeholder="Informações adicionais sobre o colaborador"></textarea>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary flex-grow-1">
+                                        <i class="fas fa-save"></i> Salvar Colaborador
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btnCancelarColab">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Colaboradores -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <i class="fas fa-list"></i> Todos os Colaboradores
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>CPF</th>
+                                            <th>Função</th>
+                                            <th>Contratação</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaColaboradores"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PÁGINA: LANÇAMENTO MENSAL -->
+        <div class="page-section" id="page-lancamentos">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-dollar-sign"></i> <span id="formLancTitle">Novo Lançamento Mensal</span>
+                        </div>
+                        <div class="card-body">
+                            <form id="formLancamento">
+                                <input type="hidden" id="lancEditId">
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Colaborador *</label>
+                                        <select class="form-select" id="lancColaborador" required>
+                                            <option value="">Selecione um colaborador</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Mês/Ano *</label>
+                                        <input type="month" class="form-control" id="lancMes" required>
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3 text-primary">Remuneração</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Remuneração Bruta (R$)</label>
+                                        <input type="number" step="0.01" class="form-control calc-field" id="lancRemuneracao" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Bonificação (R$)</label>
+                                        <input type="number" step="0.01" class="form-control calc-field" id="lancBonificacao" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Total Recebido (R$)</label>
+                                        <input type="number" step="0.01" class="form-control" id="lancTotalRecebido" readonly style="background-color: #e9ecef; font-weight: bold;">
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3 text-primary">Adiantamentos</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Adiantamento (R$)</label>
+                                        <input type="number" step="0.01" class="form-control" id="lancAdiantamento" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Adiantamento em Espécie (R$)</label>
+                                        <input type="number" step="0.01" class="form-control" id="lancAdiantamentoEspecie" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Adiantamento Contabilidade (R$)</label>
+                                        <input type="number" step="0.01" class="form-control" id="lancAdiantamentoContab" value="0">
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3 text-primary">Pagamento e Benefícios</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Forma de Pagamento</label>
+                                        <select class="form-select" id="lancFormaPagamento">
+                                            <option value="Depósito">Depósito</option>
+                                            <option value="Dinheiro">Dinheiro</option>
+                                            <option value="Depósito/Dinheiro">Depósito/Dinheiro</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Horas Extras (R$)</label>
+                                        <input type="number" step="0.01" class="form-control" id="lancHorasExtras" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Vale Transporte (R$)</label>
+                                        <input type="number" step="0.01" class="form-control" id="lancValeTransporte" value="0">
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3 text-primary">Pagamentos Finais</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Pagamento Contabilidade (R$)</label>
+                                        <input type="number" step="0.01" class="form-control calc-liquido" id="lancPagamentoContab" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Pagamento em Espécie (R$)</label>
+                                        <input type="number" step="0.01" class="form-control calc-liquido" id="lancPagamentoEspecie" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Líquido Total (R$)</label>
+                                        <input type="number" step="0.01" class="form-control" id="lancLiquidoTotal" readonly style="background-color: #e9ecef; font-weight: bold; color: #28a745; font-size: 1.1rem;">
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2 mt-4">
+                                    <button type="submit" class="btn btn-primary flex-grow-1">
+                                        <i class="fas fa-save"></i> Salvar Lançamento
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btnCancelarLanc">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Lançamentos -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <i class="fas fa-table"></i> Todos os Lançamentos
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Colaborador</th>
+                                            <th>Mês/Ano</th>
+                                            <th>Líquido Total</th>
+                                            <th>Status</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaLancamentos"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal Confirmação Exclusão Colaborador -->
+    <div class="modal fade" id="modalExcluirColab" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Atenção!</strong> Ao excluir este colaborador, TODOS os lançamentos mensais vinculados a ele serão permanentemente apagados.</p>
+                    <p>Deseja continuar?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirmarExclusaoColab">Sim, Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Recibo -->
+    <div class="modal fade" id="modalRecibo" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-receipt"></i> Recibo de Pagamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div style="border: 2px solid #333; padding: 30px; font-family: 'Courier New', monospace;" id="reciboConteudo">
+                        <div class="text-center mb-4">
+                            <h4>RECIBO DE PAGAMENTO EM ESPÉCIE</h4>
+                        </div>
+                        <p><strong>Nome:</strong> <span id="reciboNome"></span></p>
+                        <p><strong>CPF:</strong> <span id="reciboCPF"></span></p>
+                        <p><strong>Valor Recebido em Espécie:</strong> R$ <span id="reciboValor"></span></p>
+                        <p><strong>Data:</strong> <span id="reciboData"></span></p>
+                        <p><strong>Referente ao mês:</strong> <span id="reciboMes"></span></p>
+                        <hr>
+                        <p>Recebi da empresa o valor acima descrito referente ao pagamento em espécie.</p>
+                        <br><br>
+                        <div class="text-center">
+                            <p>_______________________________________</p>
+                            <p>Assinatura do Colaborador</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Configuração da API
+        const API_URL = 'http://localhost:5000/api';
+
+        // Variáveis globais
+        let colaboradores = [];
+        let lancamentos = [];
+        let colabIdToDelete = null;
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            inicializar();
+            configurarEventos();
+        });
+
+        async function inicializar() {
+            await carregarColaboradores();
+            await carregarLancamentos();
+            await carregarDashboard();
+            renderizarColaboradores();
+            renderizarLancamentos();
+            atualizarSelectsColaboradores();
+        }
+
+        // ==================== NAVEGAÇÃO ====================
+        
+        // Toggle Sidebar
+        document.getElementById('toggleSidebar').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+            document.getElementById('mainContent').classList.toggle('expanded');
+        });
+
+        // Navegação entre páginas
+        document.querySelectorAll('.menu-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const pagina = this.getAttribute('data-page');
+                
+                // Atualizar links ativos
+                document.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Mostrar página
+                document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+                document.getElementById('page-' + pagina).classList.add('active');
+                
+                // Atualizar título
+                const titulos = {
+                    'dashboard': 'Dashboard',
+                    'colaboradores': 'Cadastrar Colaborador',
+                    'lancamentos': 'Lançamento Mensal'
+                };
+                document.getElementById('pageTitle').textContent = titulos[pagina];
+            });
+        });
+
+        // ==================== API CALLS ====================
+
+        async function carregarColaboradores() {
+            try {
+                const response = await fetch(`${API_URL}/colaboradores`);
+                colaboradores = await response.json();
+            } catch (error) {
+                console.error('Erro ao carregar colaboradores:', error);
+                // Usar dados em memória se API não disponível
+                colaboradores = JSON.parse(localStorage.getItem('colaboradores') || '[]');
+            }
+        }
+
+        async function carregarLancamentos() {
+            try {
+                const response = await fetch(`${API_URL}/lancamentos`);
+                lancamentos = await response.json();
+            } catch (error) {
+                console.error('Erro ao carregar lançamentos:', error);
+                lancamentos = JSON.parse(localStorage.getItem('lancamentos') || '[]');
+            }
+        }
+
+        async function carregarDashboard() {
+            try {
+                const response = await fetch(`${API_URL}/relatorios/dashboard`);
+                const dados = await response.json();
+                
+                document.getElementById('statTotalColaboradores').textContent = dados.totalColaboradores;
+                document.getElementById('statLancamentosAbertos').textContent = dados.lancamentosAbertos;
+                document.getElementById('statLancamentosFinalizados').textContent = dados.lancamentosFinalizados;
+                document.getElementById('statTotalPago').textContent = formatarMoeda(dados.totalPagoMesAtual);
+            } catch (error) {
+                console.error('Erro ao carregar dashboard:', error);
+                atualizarDashboardLocal();
+            }
+        }
+
+        function atualizarDashboardLocal() {
+            document.getElementById('statTotalColaboradores').textContent = colaboradores.length;
+            document.getElementById('statLancamentosAbertos').textContent = lancamentos.filter(l => l.status === 'aberto').length;
+            document.getElementById('statLancamentosFinalizados').textContent = lancamentos.filter(l => l.status === 'finalizado').length;
+            
+            const mesAtual = new Date().toISOString().substring(0, 7);
+            const totalMes = lancamentos
+                .filter(l => l.mes === mesAtual)
+                .reduce((sum, l) => sum + l.liquidoTotal, 0);
+            document.getElementById('statTotalPago').textContent = formatarMoeda(totalMes);
+        }
+
+        // ==================== COLABORADORES ====================
+
+        function configurarEventos() {
+            // Máscara CPF
+            document.getElementById('colabCPF').addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 11) {
+                    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                    value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                    e.target.value = value;
+                }
+            });
+
+            // Form Colaborador
+            document.getElementById('formColaborador').addEventListener('submit', salvarColaborador);
+            document.getElementById('btnCancelarColab').addEventListener('click', limparFormColaborador);
+
+            // Form Lançamento
+            document.getElementById('formLancamento').addEventListener('submit', salvarLancamento);
+            document.getElementById('btnCancelarLanc').addEventListener('click', limparFormLancamento);
+
+            // Cálculos automáticos
+            document.querySelectorAll('.calc-field').forEach(field => {
+                field.addEventListener('input', calcularTotalRecebido);
+            });
+            document.querySelectorAll('.calc-liquido').forEach(field => {
+                field.addEventListener('input', calcularLiquidoTotal);
+            });
+
+            // Filtros
+            document.getElementById('filtroMes').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtroColaborador').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtroStatus').addEventListener('change', aplicarFiltros);
+            document.getElementById('btnLimparFiltros').addEventListener('click', limparFiltros);
+
+            // Modal exclusão
+            document.getElementById('confirmarExclusaoColab').addEventListener('click', confirmarExclusaoColaborador);
+        }
+
+        async function salvarColaborador(e) {
+            e.preventDefault();
+            
+            const editId = document.getElementById('colabEditId').value;
+            const dados = {
+                nome: document.getElementById('colabNome').value,
+                cpf: document.getElementById('colabCPF').value,
+                endereco: document.getElementById('colabEndereco').value,
+                funcao: document.getElementById('colabFuncao').value,
+                contratacao: document.getElementById('colabContratacao').value,
+                valeRefeicao: document.getElementById('colabValeRefeicao').value,
+                valeTransporte: document.getElementById('colabValeTransporte').value,
+                seguroVida: document.getElementById('colabSeguroVida').value,
+                observacoes: document.getElementById('colabObservacoes').value
+            };
+
+            try {
+                let response;
+                if (editId) {
+                    response = await fetch(`${API_URL}/colaboradores/${editId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dados)
+                    });
+                } else {
+                    response = await fetch(`${API_URL}/colaboradores`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dados)
+                    });
+                }
+
+                if (response.ok) {
+                    alert(editId ? 'Colaborador atualizado com sucesso!' : 'Colaborador cadastrado com sucesso!');
+                    limparFormColaborador();
+                    await inicializar();
+                } else {
+                    const erro = await response.json();
+                    alert(erro.erro || 'Erro ao salvar colaborador');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                salvarColaboradorLocal(dados, editId);
+            }
+        }
+
+        function salvarColaboradorLocal(dados, editId) {
+            if (editId) {
+                const index = colaboradores.findIndex(c => c.id === editId);
+                colaboradores[index] = { ...colaboradores[index], ...dados };
+            } else {
+                const novoId = String(Date.now());
+                colaboradores.push({ id: novoId, ...dados });
+            }
+            localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+            alert('Colaborador salvo localmente!');
+            limparFormColaborador();
+            renderizarColaboradores();
+            atualizarSelectsColaboradores();
+        }
+
+        function limparFormColaborador() {
+            document.getElementById('formColaborador').reset();
+            document.getElementById('colabEditId').value = '';
+            document.getElementById('formColabTitle').textContent = 'Cadastrar Novo Colaborador';
+        }
+
+        function renderizarColaboradores() {
+            const tbody = document.getElementById('tabelaColaboradores');
+            const tbodyDash = document.getElementById('tabelaColaboradoresDash');
+            
+            const html = colaboradores.map(colab => `
+                <tr>
+                    <td>${colab.nome}</td>
+                    <td>${colab.cpf}</td>
+                    <td>${colab.funcao || '-'}</td>
+                    <td><span class="badge bg-info">${colab.contratacao}</span></td>
+                    <td>
+                        <button class="action-btn btn-edit" onclick="editarColaborador('${colab.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn btn-delete" onclick="abrirModalExcluir('${colab.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            tbody.innerHTML = html;
+            
+            // Dashboard - versão simplificada sem coluna de ações
+            const htmlDash = colaboradores.map(colab => `
+                <tr>
+                    <td>${colab.nome}</td>
+                    <td>${colab.cpf}</td>
+                    <td>${colab.funcao || '-'}</td>
+                    <td>
+                        <button class="action-btn btn-edit" onclick="editarColaborador('${colab.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn btn-delete" onclick="abrirModalExcluir('${colab.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            tbodyDash.innerHTML = htmlDash;
+        }
+
+        function editarColaborador(id) {
+            const colab = colaboradores.find(c => c.id === id);
+            if (!colab) return;
+
+            document.getElementById('colabEditId').value = colab.id;
+            document.getElementById('colabNome').value = colab.nome;
+            document.getElementById('colabCPF').value = colab.cpf;
+            document.getElementById('colabEndereco').value = colab.endereco || '';
+            document.getElementById('colabFuncao').value = colab.funcao || '';
+            document.getElementById('colabContratacao').value = colab.contratacao;
+            document.getElementById('colabValeRefeicao').value = colab.valeRefeicao;
+            document.getElementById('colabValeTransporte').value = colab.valeTransporte;
+            document.getElementById('colabSeguroVida').value = colab.seguroVida;
+            document.getElementById('colabObservacoes').value = colab.observacoes || '';
+            
+            document.getElementById('formColabTitle').textContent = 'Editar Colaborador';
+            
+            // Ir para a página de colaboradores
+            document.querySelector('[data-page="colaboradores"]').click();
+            window.scrollTo(0, 0);
+        }
+
+        function abrirModalExcluir(id) {
+            colabIdToDelete = id;
+            const modal = new bootstrap.Modal(document.getElementById('modalExcluirColab'));
+            modal.show();
+        }
+
+        async function confirmarExclusaoColaborador() {
+            if (!colabIdToDelete) return;
+
+            try {
+                const response = await fetch(`${API_URL}/colaboradores/${colabIdToDelete}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Colaborador e lançamentos vinculados excluídos com sucesso!');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalExcluirColab'));
+                    modal.hide();
+                    colabIdToDelete = null;
+                    await inicializar();
+                } else {
+                    alert('Erro ao excluir colaborador');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                excluirColaboradorLocal();
+            }
+        }
+
+        function excluirColaboradorLocal() {
+            colaboradores = colaboradores.filter(c => c.id !== colabIdToDelete);
+            lancamentos = lancamentos.filter(l => l.colaboradorId !== colabIdToDelete);
+            
+            localStorage.setItem('colaboradores', JSON.stringify(colaboradores));
+            localStorage.setItem('lancamentos', JSON.stringify(lancamentos));
+            
+            alert('Colaborador excluído localmente!');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalExcluirColab'));
+            modal.hide();
+            colabIdToDelete = null;
+            
+            renderizarColaboradores();
+            renderizarLancamentos();
+            atualizarSelectsColaboradores();
+            atualizarDashboardLocal();
+        }
+
+        function atualizarSelectsColaboradores() {
+            const selectLanc = document.getElementById('lancColaborador');
+            const selectFiltro = document.getElementById('filtroColaborador');
+            
+            const options = colaboradores.map(c => 
+                `<option value="${c.id}">${c.nome}</option>`
+            ).join('');
+            
+            selectLanc.innerHTML = '<option value="">Selecione um colaborador</option>' + options;
+            selectFiltro.innerHTML = '<option value="">Todos</option>' + options;
+        }
+
+        // ==================== LANÇAMENTOS ====================
+
+        function calcularTotalRecebido() {
+            const remuneracao = parseFloat(document.getElementById('lancRemuneracao').value) || 0;
+            const bonificacao = parseFloat(document.getElementById('lancBonificacao').value) || 0;
+            document.getElementById('lancTotalRecebido').value = (remuneracao + bonificacao).toFixed(2);
+        }
+
+        function calcularLiquidoTotal() {
+            const pagContab = parseFloat(document.getElementById('lancPagamentoContab').value) || 0;
+            const pagEspecie = parseFloat(document.getElementById('lancPagamentoEspecie').value) || 0;
+            document.getElementById('lancLiquidoTotal').value = (pagContab + pagEspecie).toFixed(2);
+        }
+
+        async function salvarLancamento(e) {
+            e.preventDefault();
+            
+            const editId = document.getElementById('lancEditId').value;
+            const dados = {
+                colaboradorId: document.getElementById('lancColaborador').value,
+                mes: document.getElementById('lancMes').value,
+                remuneracao: parseFloat(document.getElementById('lancRemuneracao').value) || 0,
+                bonificacao: parseFloat(document.getElementById('lancBonificacao').value) || 0,
+                totalRecebido: parseFloat(document.getElementById('lancTotalRecebido').value) || 0,
+                adiantamento: parseFloat(document.getElementById('lancAdiantamento').value) || 0,
+                adiantamentoEspecie: parseFloat(document.getElementById('lancAdiantamentoEspecie').value) || 0,
+                adiantamentoContab: parseFloat(document.getElementById('lancAdiantamentoContab').value) || 0,
+                formaPagamento: document.getElementById('lancFormaPagamento').value,
+                horasExtras: parseFloat(document.getElementById('lancHorasExtras').value) || 0,
+                valeTransporte: parseFloat(document.getElementById('lancValeTransporte').value) || 0,
+                pagamentoContab: parseFloat(document.getElementById('lancPagamentoContab').value) || 0,
+                pagamentoEspecie: parseFloat(document.getElementById('lancPagamentoEspecie').value) || 0,
+                liquidoTotal: parseFloat(document.getElementById('lancLiquidoTotal').value) || 0
+            };
+
+            try {
+                let response;
+                if (editId) {
+                    response = await fetch(`${API_URL}/lancamentos/${editId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dados)
+                    });
+                } else {
+                    response = await fetch(`${API_URL}/lancamentos`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dados)
+                    });
+                }
+
+                if (response.ok) {
+                    alert(editId ? 'Lançamento atualizado com sucesso!' : 'Lançamento cadastrado com sucesso!');
+                    limparFormLancamento();
+                    await inicializar();
+                } else {
+                    const erro = await response.json();
+                    alert(erro.erro || 'Erro ao salvar lançamento');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                salvarLancamentoLocal(dados, editId);
+            }
+        }
+
+        function salvarLancamentoLocal(dados, editId) {
+            if (editId) {
+                const index = lancamentos.findIndex(l => l.id === editId);
+                lancamentos[index] = { ...lancamentos[index], ...dados };
+            } else {
+                const novoId = String(Date.now());
+                lancamentos.push({ id: novoId, status: 'aberto', ...dados });
+            }
+            localStorage.setItem('lancamentos', JSON.stringify(lancamentos));
+            alert('Lançamento salvo localmente!');
+            limparFormLancamento();
+            renderizarLancamentos();
+            atualizarDashboardLocal();
+        }
+
+        function limparFormLancamento() {
+            document.getElementById('formLancamento').reset();
+            document.getElementById('lancEditId').value = '';
+            document.getElementById('formLancTitle').textContent = 'Novo Lançamento Mensal';
+            document.getElementById('lancRemuneracao').value = '0';
+            document.getElementById('lancBonificacao').value = '0';
+            document.getElementById('lancAdiantamento').value = '0';
+            document.getElementById('lancAdiantamentoEspecie').value = '0';
+            document.getElementById('lancAdiantamentoContab').value = '0';
+            document.getElementById('lancHorasExtras').value = '0';
+            document.getElementById('lancValeTransporte').value = '0';
+            document.getElementById('lancPagamentoContab').value = '0';
+            document.getElementById('lancPagamentoEspecie').value = '0';
+            calcularTotalRecebido();
+            calcularLiquidoTotal();
+        }
+
+        function renderizarLancamentos() {
+            const tbody = document.getElementById('tabelaLancamentos');
+            const tbodyDash = document.getElementById('tabelaLancamentosDash');
+            
+            const html = lancamentos.map(lanc => {
+                const colab = colaboradores.find(c => c.id === lanc.colaboradorId);
+                const nomeColab = colab ? colab.nome : 'Desconhecido';
+                const cpfColab = colab ? colab.cpf : '-';
+                const statusBadge = lanc.status === 'finalizado' 
+                    ? '<span class="badge badge-finalizado">Finalizado</span>'
+                    : '<span class="badge badge-aberto">Em Aberto</span>';
+                
+                const botoesStatus = lanc.status === 'finalizado'
+                    ? `<button class="action-btn btn-reopen" onclick="reabrirLancamento('${lanc.id}')">
+                           <i class="fas fa-undo"></i>
+                       </button>`
+                    : `<button class="action-btn btn-confirm" onclick="finalizarLancamento('${lanc.id}')">
+                           <i class="fas fa-check"></i>
+                       </button>`;
+                
+                const btnRecibo = lanc.pagamentoEspecie > 0
+                    ? `<button class="action-btn btn-view" onclick="gerarRecibo('${lanc.id}')">
+                           <i class="fas fa-receipt"></i>
+                       </button>`
+                    : '';
+
+                return `
+                    <tr>
+                        <td>${nomeColab}</td>
+                        <td>${formatarMesAno(lanc.mes)}</td>
+                        <td>${formatarMoeda(lanc.liquidoTotal)}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            ${botoesStatus}
+                            <button class="action-btn btn-edit" onclick="editarLancamento('${lanc.id}')" ${lanc.status === 'finalizado' ? 'disabled' : ''}>
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${btnRecibo}
+                            <button class="action-btn btn-delete" onclick="excluirLancamento('${lanc.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            tbody.innerHTML = html;
+            
+            // Dashboard mostra apenas últimos 5
+            const htmlDash = lancamentos.slice(-5).reverse().map(lanc => {
+                const colab = colaboradores.find(c => c.id === lanc.colaboradorId);
+                const nomeColab = colab ? colab.nome : 'Desconhecido';
+                const statusBadge = lanc.status === 'finalizado' 
+                    ? '<span class="badge badge-finalizado">Finalizado</span>'
+                    : '<span class="badge badge-aberto">Em Aberto</span>';
+                
+                return `
+                    <tr>
+                        <td>${nomeColab}</td>
+                        <td>${formatarMesAno(lanc.mes)}</td>
+                        <td>${formatarMoeda(lanc.liquidoTotal)}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tbodyDash.innerHTML = htmlDash;
+        }
+
+        function editarLancamento(id) {
+            const lanc = lancamentos.find(l => l.id === id);
+            if (!lanc) return;
+
+            if (lanc.status === 'finalizado') {
+                alert('Reabra o lançamento antes de editar!');
+                return;
+            }
+
+            document.getElementById('lancEditId').value = lanc.id;
+            document.getElementById('lancColaborador').value = lanc.colaboradorId;
+            document.getElementById('lancMes').value = lanc.mes;
+            document.getElementById('lancRemuneracao').value = lanc.remuneracao;
+            document.getElementById('lancBonificacao').value = lanc.bonificacao;
+            document.getElementById('lancAdiantamento').value = lanc.adiantamento;
+            document.getElementById('lancAdiantamentoEspecie').value = lanc.adiantamentoEspecie;
+            document.getElementById('lancAdiantamentoContab').value = lanc.adiantamentoContab;
+            document.getElementById('lancFormaPagamento').value = lanc.formaPagamento;
+            document.getElementById('lancHorasExtras').value = lanc.horasExtras;
+            document.getElementById('lancValeTransporte').value = lanc.valeTransporte;
+            document.getElementById('lancPagamentoContab').value = lanc.pagamentoContab;
+            document.getElementById('lancPagamentoEspecie').value = lanc.pagamentoEspecie;
+            
+            calcularTotalRecebido();
+            calcularLiquidoTotal();
+            
+            document.getElementById('formLancTitle').textContent = 'Editar Lançamento';
+            document.querySelector('[data-page="lancamentos"]').click();
+            window.scrollTo(0, 0);
+        }
+
+        async function finalizarLancamento(id) {
+            if (!confirm('Confirmar finalização do lançamento?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/lancamentos/${id}/finalizar`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    alert('Lançamento finalizado com sucesso!');
+                    await inicializar();
+                } else {
+                    alert('Erro ao finalizar lançamento');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                finalizarLancamentoLocal(id);
+            }
+        }
+
+        function finalizarLancamentoLocal(id) {
+            const index = lancamentos.findIndex(l => l.id === id);
+            if (index !== -1) {
+                lancamentos[index].status = 'finalizado';
+                localStorage.setItem('lancamentos', JSON.stringify(lancamentos));
+                alert('Lançamento finalizado!');
+                renderizarLancamentos();
+                atualizarDashboardLocal();
+            }
+        }
+
+        async function reabrirLancamento(id) {
+            if (!confirm('Reabrir este lançamento para edição?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/lancamentos/${id}/reabrir`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    alert('Lançamento reaberto com sucesso!');
+                    await inicializar();
+                } else {
+                    alert('Erro ao reabrir lançamento');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                reabrirLancamentoLocal(id);
+            }
+        }
+
+        function reabrirLancamentoLocal(id) {
+            const index = lancamentos.findIndex(l => l.id === id);
+            if (index !== -1) {
+                lancamentos[index].status = 'aberto';
+                localStorage.setItem('lancamentos', JSON.stringify(lancamentos));
+                alert('Lançamento reaberto!');
+                renderizarLancamentos();
+                atualizarDashboardLocal();
+            }
+        }
+
+        async function excluirLancamento(id) {
+            if (!confirm('Deseja realmente excluir este lançamento?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/lancamentos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Lançamento excluído com sucesso!');
+                    await inicializar();
+                } else {
+                    alert('Erro ao excluir lançamento');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                excluirLancamentoLocal(id);
+            }
+        }
+
+        function excluirLancamentoLocal(id) {
+            lancamentos = lancamentos.filter(l => l.id !== id);
+            localStorage.setItem('lancamentos', JSON.stringify(lancamentos));
+            alert('Lançamento excluído!');
+            renderizarLancamentos();
+            atualizarDashboardLocal();
+        }
+
+        function gerarRecibo(id) {
+            const lanc = lancamentos.find(l => l.id === id);
+            if (!lanc) return;
+
+            const colab = colaboradores.find(c => c.id === lanc.colaboradorId);
+            if (!colab) return;
+
+            document.getElementById('reciboNome').textContent = colab.nome;
+            document.getElementById('reciboCPF').textContent = colab.cpf;
+            document.getElementById('reciboValor').textContent = lanc.pagamentoEspecie.toFixed(2);
+            document.getElementById('reciboData').textContent = new Date().toLocaleDateString('pt-BR');
+            document.getElementById('reciboMes').textContent = formatarMesAno(lanc.mes);
+
+            const modal = new bootstrap.Modal(document.getElementById('modalRecibo'));
+            modal.show();
+        }
+
+        // ==================== FILTROS ====================
+
+        function aplicarFiltros() {
+            const mes = document.getElementById('filtroMes').value;
+            const colaboradorId = document.getElementById('filtroColaborador').value;
+            const status = document.getElementById('filtroStatus').value;
+
+            let lancamentosFiltrados = [...lancamentos];
+
+            if (mes) {
+                lancamentosFiltrados = lancamentosFiltrados.filter(l => l.mes === mes);
+            }
+            if (colaboradorId) {
+                lancamentosFiltrados = lancamentosFiltrados.filter(l => l.colaboradorId === colaboradorId);
+            }
+            if (status) {
+                lancamentosFiltrados = lancamentosFiltrados.filter(l => l.status === status);
+            }
+
+            document.getElementById('countResultados').textContent = lancamentosFiltrados.length;
+
+            // Renderizar apenas lançamentos filtrados no dashboard
+            const tbodyDash = document.getElementById('tabelaLancamentosDash');
+            const htmlDash = lancamentosFiltrados.map(lanc => {
+                const colab = colaboradores.find(c => c.id === lanc.colaboradorId);
+                const nomeColab = colab ? colab.nome : 'Desconhecido';
+                const statusBadge = lanc.status === 'finalizado' 
+                    ? '<span class="badge badge-finalizado">Finalizado</span>'
+                    : '<span class="badge badge-aberto">Em Aberto</span>';
+                
+                return `
+                    <tr>
+                        <td>${nomeColab}</td>
+                        <td>${formatarMesAno(lanc.mes)}</td>
+                        <td>${formatarMoeda(lanc.liquidoTotal)}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tbodyDash.innerHTML = htmlDash || '<tr><td colspan="4" class="text-center">Nenhum resultado encontrado</td></tr>';
+        }
+
+        function limparFiltros() {
+            document.getElementById('filtroMes').value = '';
+            document.getElementById('filtroColaborador').value = '';
+            document.getElementById('filtroStatus').value = '';
+            aplicarFiltros();
+        }
+
+        // ==================== UTILITÁRIOS ====================
+
+        function formatarMoeda(valor) {
+            return 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
+        }
+
+        function formatarMesAno(mesAno) {
+            if (!mesAno) return '-';
+            const [ano, mes] = mesAno.split('-');
+            const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            return `${meses[parseInt(mes) - 1]}/${ano}`;
+        }
+    </script>
+</body>
+</html>
