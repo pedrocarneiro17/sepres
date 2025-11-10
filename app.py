@@ -172,6 +172,7 @@ def update_or_create_emprestimos(colaborador_id, emprestimos_data):
                 emprestimo.descricao = emp_data.get('descricao', emprestimo.descricao)
         else:
             # Criar novo
+            # Usando datetime e os.urandom para garantir IDs únicos e não sequenciais
             new_id = str(int(datetime.now().timestamp() * 1000) + int(os.urandom(2).hex(), 16))
             novo_emprestimo = Emprestimo(
                 id=new_id,
@@ -419,14 +420,18 @@ def restaurar_backup():
         for c_data in data.get('colaboradores', []):
             emprestimos_data = c_data.pop('emprestimos', [])
             
+            # Cria colaborador
             colaborador = Colaborador(**{k: v for k, v in c_data.items() if k in Colaborador.__table__.columns})
             db.session.add(colaborador)
             db.session.flush() # Garante o ID do colaborador
             
+            # Cria empréstimos
             for e_data in emprestimos_data:
+                # O ID é copiado, mas garantimos o vínculo correto
                 emprestimo = Emprestimo(colaborador_id=colaborador.id, **{k: v for k, v in e_data.items() if k in Emprestimo.__table__.columns})
                 db.session.add(emprestimo)
                 
+        # Cria lançamentos
         for l_data in data.get('lancamentos', []):
             lancamento = Lancamento(**{k: v for k, v in l_data.items() if k in Lancamento.__table__.columns})
             db.session.add(lancamento)
