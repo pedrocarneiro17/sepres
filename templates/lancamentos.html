@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lançamentos - Sistema DP</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding-bottom: 50px;
+        }
+        .container-custom {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            background: white;
+        }
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #e1e8ed;
+            border-radius: 8px 8px 0 0 !important;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+        .page-title {
+            color: #2c3e50;
+            text-align: center;
+            margin: 30px 0;
+            font-weight: 600;
+        }
+        .form-control, .form-select {
+            border-radius: 6px;
+            border: 1px solid #e1e8ed;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.1);
+        }
+        .btn {
+            border-radius: 6px;
+            padding: 10px 20px;
+        }
+        .section-divider {
+            border-bottom: 2px solid #e1e8ed;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            margin-top: 25px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        .readonly-field {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .total-field {
+            background-color: #d4edda !important;
+            font-size: 1.2rem !important;
+            font-weight: bold !important;
+            color: #155724 !important;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-briefcase"></i> Sistema DP
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="colaboradores.html">
+                            <i class="fas fa-users"></i> Colaboradores
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="lancamentos.html">
+                            <i class="fas fa-dollar-sign"></i> Lançamentos
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo Principal -->
+    <div class="container-custom">
+        <h2 class="page-title">
+            <i class="fas fa-dollar-sign"></i> Lançamentos Mensais
+        </h2>
+
+        <!-- Formulário -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-dollar-sign"></i> <span id="formLancTitle">Novo Lançamento</span>
+            </div>
+            <div class="card-body">
+                <form id="formLancamento">
+                    <input type="hidden" id="lancEditId">
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Colaborador *</label>
+                            <select class="form-select" id="lancColaborador" required>
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Mês/Ano *</label>
+                            <input type="month" class="form-control" id="lancMes" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Status do Mês</label>
+                            <select class="form-select" id="lancFerias" onchange="toggleFerias()">
+                                <option value="Normal">Normal</option>
+                                <option value="Férias">Férias</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="divDadosLancamento">
+                        <h6 class="section-divider">
+                            <i class="fas fa-money-bill-wave"></i> Remuneração
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Remuneração Líquida (R$)</label>
+                                <input type="number" step="0.01" class="form-control calc-field" id="lancRemuneracao" value="0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Prêmio (R$)</label>
+                                <input type="number" step="0.01" class="form-control calc-field" id="lancBonificacao" value="0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Total Recebido (R$)</label>
+                                <input type="number" step="0.01" class="form-control readonly-field" id="lancTotalRecebido" readonly>
+                            </div>
+                        </div>
+
+                    <h6 class="section-divider">
+                        <i class="fas fa-hand-holding-usd"></i> Adiantamentos
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Adiantamento Espécie (R$)</label>
+                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancAdiantamentoEspecie" value="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Adiantamento Contab. (R$)</label>
+                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancAdiantamentoContab" value="0">
+                        </div>
+                    </div>
+
+                    <h6 class="section-divider">
+                        <i class="fas fa-credit-card"></i> Pagamento
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Forma de Pagamento</label>
+                            <select class="form-select" id="lancFormaPagamento">
+                                <option value="Depósito">Depósito</option>
+                                <option value="Espécie">Espécie</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Horas Extras (R$)</label>
+                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancHorasExtras" value="0">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Vale Transporte (R$)</label>
+                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancValeTransporte" value="0">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Empréstimo (R$)</label>
+                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancEmprestimo" value="0">
+                            <small id="detalhesEmprestimo" class="text-muted"></small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Outros (R$)</label>
+                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancOutros" value="0">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Pagamento Contab. (R$)</label>
+                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancPagamentoContab" value="0">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Pagamento Espécie (R$)</label>
+                            <input type="number" step="0.01" class="form-control" id="lancPagamentoEspecie" value="0">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Líquido Total (R$)</label>
+                            <input type="number" step="0.01" class="form-control total-field" id="lancLiquidoTotal" readonly>
+                        </div>
+                    </div>
+                    </div>
+
+                    <!-- Mensagem de Férias -->
+                    <div id="divMensagemFerias" style="display: none;">
+                        <div class="alert alert-warning text-center" role="alert">
+                            <h5><strong>Colaborador em Férias</strong></h5>
+                            <p>Quando o colaborador está de férias, todos os valores são automaticamente zerados.</p>
+                            <p class="mb-0">Os campos de lançamento ficam desabilitados neste período.</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Salvar Lançamento
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-lg" id="btnCancelarLanc">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista -->
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-table"></i> Todos os Lançamentos</span>
+                <div class="d-flex gap-2">
+                    <input type="month" class="form-control form-control-sm" id="filtroMesCSV" style="width: 180px;">
+                    <button class="btn btn-success btn-sm" onclick="exportarCSV()" title="Exportar CSV do mês selecionado">
+                        <i class="fas fa-file-csv"></i> Exportar CSV
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Colaborador</th>
+                                <th>Mês/Ano</th>
+                                <th>Líquido Total</th>
+                                <th>Status</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaLancamentos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Recibo -->
+    <div class="modal fade" id="modalRecibo" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-receipt"></i> Recibo de Pagamento
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div style="border: 2px solid #000; padding: 30px; font-family: 'Courier New', monospace;" id="reciboConteudo">
+                        <div class="text-center mb-4">
+                            <h4>RECIBO DE PAGAMENTO EM ESPÉCIE</h4>
+                        </div>
+                        <p><strong>Nome:</strong> <span id="reciboNome"></span></p>
+                        <p><strong>CPF:</strong> <span id="reciboCPF"></span></p>
+                        <p><strong>Valor:</strong> R$ <span id="reciboValor"></span></p>
+                        <p><strong>Data:</strong> <span id="reciboData"></span></p>
+                        <p><strong>Mês:</strong> <span id="reciboMes"></span></p>
+                        <hr>
+                        <p>Recebi da empresa o valor acima descrito referente ao pagamento em espécie.</p>
+                        <br><br>
+                        <div class="text-center">
+                            <p>_______________________________________</p>
+                            <p>Assinatura do Colaborador</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Fechar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="imprimirRecibo()">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        // Controle de férias
+        function toggleFerias() {
+            const ferias = document.getElementById('lancFerias').value;
+            const divDados = document.getElementById('divDadosLancamento');
+            const divMensagem = document.getElementById('divMensagemFerias');
+            
+            if (ferias === 'Férias') {
+                // Esconde os campos e mostra mensagem
+                divDados.style.display = 'none';
+                divMensagem.style.display = 'block';
+                
+                // Zera todos os valores
+                document.getElementById('lancRemuneracao').value = '0';
+                document.getElementById('lancBonificacao').value = '0';
+                document.getElementById('lancAdiantamentoEspecie').value = '0';
+                document.getElementById('lancAdiantamentoContab').value = '0';
+                document.getElementById('lancHorasExtras').value = '0';
+                document.getElementById('lancValeTransporte').value = '0';
+                document.getElementById('lancEmprestimo').value = '0';
+                document.getElementById('lancOutros').value = '0';
+                document.getElementById('lancPagamentoContab').value = '0';
+                document.getElementById('lancPagamentoEspecie').value = '0';
+                calcularTotalRecebido();
+                calcularLiquidoTotal();
+            } else {
+                // Mostra os campos e esconde mensagem
+                divDados.style.display = 'block';
+                divMensagem.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
