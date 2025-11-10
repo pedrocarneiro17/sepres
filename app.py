@@ -13,24 +13,28 @@ DATA_FILE = 'dados.json'
 
 def carregar_dados():
     """Garante que a estrutura padrão seja retornada para prevenir KeyErrors."""
+    # Estrutura de dados mínima esperada, caso algo falhe
     dados_padrao = {'colaboradores': [], 'lancamentos': []}
     
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, 'r', encoding='utf-8') as f:
                 dados = json.load(f)
+                
+                # Se o JSON lido for um dicionário, mesclamos para garantir chaves ausentes
                 if isinstance(dados, dict):
-                    # Retorna o que foi lido, mas garante que o padrão é base
+                    # O operador **dados_padrao garante que 'colaboradores' e 'lancamentos' existam
                     return {**dados_padrao, **dados} 
+        
         except (json.JSONDecodeError, FileNotFoundError):
-            # Captura erros de formato ou se o arquivo sumir/for removido
+            # Ignora se o arquivo estiver corrompido ou sumir
             pass 
         except Exception as e:
-            # Captura erros de permissão ou I/O
-            print(f"ERRO ao carregar dados: {e}")
+            # Captura erros de I/O ou permissão e não deixa o worker travar
+            print(f"AVISO: ERRO ao carregar dados do JSON: {e}")
             pass
             
-    # Retorna o padrão em todos os casos de falha na leitura/ausência
+    # Retorna o padrão em todos os casos de falha na leitura/ausência do arquivo
     return dados_padrao
 
 def salvar_dados(dados):
