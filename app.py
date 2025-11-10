@@ -12,12 +12,37 @@ CORS(app)
 # Arquivo de dados
 DATA_FILE = 'dados.json'
 
+DATA_FILE = 'dados.json'
+
 def carregar_dados():
-    """Carrega dados do arquivo JSON"""
+    """Carrega dados do arquivo JSON, tratando erros de formato."""
+    # Estrutura padrão de retorno
+    dados_padrao = {'colaboradores': [], 'lancamentos': []}
+    
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {'colaboradores': [], 'lancamentos': []}
+        try:
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                dados = json.load(f)
+                
+                # Garante que a estrutura básica existe, mesmo se o JSON for parcial
+                if isinstance(dados, dict):
+                    return {**dados_padrao, **dados} # Mescla com padrão para garantir chaves
+                else:
+                    # Se não for um dict (ex: é uma lista ou string), usa o padrão
+                    print("AVISO: dados.json existe, mas não é um dicionário válido.")
+                    return dados_padrao
+                    
+        except json.JSONDecodeError:
+            print("ERRO: dados.json corrompido, resetando dados.")
+            # Se o arquivo estiver malformado, retorna o padrão
+            return dados_padrao
+        except Exception as e:
+            # Outros erros de I/O, retorna o padrão
+            print(f"ERRO ao carregar dados: {e}. Resetando dados.")
+            return dados_padrao
+            
+    # Se o arquivo não existe, retorna o padrão
+    return dados_padrao
 
 def salvar_dados(dados):
     """Salva dados no arquivo JSON"""
