@@ -1,4 +1,27 @@
 {
-  "colaboradores": [],
+  "colaboradores": [
+    {
+      "id": "1762806415064",
+      "nome": "pedro",
+      "cpf": "111.111.111-11",
+      "endereco": "",
+      "funcao": "",
+      "contratacao": "CLT",
+      "admissao": "",
+      "remuneracao": 0,
+      "premio": 0,
+      "total": 0,
+      "valeRefeicao": "Não",
+      "valeTransporte": "Não",
+      "seguroVida": "Inativo",
+      "planoOdonto": "Não",
+      "dependentes": 0,
+      "temAdiantamento": "Não",
+      "valorAdiantamento": 0,
+      "tipoAdiantamento": "Espécie",
+      "emprestimos": [],
+      "observacoes": ""
+    }
+  ],
   "lancamentos": []
 }
