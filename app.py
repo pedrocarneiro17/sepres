@@ -168,11 +168,4 @@ if __name__ == '__main__':
     if not os.path.exists('static'):
         os.makedirs('static')
     
-    print("=" * 60)
-    print("🚀 Sistema DP - Servidor iniciado!")
-    print("=" * 60)
-    print("📍 Acesse: http://localhost:5000")
-    print("💾 Dados salvos em: dados.json")
-    print("=" * 60)
-    
     app.run(debug=True, host='0.0.0.0', port=5000)
