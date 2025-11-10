@@ -1,6 +1,6 @@
 // main.js - Versão com API Backend
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = window.location.origin + '/api';
 
 let colaboradores = [];
 let lancamentos = [];
@@ -14,13 +14,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function carregarDados() {
     try {
-        const response = await fetch(`${API_URL}/dados`);
+        // Usa a rota geral para carregar todos os dados de uma vez
+        const response = await fetch(`${API_URL}/dados`); 
+        
+        // **IMPORTANTE:** Verificar se a resposta é OK antes de tentar ler JSON
+        if (!response.ok) {
+            throw new Error(`Erro do servidor: ${response.status}`);
+        }
+        
         const dados = await response.json();
-        colaboradores = dados.colaboradores || [];
-        lancamentos = dados.lancamentos || [];
+        
+        // **IMPORTANTE:** Garante que as variáveis globais sejam sempre listas,
+        // mesmo se o servidor não retornar a chave (Embora o backend agora garanta isso)
+        colaboradores = Array.isArray(dados.colaboradores) ? dados.colaboradores : [];
+        lancamentos = Array.isArray(dados.lancamentos) ? dados.lancamentos : [];
+        
         renderizar();
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
+        // Esta é a mensagem que o usuário vê se o backend falhar (500)
         alert('Erro ao conectar com o servidor. Verifique se o servidor está rodando.');
     }
 }
