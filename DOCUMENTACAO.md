@@ -1,259 +1,323 @@
 # Documentação do Sistema DP (sepres)
 
 Sistema web de Departamento Pessoal para cadastro de colaboradores e controle de
-lançamentos mensais de pagamento (folha, adiantamentos, empréstimos e férias).
+lançamentos mensais de pagamento (folha, adiantamentos, empréstimos, férias e
+diárias), com dashboard de indicadores e gráficos.
 
 ## 1. Visão geral da arquitetura
 
-- **Backend**: Flask + Flask-SQLAlchemy (`app.py`), expõe uma API REST em `/api/*`
-  e serve as páginas HTML de `templates/`.
-- **Banco de dados**: SQLite (`dados.db`), criado automaticamente na primeira
-  execução (`db.create_all()`). Não há migrações — qualquer mudança de schema
-  exige apagar o arquivo `dados.db` ou migrar manualmente.
-- **Frontend**: HTML + Bootstrap 5 + JavaScript puro (`static/js/main.js`), sem
-  build step, sem framework SPA. Cada página (`index.html`, `colaboradores.html`,
-  `lancamentos.html`) carrega o mesmo `main.js`, que decide o que renderizar
-  com base no `pathname` da URL.
-- **Deploy**: `Procfile` usa `gunicorn app:app` (ex.: Railway/Heroku). Há um
-  comentário explícito no código alertando que o SQLite é **efêmero** nesses
-  ambientes de contêiner — os dados são perdidos a cada novo deploy/restart,
-  a menos que um volume persistente seja configurado.
-- **Segurança**: CORS liberado para qualquer origem (`CORS(app)` sem restrição)
-  e **nenhuma autenticação/autorização** existe em nenhuma rota. Qualquer
-  pessoa com acesso à URL pode ler, criar, editar ou apagar todos os dados.
+- **Backend**: Flask + Flask-SQLAlchemy + Flask-Login (`app.py`), expõe uma API
+  REST em `/api/*` e serve as páginas HTML de `templates/`.
+- **Banco de dados**: **PostgreSQL em produção** (via variável de ambiente
+  `DATABASE_URL`, fornecida automaticamente pelo Railway ao vincular o serviço de
+  banco) ou **SQLite local** (`dados.db`) quando `DATABASE_URL` não está definida —
+  usado para desenvolvimento na máquina do desenvolvedor. Não há migrações
+  formais; o próprio `app.py` roda uma migração leve no boot (`ALTER TABLE ... ADD
+  COLUMN`) para adicionar colunas novas a bancos já existentes, sem apagar dados.
+- **Autenticação**: login por sessão com **Flask-Login**. Todo o sistema (páginas
+  e API) fica atrás de um guard central (`before_request`) — só a tela de login e
+  os arquivos estáticos ficam acessíveis sem sessão válida. As credenciais vêm de
+  variáveis de ambiente (`ADMIN_USERNAME` / `ADMIN_PASSWORD`), nunca do código.
+- **Frontend**: HTML + **Tailwind CSS compilado** (sem CDN — gerado localmente via
+  `npm run build:css` para `static/css/app.css`) + JavaScript puro
+  (`static/js/main.js`), sem build de JS nem SPA. Um menu lateral retrátil
+  substitui a navegação antiga do topo.
+- **Gráficos**: **Chart.js**, instalado como dependência local e servido de
+  `static/js/vendor/chart.umd.js` (também sem CDN).
+- **Deploy**: `Procfile` usa `gunicorn app:app` (Railway). A porta é configurável
+  via variável `PORT`.
 
-## 2. Modelo de dados
+## 2. Autenticação
 
-### 2.1 Colaborador (`Colaborador`)
-Tabela principal de funcionários/prestadores.
+- Tela de login em `/login` (usuário + senha), com sessão persistida via cookie
+  assinado (`SECRET_KEY`).
+- **Toda rota exige login** — páginas redirecionam para `/login?next=<rota>`;
+  chamadas à API sem sessão retornam `401 Não autenticado`.
+- O frontend intercepta qualquer resposta `401` de qualquer chamada e redireciona
+  automaticamente para a tela de login (sessão expirada).
+- Logout em `/logout`, acessível pelo rodapé do menu lateral.
+- **Variáveis de ambiente relevantes**: `SECRET_KEY`, `ADMIN_USERNAME`,
+  `ADMIN_PASSWORD`, `DATABASE_URL`. Em desenvolvimento local, um arquivo `.env`
+  (não versionado) fornece valores fixos via `python-dotenv`; em produção essas
+  variáveis são configuradas diretamente no Railway.
+
+## 3. Modelo de dados
+
+### 3.1 Colaborador (`Colaborador`)
 
 | Campo | Tipo | Regra |
 |---|---|---|
-| `id` | string | Gerado como timestamp em ms (`str(int(datetime.now().timestamp()*1000))`) na criação. |
-| `nome` | string | Obrigatório no formulário (`required`). |
-| `cpf` | string | Obrigatório e **único** — validado no backend antes de salvar. |
+| `id` | string | Gerado como timestamp em ms na criação. |
+| `nome` | string | Obrigatório. |
+| `cpf` | string | Obrigatório e **único** — validado no backend antes de salvar. Mascarado no formulário (`000.000.000-00`). |
 | `endereco` | string | Livre. |
 | `funcao` | string | Cargo/função, livre. |
-| `contratacao` | string | `CLT`, `Mensalista` ou `Autônomo` (opções do `<select>`). |
+| `empresa` | string | **`Engenharia`** ou **`Gerenciadora`** — define em qual CNPJ/empresa o colaborador está registrado. Determina as opções de contratação disponíveis (ver seção 5.1). |
+| `contratacao` | string | `CLT`, `Diarista` ou `Mensalista` (Engenharia); apenas `CLT` (Gerenciadora). |
 | `admissao` | string `YYYY-MM-DD` | Data de admissão. |
-| `remuneracao` | float | Remuneração bruta/base. |
+| `remuneracao` | float | Remuneração bruta/base (CLT e Mensalista). |
 | `premio` | float | Prêmio/bonificação fixa. |
+| `valorDiaria` | float | **Valor da diária** — usado apenas quando `contratacao = Diarista`; alimenta o cálculo automático do lançamento mensal. |
 | `total` | float | Calculado no frontend como `remuneracao + premio` (readonly). |
-| `valeRefeicao` | `Sim`/`Não` | Apenas informativo — **não** entra em nenhum cálculo de folha. |
-| `valeTransporte` | `Sim`/`Não` | Idem — é um benefício cadastral, distinto do campo `valeTransporte` do lançamento mensal (que é um valor monetário). |
-| `seguroVida` | `Ativo`/`Inativo` | Apenas informativo. |
+| `valeRefeicao`, `valeTransporte` (benefício) | `Sim`/`Não` | Informativos — não entram em cálculo de folha. |
+| `seguroVida` | `Ativo`/`Inativo` | Informativo. |
 | `planoOdonto` | `Sim`/`Não` | Se `Sim`, exibe campo de dependentes. |
-| `dependentes` | int | Só relevante se `planoOdonto = Sim`. |
-| `temAdiantamento` | `Sim`/`Não` | Define se o colaborador tem adiantamento recorrente configurado. |
+| `dependentes` | int | Relevante só se `planoOdonto = Sim`. |
+| `temAdiantamento` | `Sim`/`Não` | Define se há adiantamento recorrente configurado. |
 | `valorAdiantamento` | float | Valor do adiantamento recorrente. |
 | `tipoAdiantamento` | `Espécie`/`Depósito` | Define para qual campo do lançamento mensal o adiantamento é pré-preenchido. |
 | `observacoes` | texto livre | — |
-| `emprestimos` | relação 1\:N | Ver seção 2.2. Excluído em cascata (`cascade="all, delete-orphan"`). |
-| `lancamentos` | relação 1\:N | Ver seção 2.3. Excluído em cascata. |
+| `emprestimos` | relação 1\:N | Ver seção 3.2. Excluído em cascata. |
+| `lancamentos` | relação 1\:N | Ver seção 3.3. Excluído em cascata. |
 
-### 2.2 Empréstimo (`Emprestimo`)
-Empréstimo parcelado vinculado a um colaborador (um colaborador pode ter vários).
+### 3.2 Empréstimo (`Emprestimo`)
+
+Empréstimo parcelado vinculado a um colaborador (pode haver vários por colaborador).
 
 | Campo | Regra |
 |---|---|
 | `valor` | Valor total do empréstimo. |
-| `parcelas` | Quantidade de parcelas (valor da parcela = `valor / parcelas`). |
-| `inicio` | Mês/ano (`YYYY-MM`) da primeira parcela. |
-| `descricao` | Texto livre (ex.: "Emergência médica"); default `"Sem descrição"` se vazio. |
+| `parcelas` | Quantidade de parcelas (parcela nominal = `valor / parcelas`). |
+| `inicio` | Mês/ano (`YYYY-MM`) da primeira parcela — via seletor de mês em português. |
+| `descricao` | Texto livre; default `"Sem descrição"` se vazio. |
 
-**Regra de sincronização (`update_or_create_emprestimos` em `app.py`)**: ao salvar
+O **quanto já foi efetivamente pago** de cada empréstimo não é armazenado no
+próprio empréstimo — é calculado somando o campo `emprestimosPagos` de todos os
+lançamentos do colaborador (ver seção 3.3 e regra 5.4). Isso permite pagamento
+parcial mês a mês sem exigir edição do cadastro do empréstimo.
+
+**Regra de sincronização** (`update_or_create_emprestimos` em `app.py`): ao salvar
 um colaborador, o backend compara os empréstimos recebidos no payload com os já
-existentes no banco — os que não vierem no payload são **excluídos**, os que
-vierem com `id` existente são atualizados, e os sem `id` (ou com `id` novo) são
-criados com um ID gerado por timestamp + bytes aleatórios.
+existentes — os que não vierem são **excluídos**, os que vierem com `id`
+existente são atualizados, os sem `id` são criados.
 
-### 2.3 Lançamento (`Lancamento`)
-Registro de pagamento mensal de um colaborador. Um lançamento é identificado
-pela combinação (colaborador, mês) — mas essa unicidade é garantida apenas na
-camada de frontend (ver seção 4.3), **não** há constraint de unicidade no banco.
+### 3.3 Lançamento (`Lancamento`)
+
+Registro de pagamento mensal de um colaborador.
 
 | Campo | Regra |
 |---|---|
 | `colaboradorId` | FK obrigatória. |
 | `mes` | `YYYY-MM`, obrigatório. |
 | `ferias` | `Normal` ou `Férias` — quando `Férias`, todos os valores abaixo são zerados. |
-| `remuneracao`, `bonificacao` | Pré-preenchidos a partir do cadastro do colaborador, editáveis. |
+| `diasTrabalhados` | Usado apenas quando o colaborador é `Diarista`; multiplicado por `valorDiaria` para calcular a remuneração do mês. |
+| `remuneracao`, `bonificacao` | Pré-preenchidos a partir do cadastro (ou calculados, no caso de diarista), editáveis. |
 | `totalRecebido` | Calculado = `remuneracao + bonificacao` (readonly). |
-| `adiantamentoEspecie`, `adiantamentoContab` | Adiantamento do mês, dividido por forma. |
-| `horasExtras` | Valor de horas extras do mês. |
-| `valeTransporte` | Valor monetário do VT do mês (distinto do campo booleano do cadastro). |
-| `emprestimo` | Soma das parcelas de empréstimos que vencem naquele mês (calculado automaticamente, mas editável). |
+| `adiantamentoEspecie`, `adiantamentoContab` | Adiantamento do mês, dividido por forma. **Agora descontam do líquido** (ver 5.3). |
+| `horasExtras` | Valor de horas extras do mês — soma no líquido. |
+| `valeTransporte` | Valor monetário do VT do mês. |
+| `emprestimo` | Soma dos valores pagos de empréstimo no mês — ver seção 5.4 (detalhamento editável por empréstimo). |
+| `emprestimosPagos` | JSON `[{"id": <id do empréstimo>, "valor": <pago no mês>}]` — granularidade por empréstimo, permite pagamento parcial. |
 | `outros` | Outros descontos/valores do mês. |
-| `liquidoTotal` | Calculado = `totalRecebido + horasExtras - valeTransporte - emprestimo - outros` (readonly). |
-| `pagamentoContab` | Valor pago via contabilidade/depósito (não entra na fórmula do líquido, mas é lançado). |
-| `pagamentoEspecie` | Valor pago em espécie. Pré-preenchido com `remuneracao + premio` do colaborador, mas **não recalculado automaticamente** depois — fica fixo no que o usuário digitar/ajustar. |
+| `liquidoTotal` | Calculado = `totalRecebido + horasExtras − valeTransporte − emprestimo − outros − adiantamentoEspecie − adiantamentoContab` (readonly). |
+| `pagamentoContab` | Valor pago via contabilidade/depósito. |
+| `pagamentoEspecie` | Valor pago em espécie. Pré-preenchido com `remuneracao + premio`, editável. |
+| `formaPagamento` | `Depósito`, `Espécie` ou **`Depósito + Espécie`**. |
 | `status` | `aberto` (padrão) ou `finalizado`. |
 
-## 3. API REST (`app.py`)
+## 4. API REST (`app.py`)
 
-| Rota | Método | Função | Regras |
+| Rota | Método | Auth | Função |
 |---|---|---|---|
-| `/` | GET | Serve `index.html` | Dashboard. |
-| `/<path>.html` | GET | Serve páginas HTML | Qualquer `.html` em `templates/`. |
-| `/<path>` (outros) | GET | Serve arquivo estático | De `static/`. |
-| `/api/dados` | GET | Retorna `colaboradores` + `lancamentos` completos | Usado no carregamento inicial de todas as páginas. |
-| `/api/colaboradores` | GET | Lista colaboradores (com empréstimos aninhados) | — |
-| `/api/colaboradores` | POST | Cria ou edita colaborador | Se `data.id` vazio → cria; senão → edita. Rejeita com `400` se CPF já pertence a outro `id`. Sincroniza empréstimos. |
-| `/api/colaboradores/<id>` | DELETE | Exclui colaborador | Cascade apaga lançamentos e empréstimos associados. `404` se não existir. |
-| `/api/lancamentos` | GET | Lista todos os lançamentos | — |
-| `/api/lancamentos` | POST | Cria ou edita lançamento | Mesma lógica de `id` vazio = criação. **Não valida duplicidade de (colaborador+mês) no backend.** |
-| `/api/lancamentos/<id>` | DELETE | Exclui lançamento | `404` se não existir. |
-| `/api/lancamentos/<id>/finalizar` | PUT | Muda `status` para `finalizado` | Sem outras validações (não confere se campos estão completos). |
-| `/api/lancamentos/<id>/reabrir` | PUT | Muda `status` para `aberto` | Permite reeditar um lançamento finalizado. |
-| `/api/backup` | GET | Retorna dump completo (colaboradores + lançamentos) | Idêntico a `/api/dados`, mantido por compatibilidade. |
-| `/api/restaurar` | POST | Restaura dados de um JSON | **Apaga todas as tabelas** (`Lancamento`, `Emprestimo`, `Colaborador`) antes de inserir os novos dados. Comentário no código diz "APENAS PARA TESTES" — está exposto publicamente sem proteção. |
+| `/login` | GET/POST | pública | Tela e processamento de login. |
+| `/logout` | GET | logado | Encerra a sessão. |
+| `/` | GET | logado | Dashboard. |
+| `/colaboradores` | GET | logado | Página de gestão de colaboradores. |
+| `/lancamentos` | GET | logado | Página de lançamentos mensais. |
+| `/index.html`, `/colaboradores.html`, `/lancamentos.html` | GET | — | Redirecionam (301) para as rotas limpas acima — compatibilidade com links antigos. |
+| `/api/dados` | GET | logado | Retorna `colaboradores` + `lancamentos` completos. |
+| `/api/colaboradores` | GET/POST | logado | Lista / cria-edita colaborador (valida CPF único; sincroniza empréstimos). |
+| `/api/colaboradores/<id>` | DELETE | logado | Exclui colaborador (cascade lançamentos e empréstimos). |
+| `/api/lancamentos` | GET/POST | logado | Lista / cria-edita lançamento. |
+| `/api/lancamentos/<id>` | DELETE | logado | Exclui lançamento. |
+| `/api/lancamentos/<id>/finalizar` | PUT | logado | Muda status para `finalizado`. |
+| `/api/lancamentos/<id>/reabrir` | PUT | logado | Muda status para `aberto`. |
+| `/api/backup` | GET | logado | Dump completo somente leitura. |
 
-## 4. Funcionalidades por página
+**Removida nesta versão**: a antiga rota `/api/restaurar`, que apagava todas as
+tabelas a partir de um JSON enviado pelo cliente sem qualquer proteção. Não existe
+mais rota de restauração/reset de dados via API.
 
-### 4.1 Dashboard (`index.html`)
-- Alterna entre visão **Colaboradores** e **Lançamentos** via filtro "Visualizar".
-- Filtros: mês/ano (default = mês atual), colaborador (só aparece no modo
-  Lançamentos) e tipo de visão.
-- Cards de estatística:
-  - **Colaboradores**: contagem total (não filtrada por mês).
-  - **Lançamentos**: contagem já filtrada por mês/colaborador selecionados.
-  - **Adiantamento**: soma de `adiantamentoEspecie + adiantamentoContab` dos lançamentos filtrados.
-  - **Líquido Espécie**: `soma(pagamentoEspecie) - totalAdiantamento` dos lançamentos filtrados.
-  - **Total**: `totalAdiantamento + soma(pagamentoEspecie)`.
-- Tabela de colaboradores no dashboard tem apenas ação de "editar" (ícone de
-  olho, mas na verdade redireciona para o formulário de edição em
-  `colaboradores.html?editar=<id>`).
-- Tabela de lançamentos no dashboard: se `status = finalizado`, o botão abre em
-  modo somente leitura (`visualizarLancamento`); se `aberto`, redireciona para
-  edição em `lancamentos.html?editar=<id>`.
-- Exclusão de colaborador é feita via modal de confirmação, que avisa que
-  lançamentos/empréstimos vinculados também serão apagados.
+Qualquer chamada à API sem sessão válida retorna `401`; qualquer rota inexistente
+retorna `404` (não há mais fallback que tentasse renderizar templates arbitrários).
 
-### 4.2 Colaboradores (`colaboradores.html`)
-- Formulário único para cadastro e edição (`colabEditId` vazio = criação).
-- **Total** é somado automaticamente (`remuneracao + premio`) a cada digitação,
-  campo readonly.
-- **Plano Odontológico = Sim** revela o campo "Quantos Dependentes?".
-- **Possui Adiantamento = Sim** revela "Valor do Adiantamento" e "Tipo de
-  Adiantamento" (Espécie/Depósito).
-- **Empréstimos**: botão "Adicionar Empréstimo" cria dinamicamente um bloco
-  com valor, parcelas, mês de início e descrição; pode haver múltiplos por
-  colaborador; cada um pode ser removido individualmente antes de salvar.
-  Só é enviado ao backend se `valor > 0` e `inicio` preenchido.
-- Ao salvar:
-  - **Regra de negócio crítica**: CPF duplicado (outro colaborador com o
-    mesmo CPF) é bloqueado com mensagem "CPF já cadastrado!" (HTTP 400).
-  - Após salvar (criação ou edição), o formulário é sempre limpo.
-- Lista de colaboradores com busca por nome (filtro client-side, `onkeyup`).
-- Cor do badge de contratação: `CLT` = azul (primary), `Mensalista` = verde
-  (success), qualquer outro (`Autônomo`) = azul claro (info).
-- Exclusão exige confirmação via modal, alertando que é uma ação **irreversível**
-  que também apaga lançamentos e empréstimos vinculados.
+## 5. Regras de negócio — detalhamento
 
-### 4.3 Lançamentos (`lancamentos.html`)
-- Formulário de lançamento mensal, com verificação em tempo real ao escolher
-  colaborador + mês:
-  - **Se já existe lançamento `finalizado`** para aquele colaborador/mês →
-    bloqueia, exibe alerta pedindo para reabrir o lançamento na lista antes de
-    editar, e limpa os campos selecionados.
-  - **Se já existe lançamento `aberto`** → avisa o usuário e carrega
-    automaticamente os dados existentes para edição (evita duplicar
-    lançamento no mesmo mês).
-  - **Se não existe lançamento** → preenche automaticamente os campos com
-    base no cadastro do colaborador (ver regra de auto-preenchimento abaixo)
-    e calcula as parcelas de empréstimo do mês.
-- **Regra de auto-preenchimento de adiantamento** (`preencherCamposAutomaticamente`):
-  só ocorre se `colaborador.temAdiantamento === 'Sim'` e `valorAdiantamento > 0`.
-  - Se `contratacao === 'CLT'`: o valor vai para **Adiantamento Espécie** se
-    `tipoAdiantamento === 'Espécie'`, senão vai para **Adiantamento
-    Contabilidade** (cobre também o caso `Depósito`).
-  - Se `contratacao !== 'CLT'` (Mensalista/Autônomo, e também trata um valor
-    legado `'Diarista'` que não existe mais no `<select>` do cadastro): o
-    adiantamento sempre vai para **Adiantamento Espécie**.
-  - **Pagamento Espécie** é sempre pré-preenchido com `remuneracao + premio`
-    do colaborador, independente do tipo de contratação.
-- **Cálculo de parcelas de empréstimo do mês** (`calcularEmprestimosDoMes`):
-  para cada empréstimo do colaborador, verifica se o mês do lançamento cai
-  dentro da janela `[inicio, inicio + parcelas - 1 meses]`; se sim, soma
-  `valor / parcelas` ao campo Empréstimo e lista o detalhamento
-  ("descrição: parcela atual/total - R$ valor") abaixo do campo.
-- **Modo Férias**: selecionar "Férias" no campo Status do Mês esconde todos os
-  campos de valores, zera todos eles, e exibe um aviso informando que os
-  valores são zerados automaticamente. Ao salvar, um lançamento é gravado com
-  todos os valores monetários em `0` e `ferias = 'Férias'`.
-- **Cálculos automáticos** (recalculados a cada `input` nos campos):
-  - `Total Recebido = Remuneração + Prêmio`.
-  - `Líquido Total = Total Recebido + Horas Extras − Vale Transporte − Empréstimo − Outros`.
-  - `Pagamento Espécie` **não** é recalculado automaticamente a partir do
-    líquido — fica fixo no valor preenchido/editado manualmente.
-- **Status do lançamento**:
-  - `aberto`: pode ser editado, finalizado ou excluído.
-  - `finalizado`: só pode ser visualizado (somente leitura), reaberto, ou usado
-    para gerar um recibo de pagamento.
-- **Recibo de pagamento**: gerado a partir de um lançamento (tipicamente
-  finalizado), mostra nome, CPF, valor de `pagamentoEspecie`, data atual e mês
-  de referência; abre em nova janela e aciona a impressão do navegador
-  automaticamente.
-- **Exportação CSV**: exporta os lançamentos de um mês selecionado com colunas
-  `Nome; Adiantamento Contabilidade; Adiantamento Espécie; Pagamento
-  Contabilidade; Pagamento Espécie`, separador `;`, decimal com vírgula, BOM
-  UTF-8 (para abrir corretamente no Excel). Bloqueia exportação se nenhum mês
-  for selecionado ou se não houver lançamentos naquele mês.
+### 5.1 Empresa define o tipo de contratação disponível
 
-## 5. Regras de negócio — resumo consolidado
+- **Engenharia**: permite `CLT`, `Diarista` ou `Mensalista`.
+- **Gerenciadora**: permite apenas `CLT`.
 
-1. **CPF é único por colaborador** (validação no backend, `app.py:227-233`).
-2. **Excluir colaborador exclui em cascata** todos os seus lançamentos e
-   empréstimos (constraint `cascade="all, delete-orphan"` no SQLAlchemy).
-3. **Um lançamento por colaborador/mês é reforçado apenas no frontend** —
-   ao detectar duplicidade, o formulário intercepta antes do envio; a API
-   não tem essa validação, então é possível burlar via chamada direta à API.
-4. **Lançamento finalizado é protegido de edição direta** — precisa ser
-   reaberto (`PUT /reabrir`) antes de poder ser salvo novamente. A finalização
-   não faz nenhuma validação de completude dos dados.
-5. **Férias zera todos os valores monetários do mês** e ainda assim grava um
-   registro de lançamento (para constar no histórico/contagem do mês).
-6. **Adiantamento no lançamento mensal segue o tipo de contratação e o tipo de
-   adiantamento cadastrado** no colaborador (Espécie vs. Contabilidade/Depósito).
-7. **Empréstimos são rateados automaticamente mês a mês** com base na data de
-   início e quantidade de parcelas — sem necessidade de lançar manualmente a
-   parcela todo mês.
-8. **Líquido Total é uma fórmula fixa**: recebido + horas extras − VT −
-   empréstimo − outros. Pagamento Espécie **não** faz parte dessa fórmula, é
-   um valor paralelo que só é sugerido, nunca imposto.
+O formulário de cadastro reconstrói as opções do campo "Tipo de Contratação"
+automaticamente ao trocar a empresa selecionada.
 
-## 6. Inconsistências e pontos de atenção identificados na revisão
+### 5.2 Diarista: valor da diária × dias trabalhados
 
-Estes pontos não impedem o funcionamento atual, mas são riscos ou "dívidas"
-que vale registrar:
+- No cadastro, ao escolher `Diarista`, aparece o campo **Valor da Diária**.
+- No lançamento mensal, ao selecionar um colaborador diarista, aparece o bloco
+  **Diária** com o valor (pré-preenchido do cadastro) e o campo **Dias
+  Trabalhados**; a remuneração do mês é calculada automaticamente
+  (`valorDiaria × diasTrabalhados`) a cada alteração.
 
-- **`lancFormaPagamento`** existe como campo no formulário HTML
-  (`lancamentos.html:180`), mas **não é lido nem enviado** em
-  `salvarLancamento()` (`main.js`) — o valor selecionado pelo usuário é
-  descartado silenciosamente e nunca persistido.
-- **`contratacao === 'Diarista'`** é tratado em `preencherCamposAutomaticamente`
-  (`main.js:409`), mas essa opção **não existe** no `<select>` de
-  `colaboradores.html` (só `CLT`, `Mensalista`, `Autônomo`) — código morto /
-  possível resquício de uma versão anterior do formulário.
-- **Sem validação de unicidade de (colaborador, mês) no backend** — a
-  proteção contra lançamentos duplicados existe só na UI; qualquer chamada
-  direta a `POST /api/lancamentos` pode criar duplicatas.
-- **Rota `/api/restaurar` é destrutiva e pública** — apaga todas as tabelas
-  sem qualquer autenticação, autorização ou confirmação server-side. O
-  comentário no código já sinaliza "APENAS PARA TESTES", mas está acessível
-  em produção.
-- **Nenhuma autenticação/autorização** em nenhum endpoint — qualquer pessoa
-  com a URL pode ler, alterar ou apagar todos os dados de colaboradores e
-  folha de pagamento.
-- **SQLite em ambiente de contêiner é efêmero** (comentário do próprio autor
-  em `app.py:11`) — em plataformas como Railway, um redeploy apaga o banco,
-  a menos que um volume persistente seja anexado.
-- **Campos cadastrais `valeRefeicao`, `valeTransporte` (do colaborador),
-  `seguroVida`, `planoOdonto`, `dependentes`** são armazenados mas não afetam
-  nenhum cálculo de folha — são puramente informativos hoje.
+### 5.3 Adiantamento desconta do líquido
+
+Fórmula do líquido:
+
+```
+Líquido = Total Recebido + Horas Extras
+          − Vale Transporte − Empréstimo − Outros
+          − Adiantamento Espécie − Adiantamento Contabilidade
+```
+
+O recibo de pagamento gerado a partir de um lançamento mostra o **valor líquido**
+(antes mostrava o pagamento em espécie, que podia ficar zerado/inconsistente).
+
+### 5.4 Empréstimos: parcela sugerida, pagamento parcial e baixa automática
+
+- Ao selecionar colaborador + mês no lançamento, o sistema lista, em um bloco
+  **"Empréstimos deste mês"**, cada empréstimo ainda com saldo devedor,
+  sugerindo o menor valor entre a parcela nominal (`valor / parcelas`) e o saldo
+  restante.
+- **Cada linha é editável**: se o colaborador pagou menos que a parcela num mês
+  (ex.: parcela de R$ 250, pagou R$ 200), o valor lançado é o editado — a
+  diferença permanece como saldo e volta a ser sugerida nos meses seguintes, até
+  o valor total ser quitado.
+- O campo "Empréstimo (total)" do lançamento é a soma dos valores das linhas.
+- Um empréstimo **some da lista de sugestões** assim que a soma de tudo que foi
+  pago (em todos os lançamentos) atingir o valor total — mas o empréstimo em si
+  **nunca é apagado**, permanecendo no cadastro do colaborador como histórico.
+- No cadastro do colaborador, cada empréstimo mostra: valor da parcela nominal,
+  quanto já foi pago do total, e um badge de status — **"Saldo R$ X"** (âmbar,
+  em andamento) ou **"Quitado"** (verde).
+
+### 5.5 CPF único por colaborador
+
+Validado no backend (`app.py`) antes de criar ou editar — bloqueia com `400` se
+outro colaborador já usa o mesmo CPF.
+
+### 5.6 Exclusão em cascata
+
+Excluir um colaborador remove automaticamente todos os seus lançamentos e
+empréstimos (constraint `cascade="all, delete-orphan"`).
+
+### 5.7 Um lançamento por colaborador/mês (reforçado no frontend)
+
+Ao escolher colaborador + mês, se já existir lançamento:
+- **finalizado**: bloqueia e orienta reabrir antes de editar;
+- **aberto**: avisa e carrega automaticamente para edição.
+
+Essa validação ainda não existe na API — só na tela.
+
+### 5.8 Férias zeram os valores do mês
+
+Selecionar "Férias" no status do mês zera todos os campos monetários e desabilita
+a edição, mas ainda grava um lançamento (para constar no histórico e nos
+indicadores de férias do dashboard).
+
+### 5.9 Forma de pagamento
+
+Agora com três opções: `Depósito`, `Espécie` ou `Depósito + Espécie` — persistida
+corretamente no banco (anteriormente esse campo existia na tela mas era
+descartado antes de chegar ao backend; foi corrigido).
+
+## 6. Funcionalidades por página
+
+### 6.1 Dashboard (`/`)
+
+- **Uma única linha de filtros** que controla indicadores, gráficos e a tabela de
+  detalhamento simultaneamente:
+  - **Competência**: "Todos os meses" ou "Mês específico" (com seletor de mês em
+    português).
+  - **Tipo de Contrato**: Todos / CLT / Diarista / Mensalista.
+  - **Empresa (CNPJ)**: Todas / Engenharia / Gerenciadora.
+- **4 indicadores**: Colaboradores, Líquido Pago, Adiantamentos, Empréstimos —
+  todos recalculados de acordo com os filtros ativos.
+- **6 gráficos** (Chart.js, todos de série única em uma só cor, com destaque por
+  emphasis quando aplicável):
+  1. **Líquido pago por empresa (CNPJ)** — total pago por Engenharia/Gerenciadora.
+  2. **Evolução mensal do líquido** — sempre mostra todos os meses; se uma
+     competência específica estiver filtrada, aquele mês aparece destacado em
+     cor e os demais em cinza (contexto histórico).
+  3. **Líquido pago por tipo de contrato**.
+  4. **Colaboradores por tipo de contrato** (contagem/headcount).
+  5. **Composição dos descontos** (adiantamentos, empréstimos, vale-transporte,
+     outros).
+  6. **Férias por mês** — quantidade de colaboradores em férias em cada mês,
+     com o mesmo destaque do mês filtrado.
+- **Tabela de detalhamento** alternável entre Colaboradores e Lançamentos,
+  refletindo os mesmos filtros.
+- Atalhos para editar colaborador/lançamento diretamente a partir das tabelas.
+
+### 6.2 Colaboradores (`/colaboradores`)
+
+- Formulário único de cadastro/edição, com seções: Dados Pessoais, Dados
+  Profissionais (incluindo Empresa e Contratação dependente dela), Remuneração
+  (com campo de Diária quando aplicável), Benefícios, Adiantamento, Empréstimos,
+  Observações.
+- CPF com máscara automática; campos monetários com máscara em formato
+  brasileiro (milhar com ponto, decimal com vírgula, prefixo "R$").
+- **Ao salvar, o colaborador permanece na tela** em modo de edição (não limpa o
+  formulário) — facilita conferência e ajustes subsequentes.
+- **Enter no formulário não salva** — salvar só ocorre pelo clique no botão
+  "Salvar Colaborador" (evita salvamentos acidentais).
+- Notificações e confirmações usam componentes próprios do sistema (toast e
+  modal), não mais os diálogos genéricos do navegador.
+- Busca por nome na listagem.
+- Múltiplos empréstimos por colaborador, cada um com valor, parcelas, mês de
+  início (seletor em português), descrição, valor da parcela e status de
+  pagamento (ver 5.4).
+
+### 6.3 Lançamentos (`/lancamentos`)
+
+- Preenchimento automático ao escolher colaborador + mês (remuneração, diária ×
+  dias se aplicável, adiantamento configurado, bloco de empréstimos do mês).
+- Detecção de lançamento existente no mês (ver 5.7).
+- Bloco de Diária (quando aplicável), cálculos automáticos de Total Recebido e
+  Líquido Total.
+- Bloco de Empréstimos do mês com valor editável por empréstimo (ver 5.4).
+- Ciclo de vida do lançamento: `aberto` → `finalizado` → pode `reabrir`.
+- **Busca por nome do colaborador** na listagem de lançamentos, além do filtro de
+  mês usado para exportação.
+- Geração de recibo (mostra o valor líquido) e exportação CSV por mês.
+
+## 7. Frontend — componentes reaproveitáveis
+
+- **Máscaras**: `.money` (valores em formato brasileiro) e `.cpf`, aplicadas por
+  delegação de evento a qualquer campo com essas classes, incluindo os criados
+  dinamicamente (empréstimos).
+- **Select customizado**: todo `<select class="input">` é automaticamente
+  substituído por um dropdown arredondado e estilizado (o `<select>` nativo
+  permanece oculto como fonte de dados, preservando toda a lógica existente).
+- **Seletor de mês em português**: substitui o `<input type="month">` nativo
+  (que exibe em inglês) por um seletor com nomes de mês em PT-BR e navegação por
+  ano.
+- **Notificações (toast)** e **modal de confirmação**: substituem `alert()` e
+  `confirm()` do navegador.
+- **Menu lateral retrátil**: expande/recolhe (ícone apenas), com estado
+  persistido em `localStorage`; em telas pequenas vira menu hambúrguer deslizante.
+
+## 8. Scripts e ferramentas de suporte
+
+- `npm run build:css` / `npm run watch:css` — compila `static/css/input.css`
+  (Tailwind) para `static/css/app.css`, que é o arquivo referenciado pelas
+  páginas. Necessário rodar após qualquer alteração de classes/estilo.
+- `seed_demo.py` — popula o banco com dados de demonstração (colaboradores nas
+  duas empresas, nos três tipos de contrato, lançamentos de 6 meses, férias e um
+  empréstimo). Todos os registros ficam marcados internamente; `python
+  seed_demo.py --limpar` remove somente esses registros, nunca dados reais.
+- `.env.example` — modelo das variáveis de ambiente (`SECRET_KEY`,
+  `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `DATABASE_URL`).
+
+## 9. Pontos de atenção conhecidos
+
+- **Duplicidade de lançamento (colaborador + mês)** é impedida apenas na
+  interface; a API não tem essa validação — uma chamada direta a
+  `POST /api/lancamentos` pode, em tese, criar duplicatas.
 - **IDs gerados por timestamp em milissegundos** (`Colaborador`, `Lancamento`)
-  podem colidir em cenários de alta concorrência (dois registros criados no
-  mesmo milissegundo); `Emprestimo` mitiga isso adicionando bytes aleatórios,
-  mas os outros dois não.
-- **README.md está vazio/corrompido** (apenas o texto `# sepres` malformado) —
-  não descreve o projeto.
+  podem colidir em cenários de alta concorrência; `Emprestimo` mitiga isso com
+  bytes aleatórios adicionais.
+- **Sessão única de administrador**: não há múltiplos usuários/perfis — todo
+  acesso ao sistema usa a mesma credencial administrativa.
+- Campos cadastrais `valeRefeicao`, `valeTransporte` (do colaborador),
+  `seguroVida`, `planoOdonto`, `dependentes` continuam sem afetar cálculos de
+  folha — são informativos.

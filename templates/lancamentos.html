@@ -183,8 +183,12 @@
             <div class="card overflow-hidden">
                 <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-table text-indigo-500"></i> Todos os Lançamentos</div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-48"><input type="month" class="input mes-ptbr" id="filtroMesCSV"></div>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div class="relative w-full sm:w-56">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><i class="fas fa-search text-xs"></i></span>
+                            <input type="text" class="input pl-9" id="filtroNomeLanc" placeholder="Buscar por nome...">
+                        </div>
+                        <div class="w-full sm:w-48"><input type="month" class="input mes-ptbr" id="filtroMesCSV"></div>
                         <button class="btn-success" onclick="exportarCSV()" title="Exportar CSV do mês selecionado"><i class="fas fa-file-csv"></i> Exportar CSV</button>
                     </div>
                 </div>

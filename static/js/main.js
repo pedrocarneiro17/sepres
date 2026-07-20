@@ -493,6 +493,10 @@ function configurarEventos() {
             field.addEventListener('input', calcularLiquidoTotal);
         });
 
+        // Busca por nome na lista de lançamentos
+        const filtroNomeLanc = document.getElementById('filtroNomeLanc');
+        if (filtroNomeLanc) filtroNomeLanc.addEventListener('input', renderizarLancamentos);
+
         // Pagamentos por empréstimo (linhas dinâmicas): soma no total ao editar
         const listaEmp = document.getElementById('emprestimosDetalheLista');
         if (listaEmp) {
@@ -1105,7 +1109,21 @@ function renderizarLancamentos() {
         return;
     }
 
-    tbody.innerHTML = lancamentos.map(l => {
+    // Busca por nome do colaborador
+    const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim().toLowerCase();
+    const lista = termo
+        ? lancamentos.filter(l => {
+            const c = colaboradores.find(co => co.id === l.colaboradorId);
+            return c && c.nome.toLowerCase().includes(termo);
+        })
+        : lancamentos;
+
+    if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400"><i class="fas fa-magnifying-glass mb-2 block text-2xl"></i>Nenhum lançamento encontrado para "${termo}"</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = lista.map(l => {
         const c = colaboradores.find(co => co.id === l.colaboradorId);
         const acoes = l.status === 'aberto'
             ? botaoAcao(`editarLancamento('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento') +
