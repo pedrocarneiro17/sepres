@@ -83,12 +83,14 @@ class Colaborador(db.Model):
     premio = db.Column(db.Float)
     valorDiaria = db.Column(db.Float) # usado quando contratacao = 'Diarista'
     total = db.Column(db.Float)
-    valeRefeicao = db.Column(db.String(3))
-    valeTransporte = db.Column(db.String(3))
-    seguroVida = db.Column(db.String(3))
-    planoOdonto = db.Column(db.String(3))
+    # VARCHAR(10): "Sim"/"Não" cabem em 3, mas "Inativo" (seguroVida) tem 7 —
+    # todos widened juntos para não deixar essa armadilha de novo.
+    valeRefeicao = db.Column(db.String(10))
+    valeTransporte = db.Column(db.String(10))
+    seguroVida = db.Column(db.String(10))
+    planoOdonto = db.Column(db.String(10))
     dependentes = db.Column(db.Integer)
-    temAdiantamento = db.Column(db.String(3))
+    temAdiantamento = db.Column(db.String(10))
     valorAdiantamento = db.Column(db.Float)
     tipoAdiantamento = db.Column(db.String(50))
     observacoes = db.Column(db.Text)
@@ -219,6 +221,17 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN empresa VARCHAR(50)'))
     if 'valorDiaria' not in colunas_colaborador:
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "valorDiaria" FLOAT'))
+
+    # Corrige colunas antigas criadas pequenas demais (ex.: seguroVida guardava
+    # "Ativo"/"Inativo" em VARCHAR(3)). SQLite não enforce isso e não suporta
+    # ALTER COLUMN TYPE, então essa correção só roda no PostgreSQL.
+    if db.engine.dialect.name == 'postgresql':
+        colunas_para_alargar = ['valeRefeicao', 'valeTransporte', 'seguroVida',
+                                 'planoOdonto', 'temAdiantamento']
+        for coluna in colunas_para_alargar:
+            db.session.execute(text(
+                f'ALTER TABLE colaborador ALTER COLUMN "{coluna}" TYPE VARCHAR(10)'
+            ))
 
     db.session.commit()
 
