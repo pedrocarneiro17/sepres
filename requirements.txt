@@ -1,5 +1,8 @@
 flask
 flask-cors
+flask-login
 gunicorn
 sqlalchemy
 flask-sqlalchemy
+psycopg2-binary
+python-dotenv

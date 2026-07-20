@@ -1,26 +1,71 @@
-from flask import Flask, jsonify, request, send_from_directory, render_template
+from flask import Flask, jsonify, request, render_template, redirect, url_for
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-import json
+from flask_login import (LoginManager, UserMixin, login_user, logout_user,
+                         current_user)
 import os
+import json
+import secrets
 from datetime import datetime
+
+# Carrega variáveis de um arquivo .env (útil para rodar localmente).
+# Em produção (Railway) as variáveis vêm do próprio ambiente e isto é ignorado.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # ==================== CONFIGURAÇÃO ====================
 
-# Configuração do caminho do banco de dados SQLite
-# IMPORTANTE: Em ambientes de contêiner como Railway, os dados ainda serão efêmeros.
 DB_FILE = 'dados.db'
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-app = Flask(__name__, 
+app = Flask(__name__,
             static_folder='static',
             template_folder='templates')
 CORS(app)
 
-# Configuração do SQLAlchemy para usar SQLite
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, DB_FILE)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Recomendado para desativar avisos
+# --- Segurança / Sessão ---
+# Em produção, defina SECRET_KEY nas variáveis de ambiente do Railway.
+app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+)
+
+# --- Banco de dados ---
+# Em produção usa o PostgreSQL do Railway (variável DATABASE_URL).
+# Localmente, cai automaticamente para um arquivo SQLite.
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    # Railway/Heroku às vezes fornecem o esquema legado "postgres://"
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, DB_FILE)
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+# --- Autenticação (Flask-Login) ---
+# Credenciais vêm das variáveis de ambiente. Troque a senha padrão em produção!
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+
+class Admin(UserMixin):
+    """Usuário administrador único (credenciais no ambiente)."""
+    id = 'admin'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Admin() if user_id == 'admin' else None
 
 # ==================== MODELOS (Estrutura do BD) ====================
 
@@ -31,10 +76,12 @@ class Colaborador(db.Model):
     cpf = db.Column(db.String(14), unique=True, nullable=False)
     endereco = db.Column(db.String(255))
     funcao = db.Column(db.String(50))
+    empresa = db.Column(db.String(50)) # 'Engenharia' ou 'Gerenciadora'
     contratacao = db.Column(db.String(50))
     admissao = db.Column(db.String(10)) # Data YYYY-MM-DD
     remuneracao = db.Column(db.Float)
     premio = db.Column(db.Float)
+    valorDiaria = db.Column(db.Float) # usado quando contratacao = 'Diarista'
     total = db.Column(db.Float)
     valeRefeicao = db.Column(db.String(3))
     valeTransporte = db.Column(db.String(3))
@@ -61,10 +108,12 @@ class Colaborador(db.Model):
             "cpf": self.cpf,
             "endereco": self.endereco,
             "funcao": self.funcao,
+            "empresa": self.empresa,
             "contratacao": self.contratacao,
             "admissao": self.admissao,
             "remuneracao": self.remuneracao,
             "premio": self.premio,
+            "valorDiaria": self.valorDiaria,
             "total": self.total,
             "valeRefeicao": self.valeRefeicao,
             "valeTransporte": self.valeTransporte,
@@ -104,6 +153,7 @@ class Lancamento(db.Model):
     colaboradorId = db.Column(db.String(50), db.ForeignKey('colaborador.id'), nullable=False)
     mes = db.Column(db.String(7), nullable=False) # YYYY-MM
     ferias = db.Column(db.String(50))
+    diasTrabalhados = db.Column(db.Integer) # usado quando o colaborador é Diarista
     remuneracao = db.Column(db.Float)
     bonificacao = db.Column(db.Float)
     totalRecebido = db.Column(db.Float)
@@ -116,6 +166,8 @@ class Lancamento(db.Model):
     liquidoTotal = db.Column(db.Float)
     pagamentoContab = db.Column(db.Float)
     pagamentoEspecie = db.Column(db.Float)
+    formaPagamento = db.Column(db.String(20)) # 'Depósito', 'Espécie' ou 'Depósito + Espécie'
+    emprestimosPagos = db.Column(db.Text) # JSON: [{"id":..., "valor":...}] pagos no mês
     status = db.Column(db.String(20), default='aberto') # 'aberto' ou 'finalizado'
 
     def to_dict(self):
@@ -125,6 +177,7 @@ class Lancamento(db.Model):
             "colaboradorId": self.colaboradorId,
             "mes": self.mes,
             "ferias": self.ferias,
+            "diasTrabalhados": self.diasTrabalhados,
             "remuneracao": self.remuneracao,
             "bonificacao": self.bonificacao,
             "totalRecebido": self.totalRecebido,
@@ -137,6 +190,8 @@ class Lancamento(db.Model):
             "liquidoTotal": self.liquidoTotal,
             "pagamentoContab": self.pagamentoContab,
             "pagamentoEspecie": self.pagamentoEspecie,
+            "formaPagamento": self.formaPagamento,
+            "emprestimosPagos": json.loads(self.emprestimosPagos) if self.emprestimosPagos else [],
             "status": self.status
         }
 
@@ -145,6 +200,27 @@ class Lancamento(db.Model):
 # Cria as tabelas se elas não existirem no arquivo SQLite
 with app.app_context():
     db.create_all()
+
+    # Migração leve: adiciona colunas novas a tabelas já existentes (SQLite não faz isso
+    # automaticamente pelo create_all). Mantém os dados atuais intactos.
+    from sqlalchemy import inspect, text
+    inspector = inspect(db.engine)
+
+    colunas_lancamento = {col['name'] for col in inspector.get_columns('lancamento')}
+    if 'formaPagamento' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "formaPagamento" VARCHAR(20)'))
+    if 'diasTrabalhados' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "diasTrabalhados" INTEGER'))
+    if 'emprestimosPagos' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "emprestimosPagos" TEXT'))
+
+    colunas_colaborador = {col['name'] for col in inspector.get_columns('colaborador')}
+    if 'empresa' not in colunas_colaborador:
+        db.session.execute(text('ALTER TABLE colaborador ADD COLUMN empresa VARCHAR(50)'))
+    if 'valorDiaria' not in colunas_colaborador:
+        db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "valorDiaria" FLOAT'))
+
+    db.session.commit()
 
 # ==================== FUNÇÕES UTILITÁRIAS ====================
 
@@ -184,19 +260,80 @@ def update_or_create_emprestimos(colaborador_id, emprestimos_data):
             )
             db.session.add(novo_emprestimo)
 
-# ==================== ROTAS DE SERVIÇO (HTML/STATIC) ====================
+# ==================== AUTENTICAÇÃO ====================
+
+@app.before_request
+def exigir_login():
+    """Exige login para tudo, exceto a tela de login e os arquivos estáticos."""
+    if request.endpoint in ('login', 'static'):
+        return
+    if not current_user.is_authenticated:
+        if request.path.startswith('/api/'):
+            return jsonify({'erro': 'Não autenticado'}), 401
+        return redirect(url_for('login', next=request.path))
+
+
+def _url_interna_segura(destino):
+    """Evita open redirect: só aceita caminhos internos (iniciados por '/')."""
+    if destino and destino.startswith('/') and not destino.startswith('//'):
+        return destino
+    return None
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+        if (secrets.compare_digest(username, ADMIN_USERNAME) and
+                secrets.compare_digest(password, ADMIN_PASSWORD)):
+            login_user(Admin(), remember=True)
+            destino = _url_interna_segura(request.args.get('next')) or url_for('index')
+            return redirect(destino)
+        return render_template('login.html', erro='Usuário ou senha inválidos.'), 401
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+
+# ==================== ROTAS DE PÁGINAS (URLs limpas) ====================
+# Arquivos estáticos (CSS/JS) são servidos automaticamente pelo Flask em /static/.
 
 @app.route('/')
 def index():
-    """Página inicial"""
+    """Dashboard (página inicial)."""
     return render_template('index.html')
 
-@app.route('/<path:path>')
-def serve_page(path):
-    """Servir páginas HTML"""
-    if path.endswith('.html'):
-        return render_template(path)
-    return send_from_directory('static', path)
+@app.route('/colaboradores')
+def pagina_colaboradores():
+    """Página de gestão de colaboradores."""
+    return render_template('colaboradores.html')
+
+@app.route('/lancamentos')
+def pagina_lancamentos():
+    """Página de lançamentos mensais."""
+    return render_template('lancamentos.html')
+
+# Compatibilidade: redireciona as URLs antigas com .html para as URLs limpas.
+@app.route('/index.html')
+def redir_index():
+    return redirect(url_for('index'), code=301)
+
+@app.route('/colaboradores.html')
+def redir_colaboradores():
+    return redirect(url_for('pagina_colaboradores'), code=301)
+
+@app.route('/lancamentos.html')
+def redir_lancamentos():
+    return redirect(url_for('pagina_lancamentos'), code=301)
 
 # ==================== ROTAS API (USANDO SQLAlchemy) ====================
 
@@ -255,10 +392,12 @@ def adicionar_colaborador():
                 cpf=data['cpf'],
                 endereco=data.get('endereco'),
                 funcao=data.get('funcao'),
+                empresa=data.get('empresa'),
                 contratacao=data.get('contratacao'),
                 admissao=data.get('admissao'),
                 remuneracao=data.get('remuneracao', 0),
                 premio=data.get('premio', 0),
+                valorDiaria=data.get('valorDiaria', 0),
                 total=data.get('total', 0),
                 valeRefeicao=data.get('valeRefeicao'),
                 valeTransporte=data.get('valeTransporte'),
@@ -318,9 +457,11 @@ def adicionar_lancamento():
             if not lancamento:
                 return jsonify({'erro': 'Lançamento não encontrado'}), 404
             
-            # Atualiza campos
+            # Atualiza campos (emprestimosPagos é tratado à parte, pois é JSON)
             for key, value in data.items():
-                if hasattr(lancamento, key):
+                if key == 'emprestimosPagos':
+                    lancamento.emprestimosPagos = json.dumps(value or [])
+                elif hasattr(lancamento, key):
                     setattr(lancamento, key, value)
             
         # Lógica de Criação
@@ -331,6 +472,7 @@ def adicionar_lancamento():
                 colaboradorId=data['colaboradorId'],
                 mes=data['mes'],
                 ferias=data.get('ferias'),
+                diasTrabalhados=data.get('diasTrabalhados', 0),
                 remuneracao=data.get('remuneracao'),
                 bonificacao=data.get('bonificacao'),
                 totalRecebido=data.get('totalRecebido'),
@@ -343,6 +485,8 @@ def adicionar_lancamento():
                 liquidoTotal=data.get('liquidoTotal'),
                 pagamentoContab=data.get('pagamentoContab'),
                 pagamentoEspecie=data.get('pagamentoEspecie'),
+                formaPagamento=data.get('formaPagamento', 'Depósito'),
+                emprestimosPagos=json.dumps(data.get('emprestimosPagos', [])),
                 status=data.get('status', 'aberto')
             )
             db.session.add(lancamento)
@@ -392,11 +536,11 @@ def reabrir_lancamento(id):
     db.session.commit()
     return jsonify({'mensagem': 'Lançamento reaberto'}), 200
 
-# ==================== BACKUP (Mantido para compatibilidade) ====================
+# ==================== BACKUP (somente leitura) ====================
 
 @app.route('/api/backup', methods=['GET'])
 def fazer_backup():
-    """Retorna todos os dados para backup (mantendo compatibilidade com o formato JSON)"""
+    """Retorna todos os dados em JSON para fins de backup."""
     colaboradores_list = Colaborador.query.all()
     lancamentos_list = Lancamento.query.all()
     
@@ -405,48 +549,11 @@ def fazer_backup():
         'lancamentos': [l.to_dict() for l in lancamentos_list]
     })
 
-@app.route('/api/restaurar', methods=['POST'])
-def restaurar_backup():
-    """Restaura dados de um backup JSON. APENAS PARA TESTES."""
-    data = request.json
-    
-    try:
-        # Limpar tabelas existentes
-        db.session.query(Lancamento).delete()
-        db.session.query(Emprestimo).delete()
-        db.session.query(Colaborador).delete()
-        
-        # Inserir novos dados
-        for c_data in data.get('colaboradores', []):
-            emprestimos_data = c_data.pop('emprestimos', [])
-            
-            # Cria colaborador
-            colaborador = Colaborador(**{k: v for k, v in c_data.items() if k in Colaborador.__table__.columns})
-            db.session.add(colaborador)
-            db.session.flush() # Garante o ID do colaborador
-            
-            # Cria empréstimos
-            for e_data in emprestimos_data:
-                # O ID é copiado, mas garantimos o vínculo correto
-                emprestimo = Emprestimo(colaborador_id=colaborador.id, **{k: v for k, v in e_data.items() if k in Emprestimo.__table__.columns})
-                db.session.add(emprestimo)
-                
-        # Cria lançamentos
-        for l_data in data.get('lancamentos', []):
-            lancamento = Lancamento(**{k: v for k, v in l_data.items() if k in Lancamento.__table__.columns})
-            db.session.add(lancamento)
-            
-        db.session.commit()
-        return jsonify({'mensagem': 'Backup restaurado com sucesso'}), 200
-    except Exception as e:
-        db.session.rollback()
-        print(f"ERRO NA RESTAURAÇÃO: {e}")
-        return jsonify({'erro': 'Erro interno ao restaurar backup'}), 500
-
 if __name__ == '__main__':
     # Criar pasta static se não existir (para o servidor de dev)
     if not os.path.exists('static'):
         os.makedirs('static')
     
-    # Execução local
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Execução local (porta configurável via variável PORT)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)

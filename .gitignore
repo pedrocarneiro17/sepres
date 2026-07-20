@@ -1,0 +1,19 @@
+# Node
+node_modules/
+
+# Configuração local de ferramentas de desenvolvimento
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+
+# Variáveis de ambiente locais (contém segredos)
+.env
+
+# Banco de dados local (efêmero)
+dados.db
+
+# Sistema
+.DS_Store
+Thumbs.db

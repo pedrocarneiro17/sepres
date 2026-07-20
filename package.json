@@ -1,0 +1,16 @@
+{
+  "name": "sistema-dp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de Departamento Pessoal - assets de front-end (Tailwind CSS)",
+  "scripts": {
+    "build:css": "tailwindcss -i static/css/input.css -o static/css/app.css --minify",
+    "watch:css": "tailwindcss -i static/css/input.css -o static/css/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1"
+  }
+}

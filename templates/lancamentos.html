@@ -3,341 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lançamentos - Sistema DP</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <title>Lançamentos · Sistema DP</title>
+    <link rel="stylesheet" href="/static/css/app.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: #f5f7fa;
-            min-height: 100vh;
-            padding-bottom: 50px;
-        }
-        .container-custom {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .card {
-            border: 1px solid #e1e8ed;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-            background: white;
-        }
-        .card-header {
-            background: white;
-            border-bottom: 1px solid #e1e8ed;
-            border-radius: 8px 8px 0 0 !important;
-            padding: 15px 20px;
-            font-weight: 600;
-        }
-        .page-title {
-            color: #2c3e50;
-            text-align: center;
-            margin: 30px 0;
-            font-weight: 600;
-        }
-        .form-control, .form-select {
-            border-radius: 6px;
-            border: 1px solid #e1e8ed;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: #3498db;
-            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.1);
-        }
-        .btn {
-            border-radius: 6px;
-            padding: 10px 20px;
-        }
-        .section-divider {
-            border-bottom: 2px solid #e1e8ed;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            margin-top: 25px;
-            color: #2c3e50;
-            font-weight: 600;
-        }
-        .readonly-field {
-            background-color: #e9ecef;
-            font-weight: bold;
-        }
-        .total-field {
-            background-color: #d4edda !important;
-            font-size: 1.2rem !important;
-            font-weight: bold !important;
-            color: #155724 !important;
-        }
-        .navbar {
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-briefcase"></i> Sistema DP
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.html">
-                            <i class="fas fa-home"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="colaboradores.html">
-                            <i class="fas fa-users"></i> Colaboradores
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="lancamentos.html">
-                            <i class="fas fa-dollar-sign"></i> Lançamentos
-                        </a>
-                    </li>
-                </ul>
-            </div>
+<body class="min-h-screen bg-slate-50 font-sans text-slate-800 antialiased">
+    <script>if(localStorage.getItem('sidebarCollapsed')==='1'){document.body.classList.add('sidebar-collapsed');}</script>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-40 flex -translate-x-full flex-col border-r border-slate-200 bg-white transition-all duration-200 lg:translate-x-0">
+        <div class="side-hdr flex h-16 items-center gap-2.5 border-b border-slate-100 px-4">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><i class="fas fa-briefcase"></i></span>
+            <span class="side-label text-lg font-bold tracking-tight text-slate-800">Sistema DP</span>
         </div>
-    </nav>
-
-    <!-- Conteúdo Principal -->
-    <div class="container-custom">
-        <h2 class="page-title">
-            <i class="fas fa-dollar-sign"></i> Lançamentos Mensais
-        </h2>
-
-        <!-- Formulário -->
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <i class="fas fa-dollar-sign"></i> <span id="formLancTitle">Novo Lançamento</span>
-            </div>
-            <div class="card-body">
-                <form id="formLancamento">
-                    <input type="hidden" id="lancEditId">
-                    
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Colaborador *</label>
-                            <select class="form-select" id="lancColaborador" required>
-                                <option value="">Selecione</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Mês/Ano *</label>
-                            <input type="month" class="form-control" id="lancMes" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Status do Mês</label>
-                            <select class="form-select" id="lancFerias" onchange="toggleFerias()">
-                                <option value="Normal">Normal</option>
-                                <option value="Férias">Férias</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div id="divDadosLancamento">
-                        <h6 class="section-divider">
-                            <i class="fas fa-money-bill-wave"></i> Remuneração
-                        </h6>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Remuneração Líquida (R$)</label>
-                                <input type="number" step="0.01" class="form-control calc-field" id="lancRemuneracao" value="0">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Prêmio (R$)</label>
-                                <input type="number" step="0.01" class="form-control calc-field" id="lancBonificacao" value="0">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Total Recebido (R$)</label>
-                                <input type="number" step="0.01" class="form-control readonly-field" id="lancTotalRecebido" readonly>
-                            </div>
-                        </div>
-
-                    <h6 class="section-divider">
-                        <i class="fas fa-hand-holding-usd"></i> Adiantamentos
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Adiantamento Espécie (R$)</label>
-                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancAdiantamentoEspecie" value="0">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Adiantamento Contab. (R$)</label>
-                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancAdiantamentoContab" value="0">
-                        </div>
-                    </div>
-
-                    <h6 class="section-divider">
-                        <i class="fas fa-credit-card"></i> Pagamento
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Forma de Pagamento</label>
-                            <select class="form-select" id="lancFormaPagamento">
-                                <option value="Depósito">Depósito</option>
-                                <option value="Espécie">Espécie</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Horas Extras (R$)</label>
-                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancHorasExtras" value="0">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Vale Transporte (R$)</label>
-                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancValeTransporte" value="0">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Empréstimo (R$)</label>
-                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancEmprestimo" value="0">
-                            <small id="detalhesEmprestimo" class="text-muted"></small>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Outros (R$)</label>
-                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancOutros" value="0">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Pagamento Contab. (R$)</label>
-                            <input type="number" step="0.01" class="form-control calc-liquido" id="lancPagamentoContab" value="0">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Pagamento Espécie (R$)</label>
-                            <input type="number" step="0.01" class="form-control" id="lancPagamentoEspecie" value="0">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Líquido Total (R$)</label>
-                            <input type="number" step="0.01" class="form-control total-field" id="lancLiquidoTotal" readonly>
-                        </div>
-                    </div>
-                    </div>
-
-                    <!-- Mensagem de Férias -->
-                    <div id="divMensagemFerias" style="display: none;">
-                        <div class="alert alert-warning text-center" role="alert">
-                            <h5><strong>Colaborador em Férias</strong></h5>
-                            <p>Quando o colaborador está de férias, todos os valores são automaticamente zerados.</p>
-                            <p class="mb-0">Os campos de lançamento ficam desabilitados neste período.</p>
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-center gap-3 mt-4">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-save"></i> Salvar Lançamento
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-lg" id="btnCancelarLanc">
-                            <i class="fas fa-times"></i> Cancelar
-                        </button>
-                    </div>
-                </form>
-            </div>
+        <nav class="flex-1 space-y-1 p-3">
+            <a href="/" class="side-link" title="Dashboard"><i class="fas fa-chart-line w-5 shrink-0 text-center"></i><span class="side-label">Dashboard</span></a>
+            <a href="/colaboradores" class="side-link" title="Colaboradores"><i class="fas fa-users w-5 shrink-0 text-center"></i><span class="side-label">Colaboradores</span></a>
+            <a href="/lancamentos" class="side-link active" title="Lançamentos"><i class="fas fa-dollar-sign w-5 shrink-0 text-center"></i><span class="side-label">Lançamentos</span></a>
+        </nav>
+        <div class="border-t border-slate-100 p-3">
+            <a href="/logout" class="side-link" title="Sair"><i class="fas fa-right-from-bracket w-5 shrink-0 text-center"></i><span class="side-label">Sair</span></a>
         </div>
+        <button onclick="collapseSidebar()" title="Recolher menu" class="absolute -right-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-indigo-600 lg:flex">
+            <i id="collapseIcon" class="fas fa-angle-left text-xs"></i>
+        </button>
+    </aside>
+    <div id="sidebarBackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/40 lg:hidden" onclick="toggleSidebar()"></div>
 
-        <!-- Lista -->
-        <div class="card">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-table"></i> Todos os Lançamentos</span>
-                <div class="d-flex gap-2">
-                    <input type="month" class="form-control form-control-sm" id="filtroMesCSV" style="width: 180px;">
-                    <button class="btn btn-success btn-sm" onclick="exportarCSV()" title="Exportar CSV do mês selecionado">
-                        <i class="fas fa-file-csv"></i> Exportar CSV
-                    </button>
+    <div class="app-shell">
+        <!-- Barra superior (mobile) -->
+        <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur lg:hidden">
+            <button onclick="toggleSidebar()" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-bars"></i></button>
+            <span class="flex items-center gap-2 font-bold text-slate-800"><span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white"><i class="fas fa-briefcase text-sm"></i></span> Sistema DP</span>
+        </header>
+
+        <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900">Lançamentos Mensais</h1>
+                <p class="mt-1 text-sm text-slate-500">Registro mês a mês de pagamentos, adiantamentos e empréstimos.</p>
+            </div>
+
+            <!-- Formulário -->
+            <div class="card mb-6 overflow-hidden">
+                <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 text-sm font-semibold text-slate-700">
+                    <i class="fas fa-dollar-sign text-indigo-500"></i> <span id="formLancTitle">Novo Lançamento</span>
+                </div>
+                <div class="p-6">
+                    <form id="formLancamento">
+                        <input type="hidden" id="lancEditId">
+
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <div>
+                                <label class="label">Colaborador *</label>
+                                <select class="input" id="lancColaborador" required><option value="">Selecione</option></select>
+                            </div>
+                            <div>
+                                <label class="label">Mês/Ano *</label>
+                                <input type="month" class="input mes-ptbr" id="lancMes" required>
+                            </div>
+                            <div>
+                                <label class="label">Status do Mês</label>
+                                <select class="input" id="lancFerias" onchange="toggleFerias()"><option value="Normal">Normal</option><option value="Férias">Férias</option></select>
+                            </div>
+                        </div>
+
+                        <div id="divDadosLancamento">
+                            <!-- Diária: aparece apenas quando o colaborador é Diarista -->
+                            <div id="divDiaria" style="display: none;">
+                                <h6 class="section-title"><i class="fas fa-calendar-day"></i> Diária</h6>
+                                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                    <div>
+                                        <label class="label">Valor da Diária</label>
+                                        <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50" id="lancValorDiaria" value="0,00" readonly></div>
+                                    </div>
+                                    <div>
+                                        <label class="label">Dias Trabalhados</label>
+                                        <input type="number" min="0" class="input" id="lancDiasTrabalhados" value="0" oninput="calcularRemuneracaoDiaria()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h6 class="section-title"><i class="fas fa-money-bill-wave"></i> Remuneração</h6>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div>
+                                    <label class="label">Remuneração Líquida</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-field pl-9" id="lancRemuneracao" value="0,00"></div>
+                                </div>
+                                <div>
+                                    <label class="label">Prêmio</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-field pl-9" id="lancBonificacao" value="0,00"></div>
+                                </div>
+                                <div>
+                                    <label class="label">Total Recebido</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50 font-semibold" id="lancTotalRecebido" value="0,00" readonly></div>
+                                </div>
+                            </div>
+
+                            <h6 class="section-title"><i class="fas fa-hand-holding-dollar"></i> Adiantamentos</h6>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="label">Adiantamento Espécie</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancAdiantamentoEspecie" value="0,00"></div>
+                                </div>
+                                <div>
+                                    <label class="label">Adiantamento Contab.</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancAdiantamentoContab" value="0,00"></div>
+                                </div>
+                            </div>
+
+                            <h6 class="section-title"><i class="fas fa-credit-card"></i> Pagamento</h6>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                                <div>
+                                    <label class="label">Forma de Pagamento</label>
+                                    <select class="input" id="lancFormaPagamento"><option value="Depósito">Depósito</option><option value="Espécie">Espécie</option><option value="Depósito + Espécie">Depósito + Espécie</option></select>
+                                </div>
+                                <div>
+                                    <label class="label">Horas Extras</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancHorasExtras" value="0,00"></div>
+                                </div>
+                                <div>
+                                    <label class="label">Vale Transporte</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancValeTransporte" value="0,00"></div>
+                                </div>
+                                <div>
+                                    <label class="label">Empréstimo (total)</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancEmprestimo" value="0,00"></div>
+                                    <small id="detalhesEmprestimo" class="mt-1 block text-xs text-slate-500"></small>
+                                </div>
+                            </div>
+
+                            <!-- Detalhamento dos empréstimos do mês (valor editável por empréstimo) -->
+                            <div id="emprestimosDetalhe" class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4" style="display: none;">
+                                <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <i class="fas fa-file-invoice-dollar text-indigo-500"></i> Empréstimos deste mês
+                                </div>
+                                <div id="emprestimosDetalheLista" class="space-y-2"></div>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+                                <div>
+                                    <label class="label">Outros</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancOutros" value="0,00"></div>
+                                </div>
+                                <div>
+                                    <label class="label">Pagamento Contab.</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancPagamentoContab" value="0,00"></div>
+                                </div>
+                                <div>
+                                    <label class="label">Pagamento Espécie</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="lancPagamentoEspecie" value="0,00"></div>
+                                </div>
+                                <div>
+                                    <label class="label">Líquido Total</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-emerald-50 font-bold text-emerald-700 ring-emerald-200" id="lancLiquidoTotal" value="0,00" readonly></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mensagem de Férias -->
+                        <div id="divMensagemFerias" style="display: none;" class="mt-6">
+                            <div class="rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
+                                <div class="mb-2 flex justify-center"><span class="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-600"><i class="fas fa-umbrella-beach text-lg"></i></span></div>
+                                <h5 class="font-semibold text-amber-800">Colaborador em Férias</h5>
+                                <p class="mt-1 text-sm text-amber-700">Todos os valores são automaticamente zerados e os campos ficam desabilitados neste período.</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex justify-end gap-3">
+                            <button type="button" class="btn-secondary" id="btnCancelarLanc"><i class="fas fa-times"></i> Cancelar</button>
+                            <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar Lançamento</button>
+                        </div>
+                    </form>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
+
+            <!-- Lista -->
+            <div class="card overflow-hidden">
+                <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-table text-indigo-500"></i> Todos os Lançamentos</div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-48"><input type="month" class="input mes-ptbr" id="filtroMesCSV"></div>
+                        <button class="btn-success" onclick="exportarCSV()" title="Exportar CSV do mês selecionado"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                             <tr>
-                                <th>Colaborador</th>
-                                <th>Mês/Ano</th>
-                                <th>Líquido Total</th>
-                                <th>Status</th>
-                                <th class="text-center">Ações</th>
+                                <th class="px-4 py-3">Colaborador</th>
+                                <th class="px-4 py-3">Mês/Ano</th>
+                                <th class="px-4 py-3">Líquido Total</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="tabelaLancamentos"></tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <!-- Modal Recibo -->
-    <div class="modal fade" id="modalRecibo" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-receipt"></i> Recibo de Pagamento
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div style="border: 2px solid #000; padding: 30px; font-family: 'Courier New', monospace;" id="reciboConteudo">
-                        <div class="text-center mb-4">
-                            <h4>RECIBO DE PAGAMENTO EM ESPÉCIE</h4>
-                        </div>
-                        <p><strong>Nome:</strong> <span id="reciboNome"></span></p>
-                        <p><strong>CPF:</strong> <span id="reciboCPF"></span></p>
-                        <p><strong>Valor:</strong> R$ <span id="reciboValor"></span></p>
-                        <p><strong>Data:</strong> <span id="reciboData"></span></p>
-                        <p><strong>Mês:</strong> <span id="reciboMes"></span></p>
-                        <hr>
-                        <p>Recebi da empresa o valor acima descrito referente ao pagamento em espécie.</p>
-                        <br><br>
-                        <div class="text-center">
-                            <p>_______________________________________</p>
-                            <p>Assinatura do Colaborador</p>
-                        </div>
+    <div id="modalRecibo" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-receipt text-indigo-500"></i> Recibo de Pagamento</h3>
+                <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalRecibo')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="px-6 py-5">
+                <div id="reciboConteudo" style="border: 2px solid #000; padding: 30px; font-family: 'Courier New', monospace;">
+                    <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO EM ESPÉCIE</h4></div>
+                    <p><strong>Nome:</strong> <span id="reciboNome"></span></p>
+                    <p><strong>CPF:</strong> <span id="reciboCPF"></span></p>
+                    <p><strong>Valor líquido:</strong> R$ <span id="reciboValor"></span></p>
+                    <p><strong>Data:</strong> <span id="reciboData"></span></p>
+                    <p><strong>Mês:</strong> <span id="reciboMes"></span></p>
+                    <hr>
+                    <p>Recebi da empresa o valor acima descrito referente ao pagamento em espécie.</p>
+                    <br><br>
+                    <div class="text-center">
+                        <p>_______________________________________</p>
+                        <p>Assinatura do Colaborador</p>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times"></i> Fechar
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="imprimirRecibo()">
-                        <i class="fas fa-print"></i> Imprimir
-                    </button>
-                </div>
+            </div>
+            <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
+                <button type="button" class="btn-secondary" onclick="fecharModal('modalRecibo')"><i class="fas fa-times"></i> Fechar</button>
+                <button type="button" class="btn-primary" onclick="imprimirRecibo()"><i class="fas fa-print"></i> Imprimir</button>
             </div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script src="js/main.js"></script>
+    <script src="/static/js/main.js"></script>
     <script>
-        // Controle de férias
         function toggleFerias() {
             const ferias = document.getElementById('lancFerias').value;
             const divDados = document.getElementById('divDadosLancamento');
             const divMensagem = document.getElementById('divMensagemFerias');
-            
+
             if (ferias === 'Férias') {
-                // Esconde os campos e mostra mensagem
                 divDados.style.display = 'none';
                 divMensagem.style.display = 'block';
-                
-                // Zera todos os valores
-                document.getElementById('lancRemuneracao').value = '0';
-                document.getElementById('lancBonificacao').value = '0';
-                document.getElementById('lancAdiantamentoEspecie').value = '0';
-                document.getElementById('lancAdiantamentoContab').value = '0';
-                document.getElementById('lancHorasExtras').value = '0';
-                document.getElementById('lancValeTransporte').value = '0';
-                document.getElementById('lancEmprestimo').value = '0';
-                document.getElementById('lancOutros').value = '0';
-                document.getElementById('lancPagamentoContab').value = '0';
-                document.getElementById('lancPagamentoEspecie').value = '0';
+                ['lancRemuneracao','lancBonificacao','lancAdiantamentoEspecie','lancAdiantamentoContab',
+                 'lancHorasExtras','lancValeTransporte','lancEmprestimo','lancOutros',
+                 'lancPagamentoContab','lancPagamentoEspecie'].forEach(id => setMoeda(document.getElementById(id), 0));
                 calcularTotalRecebido();
                 calcularLiquidoTotal();
             } else {
-                // Mostra os campos e esconde mensagem
                 divDados.style.display = 'block';
                 divMensagem.style.display = 'none';
             }

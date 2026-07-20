@@ -1,84 +1,481 @@
-// main.js - Versão com API Backend
+// main.js - Sistema DP (Tailwind + máscaras)
 
 const API_URL = window.location.origin + '/api';
+
+// Se a sessão expirar, qualquer requisição que retornar 401 leva ao login
+const _fetchOriginal = window.fetch;
+window.fetch = function (...args) {
+    return _fetchOriginal.apply(this, args).then(function (resp) {
+        if (resp.status === 401) {
+            window.location.href = '/login';
+        }
+        return resp;
+    });
+};
 
 let colaboradores = [];
 let lancamentos = [];
 let colabIdToDelete = null;
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', function() {
+// ==================== HELPERS DE MÁSCARA / MOEDA ====================
+
+// Formata um número para o padrão brasileiro "1.234,56"
+function numeroBR(n) {
+    return (parseFloat(n) || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Lê um campo monetário mascarado ("R$ 1.234,56" / "1.234,56") e devolve Number
+function lerMoeda(el) {
+    if (!el) return 0;
+    let s = (el.value || '').toString().trim();
+    if (!s) return 0;
+    s = s.replace(/R\$/g, '').replace(/\s/g, '');
+    // remove separador de milhar (.) e troca vírgula decimal por ponto
+    s = s.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(s.replace(/[^0-9.\-]/g, ''));
+    return isNaN(n) ? 0 : n;
+}
+
+// Escreve um valor numérico já formatado em um campo monetário
+function setMoeda(el, valor) {
+    if (!el) return;
+    el.value = numeroBR(valor);
+}
+
+// Máscara ao digitar em campos de dinheiro (últimos dígitos = centavos)
+function mascararMoeda(el) {
+    let digits = (el.value || '').replace(/\D/g, '');
+    if (digits === '') { el.value = ''; return; }
+    const num = parseInt(digits, 10) / 100;
+    el.value = num.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Máscara de CPF: 000.000.000-00
+function mascararCPF(el) {
+    let v = (el.value || '').replace(/\D/g, '').slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    el.value = v;
+}
+
+// Delegação global: qualquer campo .money ou .cpf recebe máscara automaticamente.
+// Registrado na fase de CAPTURA (true) para que a máscara formate o valor ANTES
+// dos recálculos (calc-field / calc-liquido) lerem o campo.
+document.addEventListener('input', function (e) {
+    const t = e.target;
+    if (!t || !t.classList) return;
+    if (t.classList.contains('money')) mascararMoeda(t);
+    else if (t.classList.contains('cpf')) mascararCPF(t);
+}, true);
+
+// ==================== HELPERS DE MODAL ====================
+
+function abrirModal(id) {
+    const m = document.getElementById(id);
+    if (!m) return;
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+    document.body.classList.add('overflow-hidden');
+}
+
+// ==================== SIDEBAR (mobile) ====================
+
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const bd = document.getElementById('sidebarBackdrop');
+    if (!sb) return;
+    sb.classList.toggle('-translate-x-full');
+    if (bd) bd.classList.toggle('hidden');
+}
+
+// Recolhe/expande o menu no desktop e guarda a preferência
+function collapseSidebar() {
+    const colapsado = document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', colapsado ? '1' : '0');
+    atualizarIconeColapsar();
+}
+
+function atualizarIconeColapsar() {
+    const icon = document.getElementById('collapseIcon');
+    if (!icon) return;
+    const colapsado = document.body.classList.contains('sidebar-collapsed');
+    icon.className = colapsado ? 'fas fa-angle-right text-xs' : 'fas fa-angle-left text-xs';
+}
+
+// ==================== SELECT CUSTOMIZADO (dropdown arredondado) ====================
+// Substitui o menu nativo do <select> por um dropdown estilizado, mantendo o
+// <select> original (oculto) como fonte de dados para não quebrar a lógica.
+
+let csMenuAberto = null; // função que fecha o menu atualmente aberto
+
+function inicializarSelectsCustomizados(escopo) {
+    (escopo || document).querySelectorAll('select.input:not([data-cs])').forEach(configurarSelectCustomizado);
+}
+
+function configurarSelectCustomizado(select) {
+    select.dataset.cs = '1';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cs-wrapper';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    select.classList.add('cs-native');
+
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'cs-button input';
+    botao.innerHTML = '<span class="cs-label"></span><i class="fas fa-chevron-down cs-chevron"></i>';
+    wrapper.appendChild(botao);
+
+    const menu = document.createElement('div');
+    menu.className = 'cs-menu hidden';
+    document.body.appendChild(menu);
+
+    function atualizarLabel() {
+        const opt = select.options[select.selectedIndex];
+        botao.querySelector('.cs-label').textContent = opt ? opt.textContent : '';
+        botao.classList.toggle('cs-placeholder', !opt || opt.value === '');
+    }
+
+    function sincronizarDisabled() {
+        botao.disabled = select.disabled;
+        botao.classList.toggle('cs-disabled', select.disabled);
+    }
+
+    function construirMenu() {
+        menu.innerHTML = '';
+        Array.from(select.options).forEach((opt, i) => {
+            const item = document.createElement('div');
+            item.className = 'cs-option' + (i === select.selectedIndex ? ' cs-selected' : '');
+            item.textContent = opt.textContent;
+            item.addEventListener('click', function (e) {
+                e.stopPropagation();
+                select.value = opt.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                atualizarLabel();
+                fecharMenu();
+            });
+            menu.appendChild(item);
+        });
+    }
+
+    function posicionarMenu() {
+        const r = botao.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (r.bottom + 6) + 'px';
+        menu.style.left = r.left + 'px';
+        menu.style.width = r.width + 'px';
+    }
+
+    function abrirMenu() {
+        if (select.disabled) return;
+        if (csMenuAberto) csMenuAberto();
+        construirMenu();
+        posicionarMenu();
+        menu.classList.remove('hidden');
+        botao.classList.add('cs-open');
+        csMenuAberto = fecharMenu;
+    }
+
+    function fecharMenu() {
+        menu.classList.add('hidden');
+        botao.classList.remove('cs-open');
+        if (csMenuAberto === fecharMenu) csMenuAberto = null;
+    }
+
+    botao.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (menu.classList.contains('hidden')) abrirMenu(); else fecharMenu();
+    });
+
+    // Sincronização com o <select> original
+    select.addEventListener('change', atualizarLabel);
+    const descValor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    Object.defineProperty(select, 'value', {
+        configurable: true,
+        get() { return descValor.get.call(this); },
+        set(v) { descValor.set.call(this, v); atualizarLabel(); }
+    });
+    new MutationObserver(function () {
+        atualizarLabel();
+        sincronizarDisabled();
+    }).observe(select, { childList: true, attributes: true, attributeFilter: ['disabled'] });
+
+    atualizarLabel();
+    sincronizarDisabled();
+}
+
+// Fecha o dropdown ao clicar fora, rolar a página ou redimensionar
+document.addEventListener('click', function () { if (csMenuAberto) csMenuAberto(); });
+window.addEventListener('scroll', function () { if (csMenuAberto) csMenuAberto(); }, true);
+window.addEventListener('resize', function () { if (csMenuAberto) csMenuAberto(); });
+
+// ==================== SELETOR DE MÊS EM PORTUGUÊS ====================
+const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const MESES_PT_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+function inicializarSeletoresMes(escopo) {
+    (escopo || document).querySelectorAll('input.mes-ptbr:not([data-mp])').forEach(configurarSeletorMes);
+}
+
+function configurarSeletorMes(input) {
+    input.dataset.mp = '1';
+    input.classList.add('cs-native');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cs-wrapper';
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'cs-button input';
+    botao.innerHTML = '<span class="cs-label"></span><i class="fas fa-calendar-days cs-chevron"></i>';
+    wrapper.appendChild(botao);
+
+    const painel = document.createElement('div');
+    painel.className = 'cs-menu mp-panel hidden';
+    document.body.appendChild(painel);
+
+    let anoView = new Date().getFullYear();
+
+    function parse() {
+        const v = input.value;
+        if (v && /^\d{4}-\d{2}$/.test(v)) {
+            const [a, m] = v.split('-').map(Number);
+            return { ano: a, mes: m };
+        }
+        return null;
+    }
+
+    function atualizarLabel() {
+        const p = parse();
+        botao.querySelector('.cs-label').textContent = p ? `${MESES_PT[p.mes - 1]} de ${p.ano}` : 'Selecione';
+        botao.classList.toggle('cs-placeholder', !p);
+    }
+
+    function construirPainel() {
+        const p = parse();
+        painel.innerHTML = `
+            <div class="mb-2 flex items-center justify-between px-1">
+                <button type="button" class="mp-nav" data-d="-1"><i class="fas fa-chevron-left"></i></button>
+                <span class="text-sm font-semibold text-slate-700">${anoView}</span>
+                <button type="button" class="mp-nav" data-d="1"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="grid grid-cols-3 gap-1">
+                ${MESES_PT_ABREV.map((m, i) => {
+                    const sel = p && p.ano === anoView && p.mes === i + 1;
+                    return `<button type="button" class="mp-mes ${sel ? 'cs-selected' : ''}" data-m="${i + 1}">${m}</button>`;
+                }).join('')}
+            </div>`;
+        painel.querySelectorAll('.mp-nav').forEach(b => b.addEventListener('click', e => {
+            e.stopPropagation();
+            anoView += parseInt(b.dataset.d);
+            construirPainel();
+        }));
+        painel.querySelectorAll('.mp-mes').forEach(b => b.addEventListener('click', e => {
+            e.stopPropagation();
+            const mm = String(b.dataset.m).padStart(2, '0');
+            input.value = `${anoView}-${mm}`;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            atualizarLabel();
+            fechar();
+        }));
+    }
+
+    function posicionar() {
+        const r = botao.getBoundingClientRect();
+        painel.style.position = 'fixed';
+        painel.style.top = (r.bottom + 6) + 'px';
+        painel.style.left = r.left + 'px';
+        painel.style.width = Math.max(r.width, 240) + 'px';
+    }
+
+    function abrir() {
+        if (input.disabled) return;
+        if (csMenuAberto) csMenuAberto();
+        const p = parse();
+        anoView = p ? p.ano : new Date().getFullYear();
+        construirPainel();
+        posicionar();
+        painel.classList.remove('hidden');
+        botao.classList.add('cs-open');
+        csMenuAberto = fechar;
+    }
+
+    function fechar() {
+        painel.classList.add('hidden');
+        botao.classList.remove('cs-open');
+        if (csMenuAberto === fechar) csMenuAberto = null;
+    }
+
+    botao.addEventListener('click', e => {
+        e.stopPropagation();
+        painel.classList.contains('hidden') ? abrir() : fechar();
+    });
+
+    // Sincroniza quando o valor é definido programaticamente
+    const descValor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    Object.defineProperty(input, 'value', {
+        configurable: true,
+        get() { return descValor.get.call(this); },
+        set(v) { descValor.set.call(this, v); atualizarLabel(); }
+    });
+    input.addEventListener('change', atualizarLabel);
+
+    atualizarLabel();
+}
+
+function fecharModal(id) {
+    const m = document.getElementById(id);
+    if (!m) return;
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+    document.body.classList.remove('overflow-hidden');
+}
+
+// ==================== NOTIFICAÇÕES (toast) ====================
+
+function notificar(mensagem, tipo = 'success') {
+    let cont = document.getElementById('toastContainer');
+    if (!cont) {
+        cont = document.createElement('div');
+        cont.id = 'toastContainer';
+        cont.className = 'fixed top-4 right-4 z-[100] flex flex-col gap-2';
+        document.body.appendChild(cont);
+    }
+    const estilos = {
+        success: { icon: 'fa-circle-check', box: 'border-emerald-200 bg-emerald-50 text-emerald-800', ic: 'text-emerald-500' },
+        error:   { icon: 'fa-circle-exclamation', box: 'border-rose-200 bg-rose-50 text-rose-800', ic: 'text-rose-500' },
+        info:    { icon: 'fa-circle-info', box: 'border-indigo-200 bg-indigo-50 text-indigo-800', ic: 'text-indigo-500' }
+    };
+    const e = estilos[tipo] || estilos.success;
+    const t = document.createElement('div');
+    t.className = `flex max-w-sm items-start gap-3 rounded-xl border ${e.box} px-4 py-3 text-sm shadow-lg transition-all duration-300 translate-x-4 opacity-0`;
+    t.innerHTML = `<i class="fas ${e.icon} ${e.ic} mt-0.5"></i><span class="flex-1">${mensagem}</span>`;
+    cont.appendChild(t);
+    requestAnimationFrame(() => t.classList.remove('translate-x-4', 'opacity-0'));
+    setTimeout(() => {
+        t.classList.add('translate-x-4', 'opacity-0');
+        setTimeout(() => t.remove(), 300);
+    }, 3500);
+}
+
+// Confirmação estilizada (substitui window.confirm). Retorna Promise<boolean>.
+function confirmar(mensagem, opcoes = {}) {
+    return new Promise(resolve => {
+        let modal = document.getElementById('modalConfirmar');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalConfirmar';
+            modal.className = 'fixed inset-0 z-[100] hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm';
+            modal.innerHTML = `
+                <div class="w-full max-w-md rounded-2xl bg-white shadow-xl">
+                    <div class="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600"><i class="fas fa-circle-question"></i></span>
+                        <h3 class="text-lg font-semibold text-slate-900" id="confTitulo">Confirmar</h3>
+                    </div>
+                    <div class="px-6 py-5 text-sm text-slate-600" id="confMsg"></div>
+                    <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
+                        <button type="button" class="btn-secondary" id="confCancelar">Cancelar</button>
+                        <button type="button" class="btn-primary" id="confOk">Confirmar</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+        modal.querySelector('#confTitulo').textContent = opcoes.titulo || 'Confirmar';
+        modal.querySelector('#confMsg').textContent = mensagem;
+        const btnOk = modal.querySelector('#confOk');
+        const btnCancelar = modal.querySelector('#confCancelar');
+        btnOk.className = opcoes.perigo ? 'btn-danger' : 'btn-primary';
+        btnOk.textContent = opcoes.confirmar || 'Confirmar';
+
+        const fechar = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+        btnOk.onclick = () => { fechar(); resolve(true); };
+        btnCancelar.onclick = () => { fechar(); resolve(false); };
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    });
+}
+
+// Após um form.reset(), atualiza os rótulos dos controles customizados (selects e
+// seletores de mês), pois o reset nativo não dispara o setter interceptado.
+function refrescarControlesCustom(container) {
+    if (!container) return;
+    container.querySelectorAll('select[data-cs], input[data-mp]').forEach(el => {
+        el.dispatchEvent(new Event('change', { bubbles: false }));
+    });
+}
+
+// Impede que a tecla Enter dentro de um formulário salve os dados.
+// O salvamento só deve ocorrer ao clicar no botão. (Enter em textarea continua normal.)
+function impedirEnterSubmit(e) {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+    }
+}
+
+// ==================== INICIALIZAÇÃO ====================
+
+document.addEventListener('DOMContentLoaded', function () {
+    atualizarIconeColapsar();
     carregarDados();
     configurarEventos();
+    inicializarSelectsCustomizados();
+    inicializarSeletoresMes();
 });
 
 async function carregarDados() {
     try {
-        // Usa a rota geral para carregar todos os dados de uma vez
-        const response = await fetch(`${API_URL}/dados`); 
-        
-        // **IMPORTANTE:** Verificar se a resposta é OK antes de tentar ler JSON
+        const response = await fetch(`${API_URL}/dados`);
         if (!response.ok) {
             throw new Error(`Erro do servidor: ${response.status}`);
         }
-        
         const dados = await response.json();
-        
-        // **IMPORTANTE:** Garante que as variáveis globais sejam sempre listas,
-        // mesmo se o servidor não retornar a chave (Embora o backend agora garanta isso)
         colaboradores = Array.isArray(dados.colaboradores) ? dados.colaboradores : [];
         lancamentos = Array.isArray(dados.lancamentos) ? dados.lancamentos : [];
-        
         renderizar();
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
-        // Esta é a mensagem que o usuário vê se o backend falhar (500)
-        alert('Erro ao conectar com o servidor. Verifique se o servidor está rodando.');
+        notificar('Erro ao conectar com o servidor. Verifique se o servidor está rodando.', 'error');
     }
 }
 
 function configurarEventos() {
-    // Máscara CPF
-    const cpfInput = document.getElementById('colabCPF');
-    if (cpfInput) {
-        cpfInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length <= 11) {
-                value = value.replace(/(\d{3})(\d)/, '$1.$2');
-                value = value.replace(/(\d{3})(\d)/, '$1.$2');
-                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-                e.target.value = value;
-            }
-        });
-    }
-
     // Forms
     const formColab = document.getElementById('formColaborador');
     if (formColab) {
         formColab.addEventListener('submit', salvarColaborador);
+        formColab.addEventListener('keydown', impedirEnterSubmit);
         document.getElementById('btnCancelarColab').addEventListener('click', limparFormColaborador);
     }
 
     const formLanc = document.getElementById('formLancamento');
     if (formLanc) {
         formLanc.addEventListener('submit', salvarLancamento);
+        formLanc.addEventListener('keydown', impedirEnterSubmit);
         document.getElementById('btnCancelarLanc').addEventListener('click', limparFormLancamento);
-        
-        // Validação de lançamento duplicado
+
         const colaboradorField = document.getElementById('lancColaborador');
         const mesField = document.getElementById('lancMes');
         if (colaboradorField && mesField) {
             colaboradorField.addEventListener('change', verificarLancamentoExistente);
             mesField.addEventListener('change', verificarLancamentoExistente);
         }
-        
-        // Listener para o campo Férias
+
         const feriasField = document.getElementById('lancFerias');
         if (feriasField) {
-            feriasField.addEventListener('change', function() {
+            feriasField.addEventListener('change', function () {
                 const divDados = document.getElementById('divDadosLancamento');
                 const divMensagem = document.getElementById('divMensagemFerias');
-                
                 if (this.value === 'Férias') {
                     divDados.style.display = 'none';
                     divMensagem.style.display = 'block';
@@ -88,30 +485,34 @@ function configurarEventos() {
                 }
             });
         }
-        
+
         document.querySelectorAll('.calc-field').forEach(field => {
             field.addEventListener('input', calcularTotalRecebido);
         });
         document.querySelectorAll('.calc-liquido').forEach(field => {
             field.addEventListener('input', calcularLiquidoTotal);
         });
-        
-        const outrosField = document.getElementById('lancOutros');
-        if (outrosField) {
-            outrosField.addEventListener('input', calcularTotalRecebido);
+
+        // Pagamentos por empréstimo (linhas dinâmicas): soma no total ao editar
+        const listaEmp = document.getElementById('emprestimosDetalheLista');
+        if (listaEmp) {
+            listaEmp.addEventListener('input', function (e) {
+                if (e.target.classList.contains('emp-pago')) recomputarEmprestimoTotal();
+            });
         }
     }
 
-    // Filtros
-    const filtroMes = document.getElementById('filtroMes');
-    if (filtroMes) {
-        document.getElementById('filtroTipo').addEventListener('change', aplicarFiltrosDashboard);
-        filtroMes.addEventListener('change', aplicarFiltrosDashboard);
-        document.getElementById('filtroColaborador').addEventListener('change', aplicarFiltrosDashboard);
+    // Filtros do dashboard (uma linha que controla gráficos, indicadores e tabelas)
+    const filtroCompetencia = document.getElementById('filtroCompetencia');
+    if (filtroCompetencia) {
+        ['filtroCompetencia', 'filtroMes', 'filtroContrato', 'filtroEmpresa', 'filtroTipo'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', aplicarFiltrosDashboard);
+        });
         document.getElementById('btnLimparFiltros').addEventListener('click', limparFiltros);
     }
 
-    // Modal
+    // Modal exclusão
     const btnConfirmar = document.getElementById('confirmarExclusaoColab');
     if (btnConfirmar) {
         btnConfirmar.addEventListener('click', confirmarExclusaoColaborador);
@@ -124,55 +525,76 @@ function renderizar() {
         renderizarDashboard();
     } else if (pathname.includes('colaboradores')) {
         renderizarColaboradores();
-        
-        // Verifica se há parâmetro editar na URL
         const urlParams = new URLSearchParams(window.location.search);
         const editarId = urlParams.get('editar');
         if (editarId) {
-            // Remove o parâmetro da URL
             window.history.replaceState({}, document.title, window.location.pathname);
-            // Edita o colaborador
-            setTimeout(() => editarColaborador(editarId), 500);
+            setTimeout(() => editarColaborador(editarId), 300);
         }
     } else if (pathname.includes('lancamentos')) {
         renderizarLancamentos();
         atualizarSelectColaboradores();
-        
-        // Configurar mês atual no filtro CSV
+
         const filtroMesCSV = document.getElementById('filtroMesCSV');
         if (filtroMesCSV && !filtroMesCSV.value) {
             filtroMesCSV.value = new Date().toISOString().substring(0, 7);
         }
-        
-        // Verifica se há parâmetro editar na URL
+
         const urlParams = new URLSearchParams(window.location.search);
         const editarId = urlParams.get('editar');
         if (editarId) {
-            // Remove o parâmetro da URL
             window.history.replaceState({}, document.title, window.location.pathname);
-            // Edita o lançamento
-            setTimeout(() => editarLancamento(editarId), 500);
+            setTimeout(() => editarLancamento(editarId), 300);
         }
     }
+}
+
+// ==================== BADGES ====================
+
+function badgeContratacao(tipo) {
+    const map = {
+        'CLT': 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+        'Mensalista': 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+        'Diarista': 'bg-sky-50 text-sky-700 ring-sky-600/20'
+    };
+    const cls = map[tipo] || 'bg-slate-100 text-slate-600 ring-slate-500/20';
+    return `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${cls}">${tipo || '-'}</span>`;
+}
+
+function badgeStatus(status) {
+    return status === 'finalizado'
+        ? '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20"><i class="fas fa-check-circle"></i> Finalizado</span>'
+        : '<span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20"><i class="fas fa-clock"></i> Em Aberto</span>';
+}
+
+function botaoAcao(onclick, cor, icone, title) {
+    const cores = {
+        edit: 'text-amber-600 hover:bg-amber-50',
+        delete: 'text-rose-600 hover:bg-rose-50',
+        finalize: 'text-emerald-600 hover:bg-emerald-50',
+        view: 'text-sky-600 hover:bg-sky-50',
+        recibo: 'text-indigo-600 hover:bg-indigo-50',
+        reabrir: 'text-slate-500 hover:bg-slate-100'
+    };
+    return `<button onclick="${onclick}" title="${title}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg transition ${cores[cor]}"><i class="fas ${icone}"></i></button>`;
 }
 
 // ==================== COLABORADORES ====================
 
 async function salvarColaborador(e) {
     e.preventDefault();
-    
+
     const editId = document.getElementById('colabEditId').value;
-    
+
     // Coletar empréstimos
     const emprestimos = [];
-    const emprestimosItems = document.querySelectorAll('.emprestimo-item');
-    emprestimosItems.forEach(item => {
-        const valor = parseFloat(item.querySelector('.emprestimo-valor').value) || 0;
+    document.querySelectorAll('.emprestimo-item').forEach(item => {
+        const valor = lerMoeda(item.querySelector('.emprestimo-valor'));
         const parcelas = parseInt(item.querySelector('.emprestimo-parcelas').value) || 1;
         const inicio = item.querySelector('.emprestimo-inicio').value;
         const descricao = item.querySelector('.emprestimo-descricao').value;
-        const emprestimoId = item.dataset.emprestimoId; // Preservar ID se existir
-        
+        const emprestimoId = item.dataset.emprestimoId;
+
         if (valor > 0 && inicio) {
             emprestimos.push({
                 id: emprestimoId || (Date.now() + Math.random()),
@@ -183,25 +605,27 @@ async function salvarColaborador(e) {
             });
         }
     });
-    
+
     const dados = {
         id: editId || '',
         nome: document.getElementById('colabNome').value,
         cpf: document.getElementById('colabCPF').value,
         endereco: document.getElementById('colabEndereco').value,
         funcao: document.getElementById('colabFuncao').value,
+        empresa: document.getElementById('colabEmpresa').value,
         contratacao: document.getElementById('colabContratacao').value,
         admissao: document.getElementById('colabAdmissao')?.value || '',
-        remuneracao: parseFloat(document.getElementById('colabRemuneracao')?.value || 0),
-        premio: parseFloat(document.getElementById('colabPremio')?.value || 0),
-        total: parseFloat(document.getElementById('colabTotal')?.value || 0),
+        remuneracao: lerMoeda(document.getElementById('colabRemuneracao')),
+        premio: lerMoeda(document.getElementById('colabPremio')),
+        valorDiaria: lerMoeda(document.getElementById('colabValorDiaria')),
+        total: lerMoeda(document.getElementById('colabTotal')),
         valeRefeicao: document.getElementById('colabValeRefeicao').value,
         valeTransporte: document.getElementById('colabValeTransporte').value,
         seguroVida: document.getElementById('colabSeguroVida').value,
         planoOdonto: document.getElementById('colabPlanoOdonto')?.value || 'Não',
         dependentes: parseInt(document.getElementById('colabDependentes')?.value || 0),
         temAdiantamento: document.getElementById('colabTemAdiantamento')?.value || 'Não',
-        valorAdiantamento: parseFloat(document.getElementById('colabValorAdiantamento')?.value || 0),
+        valorAdiantamento: lerMoeda(document.getElementById('colabValorAdiantamento')),
         tipoAdiantamento: document.getElementById('colabTipoAdiantamento')?.value || 'Espécie',
         emprestimos: emprestimos,
         observacoes: document.getElementById('colabObservacoes').value
@@ -210,30 +634,26 @@ async function salvarColaborador(e) {
     try {
         const response = await fetch(`${API_URL}/colaboradores`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dados)
         });
 
         if (!response.ok) {
             const erro = await response.json();
-            alert(erro.erro || 'Erro ao salvar colaborador');
+            notificar(erro.erro || 'Erro ao salvar colaborador', 'error');
             return;
         }
 
-        const colaboradorSalvo = await response.json();
-        alert('Colaborador salvo com sucesso!');
-        
-        // Recarregar dados
+        const salvo = await response.json();
+        notificar('Colaborador salvo com sucesso!', 'success');
         await carregarDados();
-        
-        // Sempre limpar o formulário após salvar (independente de ser novo ou edição)
-        limparFormColaborador();
-        
+        // Mantém o colaborador salvo na tela (modo edição), em vez de limpar
+        if (salvo && salvo.id) {
+            editarColaborador(salvo.id);
+        }
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro ao salvar colaborador');
+        notificar('Erro ao salvar colaborador', 'error');
     }
 }
 
@@ -242,35 +662,45 @@ function limparFormColaborador() {
     document.getElementById('colabEditId').value = '';
     document.getElementById('formColabTitle').textContent = 'Cadastrar Colaborador';
     document.getElementById('emprestimosContainer').innerHTML = '';
+    setMoeda(document.getElementById('colabRemuneracao'), 0);
+    setMoeda(document.getElementById('colabPremio'), 0);
+    setMoeda(document.getElementById('colabTotal'), 0);
+    setMoeda(document.getElementById('colabValorAdiantamento'), 0);
+    setMoeda(document.getElementById('colabValorDiaria'), 0);
     if (typeof contadorEmprestimos !== 'undefined') {
         contadorEmprestimos = 0;
     }
+    if (typeof atualizarContratacao === 'function') atualizarContratacao();
+    if (typeof toggleDiaria === 'function') toggleDiaria();
+    if (typeof toggleDependentes === 'function') toggleDependentes();
+    if (typeof toggleAdiantamento === 'function') toggleAdiantamento();
+    refrescarControlesCustom(document.getElementById('formColaborador'));
 }
 
 function renderizarColaboradores() {
     const tbody = document.getElementById('tabelaColaboradores');
     if (!tbody) return;
-    
-    tbody.innerHTML = colaboradores.map(c => {
-        const badgeColor = c.contratacao === 'CLT' ? 'primary' : 
-                          c.contratacao === 'Mensalista' ? 'success' : 'info';
-        return `
-        <tr>
-            <td>${c.nome}</td>
-            <td>${c.cpf}</td>
-            <td>${c.funcao || '-'}</td>
-            <td><span class="badge bg-${badgeColor}">${c.contratacao}</span></td>
-            <td>${formatarMoeda(c.total || c.remuneracao || 0)}</td>
-            <td class="text-center">
-                <button class="btn btn-sm btn-warning" onclick="editarColaborador('${c.id}')" title="Editar colaborador">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="abrirModalExcluir('${c.id}')" title="Excluir colaborador">
-                    <i class="fas fa-trash"></i>
-                </button>
+
+    if (colaboradores.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400"><i class="fas fa-users-slash mb-2 block text-2xl"></i>Nenhum colaborador cadastrado</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = colaboradores.map(c => `
+        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium text-slate-800">${c.nome}</td>
+            <td class="px-4 py-3 text-slate-600">${c.cpf}</td>
+            <td class="px-4 py-3 text-slate-600">${c.funcao || '-'}</td>
+            <td class="px-4 py-3">${badgeContratacao(c.contratacao)}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(c.total || c.remuneracao || 0)}</td>
+            <td class="px-4 py-3">
+                <div class="flex items-center justify-center gap-1">
+                    ${botaoAcao(`editarColaborador('${c.id}')`, 'edit', 'fa-pen', 'Editar colaborador')}
+                    ${botaoAcao(`abrirModalExcluir('${c.id}')`, 'delete', 'fa-trash', 'Excluir colaborador')}
+                </div>
             </td>
         </tr>
-    `}).join('');
+    `).join('');
 }
 
 function editarColaborador(id) {
@@ -280,21 +710,21 @@ function editarColaborador(id) {
     document.getElementById('colabEditId').value = c.id;
     document.getElementById('colabNome').value = c.nome;
     document.getElementById('colabCPF').value = c.cpf;
-    document.getElementById('colabEndereco').value = c.endereco;
-    document.getElementById('colabFuncao').value = c.funcao;
+    document.getElementById('colabEndereco').value = c.endereco || '';
+    document.getElementById('colabFuncao').value = c.funcao || '';
+    if (document.getElementById('colabEmpresa')) {
+        document.getElementById('colabEmpresa').value = c.empresa || 'Engenharia';
+        if (typeof atualizarContratacao === 'function') atualizarContratacao();
+    }
     document.getElementById('colabContratacao').value = c.contratacao;
+    if (typeof toggleDiaria === 'function') toggleDiaria();
     if (document.getElementById('colabAdmissao')) {
         document.getElementById('colabAdmissao').value = c.admissao || '';
     }
-    if (document.getElementById('colabRemuneracao')) {
-        document.getElementById('colabRemuneracao').value = c.remuneracao || 0;
-    }
-    if (document.getElementById('colabPremio')) {
-        document.getElementById('colabPremio').value = c.premio || 0;
-    }
-    if (document.getElementById('colabTotal')) {
-        document.getElementById('colabTotal').value = c.total || 0;
-    }
+    setMoeda(document.getElementById('colabRemuneracao'), c.remuneracao || 0);
+    setMoeda(document.getElementById('colabPremio'), c.premio || 0);
+    setMoeda(document.getElementById('colabValorDiaria'), c.valorDiaria || 0);
+    setMoeda(document.getElementById('colabTotal'), c.total || 0);
     document.getElementById('colabValeRefeicao').value = c.valeRefeicao;
     document.getElementById('colabValeTransporte').value = c.valeTransporte;
     document.getElementById('colabSeguroVida').value = c.seguroVida;
@@ -307,31 +737,30 @@ function editarColaborador(id) {
     if (document.getElementById('colabTemAdiantamento')) {
         document.getElementById('colabTemAdiantamento').value = c.temAdiantamento || 'Não';
     }
-    if (document.getElementById('colabValorAdiantamento')) {
-        document.getElementById('colabValorAdiantamento').value = c.valorAdiantamento || 0;
-    }
+    setMoeda(document.getElementById('colabValorAdiantamento'), c.valorAdiantamento || 0);
     if (document.getElementById('colabTipoAdiantamento')) {
         document.getElementById('colabTipoAdiantamento').value = c.tipoAdiantamento || 'Espécie';
     }
     document.getElementById('colabObservacoes').value = c.observacoes || '';
-    
+
+    // Reaplica visibilidade condicional
+    if (typeof toggleDependentes === 'function') toggleDependentes();
+    if (typeof toggleAdiantamento === 'function') toggleAdiantamento();
+
     // Empréstimos
     const container = document.getElementById('emprestimosContainer');
     container.innerHTML = '';
     if (c.emprestimos && c.emprestimos.length > 0) {
-        c.emprestimos.forEach(emp => {
-            adicionarEmprestimo(emp);
-        });
+        c.emprestimos.forEach(emp => adicionarEmprestimo(emp));
     }
 
     document.getElementById('formColabTitle').textContent = 'Editar Colaborador';
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function abrirModalExcluir(id) {
     colabIdToDelete = id;
-    const modal = new bootstrap.Modal(document.getElementById('modalExcluirColab'));
-    modal.show();
+    abrirModal('modalExcluirColab');
 }
 
 async function confirmarExclusaoColaborador() {
@@ -343,18 +772,17 @@ async function confirmarExclusaoColaborador() {
         });
 
         if (response.ok) {
-            alert('Colaborador excluído com sucesso!');
-            const modal = bootstrap.Modal.getInstance(document.getElementById('modalExcluirColab'));
-            modal.hide();
+            notificar('Colaborador excluído com sucesso!', 'success');
+            fecharModal('modalExcluirColab');
             await carregarDados();
         } else {
-            alert('Erro ao excluir colaborador');
+            notificar('Erro ao excluir colaborador', 'error');
         }
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro ao excluir colaborador');
+        notificar('Erro ao excluir colaborador', 'error');
     }
-    
+
     colabIdToDelete = null;
 }
 
@@ -364,35 +792,26 @@ function verificarLancamentoExistente() {
     const colaboradorId = document.getElementById('lancColaborador').value;
     const mes = document.getElementById('lancMes').value;
     const editId = document.getElementById('lancEditId').value;
-    
-    // Só verifica se ambos os campos estão preenchidos e não estamos editando
+
     if (!colaboradorId || !mes || editId) return;
-    
-    // Busca lançamento existente
-    const lancamentoExistente = lancamentos.find(l => 
+
+    const lancamentoExistente = lancamentos.find(l =>
         l.colaboradorId === colaboradorId && l.mes === mes
     );
-    
+
     if (lancamentoExistente) {
         const colaborador = colaboradores.find(c => c.id === colaboradorId);
         const mesFormatado = formatarMesAno(mes);
-        
+
         if (lancamentoExistente.status === 'finalizado') {
-            // Lançamento finalizado - bloqueia e avisa
-            alert(`⚠️ Atenção!\n\nJá existe um lançamento FINALIZADO para ${colaborador.nome} no mês ${mesFormatado}.\n\nPara editar, você precisa REABRIR o lançamento primeiro na lista abaixo.`);
-            
-            // Limpa os campos
+            notificar(`Já existe um lançamento FINALIZADO para ${colaborador.nome} em ${mesFormatado}. Reabra o lançamento na lista para editá-lo.`, 'info');
             document.getElementById('lancColaborador').value = '';
             document.getElementById('lancMes').value = '';
         } else {
-            // Lançamento aberto - avisa e pergunta se quer editar
-            alert(`⚠️ Atenção!\n\nJá existe um lançamento EM ABERTO para ${colaborador.nome} no mês ${mesFormatado}.\n\nOs dados serão carregados para edição.`);
-            
-            // Carrega automaticamente
+            notificar(`Já existe um lançamento em aberto para ${colaborador.nome} em ${mesFormatado}. Carregando os dados para edição.`, 'info');
             editarLancamento(lancamentoExistente.id);
         }
     } else {
-        // Não existe lançamento, preencher campos automaticamente
         preencherCamposAutomaticamente();
         calcularEmprestimosDoMes();
     }
@@ -401,196 +820,212 @@ function verificarLancamentoExistente() {
 function preencherCamposAutomaticamente() {
     const colaboradorId = document.getElementById('lancColaborador').value;
     if (!colaboradorId) return;
-    
+
     const colaborador = colaboradores.find(c => c.id === colaboradorId);
     if (!colaborador) return;
-    
-    // Preencher Remuneração e Prêmio
-    if (colaborador.contratacao === 'Mensalista' || colaborador.contratacao === 'Diarista') {
-        // Para Mensalista e Diarista: preencher valores brutos
-        document.getElementById('lancRemuneracao').value = colaborador.remuneracao || 0;
-        document.getElementById('lancBonificacao').value = colaborador.premio || 0;
-    } else if (colaborador.contratacao === 'CLT') {
-        // Para CLT: preencher valores líquidos (já descontados)
-        document.getElementById('lancRemuneracao').value = colaborador.remuneracao || 0;
-        document.getElementById('lancBonificacao').value = colaborador.premio || 0;
+
+    // Diarista: mostra o bloco de diária e calcula a remuneração por dias trabalhados
+    const ehDiarista = colaborador.contratacao === 'Diarista';
+    const divDiaria = document.getElementById('divDiaria');
+    if (divDiaria) divDiaria.style.display = ehDiarista ? 'block' : 'none';
+
+    if (ehDiarista) {
+        setMoeda(document.getElementById('lancValorDiaria'), colaborador.valorDiaria || 0);
+        document.getElementById('lancDiasTrabalhados').value = 0;
+        calcularRemuneracaoDiaria(); // remuneração = diária × dias (0 no início)
+    } else {
+        setMoeda(document.getElementById('lancRemuneracao'), colaborador.remuneracao || 0);
     }
-    
-    // Preencher Adiantamentos
+    setMoeda(document.getElementById('lancBonificacao'), colaborador.premio || 0);
+
+    // Adiantamentos
     if (colaborador.temAdiantamento === 'Sim' && colaborador.valorAdiantamento > 0) {
         if (colaborador.contratacao === 'CLT') {
-            // CLT: Adiantamento vai para Contabilidade
             if (colaborador.tipoAdiantamento === 'Espécie') {
-                document.getElementById('lancAdiantamentoEspecie').value = colaborador.valorAdiantamento;
+                setMoeda(document.getElementById('lancAdiantamentoEspecie'), colaborador.valorAdiantamento);
             } else {
-                document.getElementById('lancAdiantamentoContab').value = colaborador.valorAdiantamento;
+                setMoeda(document.getElementById('lancAdiantamentoContab'), colaborador.valorAdiantamento);
             }
         } else {
-            // Mensalista/Diarista: Adiantamento vai para Espécie
-            document.getElementById('lancAdiantamentoEspecie').value = colaborador.valorAdiantamento;
+            setMoeda(document.getElementById('lancAdiantamentoEspecie'), colaborador.valorAdiantamento);
         }
     }
-    
-    // Preencher Pagamento Espécie com Total (Remuneração + Prêmio)
+
     const totalPagamento = (colaborador.remuneracao || 0) + (colaborador.premio || 0);
-    document.getElementById('lancPagamentoEspecie').value = totalPagamento;
-    
-    // Recalcular totais
+    setMoeda(document.getElementById('lancPagamentoEspecie'), totalPagamento);
+
     calcularTotalRecebido();
+}
+
+// Soma quanto já foi pago de um empréstimo em todos os lançamentos.
+// `exceptMes` (YYYY-MM) permite ignorar o mês que está sendo editado.
+function calcularPagoEmprestimo(empId, exceptMes) {
+    let pago = 0;
+    (lancamentos || []).forEach(l => {
+        if (exceptMes && l.mes === exceptMes) return;
+        (l.emprestimosPagos || []).forEach(p => {
+            if (String(p.id) === String(empId)) pago += (parseFloat(p.valor) || 0);
+        });
+    });
+    return pago;
+}
+
+// Monta as linhas editáveis de empréstimo do mês. `rows` = [{id, descricao, parcela, restante, pago}]
+function renderizarEmprestimosLanc(rows, readonly) {
+    const container = document.getElementById('emprestimosDetalhe');
+    const lista = document.getElementById('emprestimosDetalheLista');
+    if (!container || !lista) return;
+
+    if (!rows || rows.length === 0) {
+        lista.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+
+    lista.innerHTML = rows.map(r => `
+        <div class="emp-row flex items-center justify-between gap-3" data-emp-id="${r.id}">
+            <div class="min-w-0 flex-1 text-sm">
+                <span class="font-medium text-slate-700">${r.descricao || 'Empréstimo'}</span>
+                <span class="block text-xs text-slate-400">Parcela ${formatarMoeda(r.parcela)}${r.restante != null ? ' · saldo ' + formatarMoeda(r.restante) : ''}</span>
+            </div>
+            <div class="relative w-36 shrink-0">
+                <span class="money-prefix">R$</span>
+                <input type="text" inputmode="decimal" class="input money emp-pago pl-9" value="${numeroBR(r.pago)}" ${readonly ? 'disabled' : ''}>
+            </div>
+        </div>`).join('');
+
+    container.style.display = 'block';
+    recomputarEmprestimoTotal();
+}
+
+// Soma os valores pagos por empréstimo → total do campo Empréstimo → recalcula o líquido
+function recomputarEmprestimoTotal() {
+    const inputs = document.querySelectorAll('#emprestimosDetalheLista .emp-pago');
+    if (inputs.length === 0) return;
+    let total = 0;
+    inputs.forEach(i => total += lerMoeda(i));
+    setMoeda(document.getElementById('lancEmprestimo'), total);
+    calcularLiquidoTotal();
 }
 
 function calcularEmprestimosDoMes() {
     const colaboradorId = document.getElementById('lancColaborador').value;
     const mes = document.getElementById('lancMes').value;
-    
+
     if (!colaboradorId || !mes) return;
-    
+
     const colaborador = colaboradores.find(c => c.id === colaboradorId);
+    document.getElementById('detalhesEmprestimo').innerHTML = '';
+
     if (!colaborador || !colaborador.emprestimos || colaborador.emprestimos.length === 0) {
-        document.getElementById('lancEmprestimo').value = '0';
-        document.getElementById('detalhesEmprestimo').innerHTML = '';
+        setMoeda(document.getElementById('lancEmprestimo'), 0);
+        renderizarEmprestimosLanc([]);
         return;
     }
-    
-    // Converter mês do lançamento para Date
+
     const [anoLanc, mesLanc] = mes.split('-').map(Number);
     const dataLancamento = new Date(anoLanc, mesLanc - 1, 1);
-    
-    let totalEmprestimos = 0;
-    let detalhes = [];
-    
-    // Para cada empréstimo do colaborador
+
+    const rows = [];
     colaborador.emprestimos.forEach(emp => {
-        // Converter data de início do empréstimo
+        if (!/^\d{4}-\d{2}$/.test(emp.inicio || '')) return;
         const [anoInicio, mesInicio] = emp.inicio.split('-').map(Number);
         const dataInicio = new Date(anoInicio, mesInicio - 1, 1);
-        
-        // Calcular valor da parcela
-        const valorParcela = emp.valor / emp.parcelas;
-        
-        // Verificar se o mês do lançamento está dentro do período do empréstimo
-        let mesAtual = new Date(dataInicio);
-        
-        for (let i = 0; i < emp.parcelas; i++) {
-            if (mesAtual.getFullYear() === dataLancamento.getFullYear() && 
-                mesAtual.getMonth() === dataLancamento.getMonth()) {
-                // Este empréstimo tem parcela neste mês
-                totalEmprestimos += valorParcela;
-                const parcelaAtual = i + 1;
-                detalhes.push(`${emp.descricao}: ${parcelaAtual}/${emp.parcelas} - R$ ${valorParcela.toFixed(2)}`);
-                break;
-            }
-            // Avançar para o próximo mês
-            mesAtual.setMonth(mesAtual.getMonth() + 1);
-        }
+        if (dataLancamento < dataInicio) return; // ainda não começou
+
+        // Quanto já foi pago em outros meses; só entra se ainda houver saldo
+        const pagoAntes = calcularPagoEmprestimo(emp.id, mes);
+        const restante = emp.valor - pagoAntes;
+        if (restante <= 0.001) return; // já quitado
+
+        const parcela = emp.valor / emp.parcelas;
+        const sugerido = Math.min(parcela, restante);
+        rows.push({
+            id: emp.id,
+            descricao: emp.descricao,
+            parcela: parcela,
+            restante: restante,
+            pago: sugerido
+        });
     });
-    
-    // Preencher o campo
-    document.getElementById('lancEmprestimo').value = totalEmprestimos.toFixed(2);
-    
-    // Mostrar detalhes
-    if (detalhes.length > 0) {
-        document.getElementById('detalhesEmprestimo').innerHTML = 
-            '<i class="fas fa-info-circle text-info"></i> ' + detalhes.join('<br>');
-    } else {
-        document.getElementById('detalhesEmprestimo').innerHTML = '';
-    }
-    
-    // Recalcular o líquido
+
+    renderizarEmprestimosLanc(rows, false);
+    if (rows.length === 0) setMoeda(document.getElementById('lancEmprestimo'), 0);
     calcularLiquidoTotal();
+}
+
+// Coleta os valores pagos por empréstimo das linhas do detalhamento
+function coletarEmprestimosPagos() {
+    return Array.from(document.querySelectorAll('#emprestimosDetalheLista .emp-row')).map(row => ({
+        id: row.dataset.empId,
+        valor: lerMoeda(row.querySelector('.emp-pago'))
+    }));
 }
 
 async function salvarLancamento(e) {
     e.preventDefault();
-    
+
     const editId = document.getElementById('lancEditId').value;
     const ferias = document.getElementById('lancFerias').value;
-    
-    // Se está de férias, salvar apenas dados básicos
+
+    let dados;
     if (ferias === 'Férias') {
-        const dados = {
+        dados = {
             id: editId || '',
             colaboradorId: document.getElementById('lancColaborador').value,
             mes: document.getElementById('lancMes').value,
             ferias: 'Férias',
-            remuneracao: 0,
-            bonificacao: 0,
-            totalRecebido: 0,
-            adiantamentoEspecie: 0,
-            adiantamentoContab: 0,
-            horasExtras: 0,
-            valeTransporte: 0,
-            emprestimo: 0,
-            outros: 0,
-            liquidoTotal: 0,
-            pagamentoContab: 0,
-            pagamentoEspecie: 0,
-            status: editId ? lancamentos.find(l => l.id === editId)?.status || 'aberto' : 'aberto'
+            diasTrabalhados: 0,
+            remuneracao: 0, bonificacao: 0, totalRecebido: 0,
+            adiantamentoEspecie: 0, adiantamentoContab: 0, horasExtras: 0,
+            valeTransporte: 0, emprestimo: 0, outros: 0, liquidoTotal: 0,
+            pagamentoContab: 0, pagamentoEspecie: 0,
+            formaPagamento: document.getElementById('lancFormaPagamento').value,
+            emprestimosPagos: [],
+            status: editId ? (lancamentos.find(l => l.id === editId)?.status || 'aberto') : 'aberto'
         };
-        
-        try {
-            const response = await fetch(`${API_URL}/lancamentos`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(dados)
-            });
-
-            if (response.ok) {
-                alert('Lançamento de férias salvo com sucesso!');
-                limparFormLancamento();
-                await carregarDados();
-            } else {
-                alert('Erro ao salvar lançamento');
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            alert('Erro ao salvar lançamento');
-        }
-        return;
+    } else {
+        dados = {
+            id: editId || '',
+            colaboradorId: document.getElementById('lancColaborador').value,
+            mes: document.getElementById('lancMes').value,
+            ferias: ferias,
+            diasTrabalhados: parseInt(document.getElementById('lancDiasTrabalhados').value) || 0,
+            remuneracao: lerMoeda(document.getElementById('lancRemuneracao')),
+            bonificacao: lerMoeda(document.getElementById('lancBonificacao')),
+            totalRecebido: lerMoeda(document.getElementById('lancTotalRecebido')),
+            adiantamentoEspecie: lerMoeda(document.getElementById('lancAdiantamentoEspecie')),
+            adiantamentoContab: lerMoeda(document.getElementById('lancAdiantamentoContab')),
+            horasExtras: lerMoeda(document.getElementById('lancHorasExtras')),
+            valeTransporte: lerMoeda(document.getElementById('lancValeTransporte')),
+            emprestimo: lerMoeda(document.getElementById('lancEmprestimo')),
+            outros: lerMoeda(document.getElementById('lancOutros')),
+            liquidoTotal: lerMoeda(document.getElementById('lancLiquidoTotal')),
+            pagamentoContab: lerMoeda(document.getElementById('lancPagamentoContab')),
+            pagamentoEspecie: lerMoeda(document.getElementById('lancPagamentoEspecie')),
+            formaPagamento: document.getElementById('lancFormaPagamento').value,
+            emprestimosPagos: coletarEmprestimosPagos(),
+            status: editId ? (lancamentos.find(l => l.id === editId)?.status || 'aberto') : 'aberto'
+        };
     }
-    
-    // Se não está de férias, salvar normalmente
-    const dados = {
-        id: editId || '',
-        colaboradorId: document.getElementById('lancColaborador').value,
-        mes: document.getElementById('lancMes').value,
-        ferias: ferias,
-        remuneracao: parseFloat(document.getElementById('lancRemuneracao').value) || 0,
-        bonificacao: parseFloat(document.getElementById('lancBonificacao').value) || 0,
-        totalRecebido: parseFloat(document.getElementById('lancTotalRecebido').value) || 0,
-        adiantamentoEspecie: parseFloat(document.getElementById('lancAdiantamentoEspecie').value) || 0,
-        adiantamentoContab: parseFloat(document.getElementById('lancAdiantamentoContab').value) || 0,
-        horasExtras: parseFloat(document.getElementById('lancHorasExtras').value) || 0,
-        valeTransporte: parseFloat(document.getElementById('lancValeTransporte').value) || 0,
-        emprestimo: parseFloat(document.getElementById('lancEmprestimo').value) || 0,
-        outros: parseFloat(document.getElementById('lancOutros').value) || 0,
-        liquidoTotal: parseFloat(document.getElementById('lancLiquidoTotal').value) || 0,
-        pagamentoContab: parseFloat(document.getElementById('lancPagamentoContab').value) || 0,
-        pagamentoEspecie: parseFloat(document.getElementById('lancPagamentoEspecie').value) || 0,
-        status: editId ? lancamentos.find(l => l.id === editId)?.status || 'aberto' : 'aberto'
-    };
 
     try {
         const response = await fetch(`${API_URL}/lancamentos`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dados)
         });
 
         if (response.ok) {
-            alert('Lançamento salvo com sucesso!');
+            notificar(ferias === 'Férias' ? 'Lançamento de férias salvo com sucesso!' : 'Lançamento salvo com sucesso!', 'success');
             limparFormLancamento();
             await carregarDados();
         } else {
-            alert('Erro ao salvar lançamento');
+            notificar('Erro ao salvar lançamento', 'error');
         }
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro ao salvar lançamento');
+        notificar('Erro ao salvar lançamento', 'error');
     }
 }
 
@@ -600,99 +1035,95 @@ function limparFormLancamento() {
     document.getElementById('formLancTitle').textContent = 'Novo Lançamento';
     document.getElementById('divDadosLancamento').style.display = 'block';
     document.getElementById('divMensagemFerias').style.display = 'none';
-    
-    // Reabilita todos os campos
-    document.getElementById('lancColaborador').disabled = false;
-    document.getElementById('lancMes').disabled = false;
-    document.getElementById('lancFerias').disabled = false;
-    document.getElementById('lancRemuneracao').disabled = false;
-    document.getElementById('lancBonificacao').disabled = false;
-    document.getElementById('lancAdiantamentoEspecie').disabled = false;
-    document.getElementById('lancAdiantamentoContab').disabled = false;
-    document.getElementById('lancHorasExtras').disabled = false;
-    document.getElementById('lancValeTransporte').disabled = false;
-    document.getElementById('lancEmprestimo').disabled = false;
-    document.getElementById('lancOutros').disabled = false;
-    document.getElementById('lancPagamentoContab').disabled = false;
-    document.getElementById('lancPagamentoEspecie').disabled = false;
-    
-    // Reexibe botão salvar
+
+    ['lancColaborador','lancMes','lancFerias','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
+     'lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
+     'lancEmprestimo','lancOutros','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = false;
+    });
+
+    // Zera campos de dinheiro
+    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancAdiantamentoEspecie',
+     'lancAdiantamentoContab','lancHorasExtras','lancValeTransporte','lancEmprestimo',
+     'lancOutros','lancLiquidoTotal','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
+        setMoeda(document.getElementById(id), 0);
+    });
+    document.getElementById('detalhesEmprestimo').innerHTML = '';
+    renderizarEmprestimosLanc([]);
+
+    // Reseta e esconde o bloco de diária
+    document.getElementById('divDiaria').style.display = 'none';
+    document.getElementById('lancDiasTrabalhados').value = 0;
+    setMoeda(document.getElementById('lancValorDiaria'), 0);
+    refrescarControlesCustom(document.getElementById('formLancamento'));
+
     const btnSalvar = document.querySelector('#formLancamento button[type="submit"]');
     if (btnSalvar) btnSalvar.style.display = '';
-    
-    // Restaura texto do botão cancelar
+
     const btnCancelar = document.getElementById('btnCancelarLanc');
     if (btnCancelar) btnCancelar.innerHTML = '<i class="fas fa-times"></i> Cancelar';
 }
 
+// Para diaristas: remuneração = valor da diária × dias trabalhados
+function calcularRemuneracaoDiaria() {
+    const diaria = lerMoeda(document.getElementById('lancValorDiaria'));
+    const dias = parseInt(document.getElementById('lancDiasTrabalhados').value) || 0;
+    setMoeda(document.getElementById('lancRemuneracao'), diaria * dias);
+    calcularTotalRecebido();
+}
+
 function calcularTotalRecebido() {
-    const salario = parseFloat(document.getElementById('lancRemuneracao').value) || 0;
-    const premio = parseFloat(document.getElementById('lancBonificacao').value) || 0;
-    
-    const total = salario + premio;
-    document.getElementById('lancTotalRecebido').value = total.toFixed(2);
-    
+    const salario = lerMoeda(document.getElementById('lancRemuneracao'));
+    const premio = lerMoeda(document.getElementById('lancBonificacao'));
+    setMoeda(document.getElementById('lancTotalRecebido'), salario + premio);
     calcularLiquidoTotal();
 }
 
 function calcularLiquidoTotal() {
-    const totalRecebido = parseFloat(document.getElementById('lancTotalRecebido').value) || 0;
-    const horasExtras = parseFloat(document.getElementById('lancHorasExtras').value) || 0;
-    const valeTransporte = parseFloat(document.getElementById('lancValeTransporte').value) || 0;
-    const emprestimo = parseFloat(document.getElementById('lancEmprestimo').value) || 0;
-    const outros = parseFloat(document.getElementById('lancOutros').value) || 0;
-    
-    // Líquido = Total Recebido + Horas Extras - Vale Transporte - Empréstimo - Outros
-    const liquido = totalRecebido + horasExtras - valeTransporte - emprestimo - outros;
-    document.getElementById('lancLiquidoTotal').value = liquido.toFixed(2);
-    
-    // Pagamento Espécie NÃO é calculado automaticamente
-    // Ele fica fixo como foi preenchido (remuneração + prêmio)
+    const totalRecebido = lerMoeda(document.getElementById('lancTotalRecebido'));
+    const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
+    const valeTransporte = lerMoeda(document.getElementById('lancValeTransporte'));
+    const emprestimo = lerMoeda(document.getElementById('lancEmprestimo'));
+    const outros = lerMoeda(document.getElementById('lancOutros'));
+    const adiantamentoEspecie = lerMoeda(document.getElementById('lancAdiantamentoEspecie'));
+    const adiantamentoContab = lerMoeda(document.getElementById('lancAdiantamentoContab'));
+
+    // Líquido = Total Recebido + Horas Extras - Vale Transporte - Empréstimo
+    //           - Outros - Adiantamentos (espécie + contabilidade)
+    const liquido = totalRecebido + horasExtras - valeTransporte - emprestimo - outros
+                    - adiantamentoEspecie - adiantamentoContab;
+    setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
 }
 
 function renderizarLancamentos() {
     const tbody = document.getElementById('tabelaLancamentos');
     if (!tbody) return;
-    
+
+    if (lancamentos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400"><i class="fas fa-file-invoice mb-2 block text-2xl"></i>Nenhum lançamento registrado</td></tr>`;
+        return;
+    }
+
     tbody.innerHTML = lancamentos.map(l => {
         const c = colaboradores.find(co => co.id === l.colaboradorId);
-        const statusBadge = l.status === 'finalizado' 
-            ? '<span class="badge bg-success">Finalizado</span>'
-            : '<span class="badge bg-warning">Em Aberto</span>';
-        
-        const acoes = l.status === 'aberto' 
-            ? `
-                <button class="btn btn-sm btn-warning" onclick="editarLancamento('${l.id}')" title="Editar lançamento">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-success" onclick="finalizarLancamento('${l.id}')" title="Finalizar lançamento">
-                    <i class="fas fa-check"></i>
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="excluirLancamento('${l.id}')" title="Excluir lançamento">
-                    <i class="fas fa-trash"></i>
-                </button>
-            `
-            : `
-                <button class="btn btn-sm btn-info" onclick="visualizarLancamento('${l.id}')" title="Visualizar lançamento (somente leitura)">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-primary" onclick="gerarRecibo('${l.id}')" title="Gerar recibo de pagamento">
-                    <i class="fas fa-file-alt"></i>
-                </button>
-                <button class="btn btn-sm btn-secondary" onclick="reabrirLancamento('${l.id}')" title="Reabrir para edição">
-                    <i class="fas fa-undo"></i>
-                </button>
-            `;
-        
+        const acoes = l.status === 'aberto'
+            ? botaoAcao(`editarLancamento('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento') +
+              botaoAcao(`finalizarLancamento('${l.id}')`, 'finalize', 'fa-check', 'Finalizar lançamento') +
+              botaoAcao(`excluirLancamento('${l.id}')`, 'delete', 'fa-trash', 'Excluir lançamento')
+            : botaoAcao(`visualizarLancamento('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)') +
+              botaoAcao(`gerarRecibo('${l.id}')`, 'recibo', 'fa-file-lines', 'Gerar recibo de pagamento') +
+              botaoAcao(`reabrirLancamento('${l.id}')`, 'reabrir', 'fa-rotate-left', 'Reabrir para edição');
+
         return `
-        <tr>
-            <td>${c ? c.nome : 'Desconhecido'}</td>
-            <td>${formatarMesAno(l.mes)}</td>
-            <td>${formatarMoeda(l.liquidoTotal || 0)}</td>
-            <td>${statusBadge}</td>
-            <td class="text-center">${acoes}</td>
-        </tr>
-    `}).join('');
+        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}</td>
+            <td class="px-4 py-3 text-slate-600">${formatarMesAno(l.mes)}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(l.liquidoTotal || 0)}</td>
+            <td class="px-4 py-3">${badgeStatus(l.status)}</td>
+            <td class="px-4 py-3"><div class="flex items-center justify-center gap-1">${acoes}</div></td>
+        </tr>`;
+    }).join('');
 }
 
 function editarLancamento(id) {
@@ -703,19 +1134,44 @@ function editarLancamento(id) {
     document.getElementById('lancColaborador').value = l.colaboradorId;
     document.getElementById('lancMes').value = l.mes;
     document.getElementById('lancFerias').value = l.ferias;
-    document.getElementById('lancRemuneracao').value = l.remuneracao || l.salario || 0;
-    document.getElementById('lancBonificacao').value = l.bonificacao || l.premio || 0;
-    document.getElementById('lancTotalRecebido').value = l.totalRecebido || 0;
-    document.getElementById('lancAdiantamentoEspecie').value = l.adiantamentoEspecie || 0;
-    document.getElementById('lancAdiantamentoContab').value = l.adiantamentoContab || 0;
-    document.getElementById('lancHorasExtras').value = l.horasExtras || 0;
-    document.getElementById('lancValeTransporte').value = l.valeTransporte || 0;
-    document.getElementById('lancEmprestimo').value = l.emprestimo || 0;
-    document.getElementById('lancOutros').value = l.outros || 0;
-    document.getElementById('lancLiquidoTotal').value = l.liquidoTotal || 0;
-    document.getElementById('lancPagamentoContab').value = l.pagamentoContab || 0;
-    document.getElementById('lancPagamentoEspecie').value = l.pagamentoEspecie || 0;
-    
+    document.getElementById('lancFormaPagamento').value = l.formaPagamento || 'Depósito';
+
+    // Bloco de diária conforme o tipo do colaborador do lançamento
+    const colabDoLanc = colaboradores.find(c => c.id === l.colaboradorId);
+    const ehDiaristaEdit = colabDoLanc && colabDoLanc.contratacao === 'Diarista';
+    const divDiariaEdit = document.getElementById('divDiaria');
+    if (divDiariaEdit) divDiariaEdit.style.display = ehDiaristaEdit ? 'block' : 'none';
+    if (ehDiaristaEdit) setMoeda(document.getElementById('lancValorDiaria'), colabDoLanc.valorDiaria || 0);
+    document.getElementById('lancDiasTrabalhados').value = l.diasTrabalhados || 0;
+
+    setMoeda(document.getElementById('lancRemuneracao'), l.remuneracao || 0);
+    setMoeda(document.getElementById('lancBonificacao'), l.bonificacao || 0);
+    setMoeda(document.getElementById('lancTotalRecebido'), l.totalRecebido || 0);
+    setMoeda(document.getElementById('lancAdiantamentoEspecie'), l.adiantamentoEspecie || 0);
+    setMoeda(document.getElementById('lancAdiantamentoContab'), l.adiantamentoContab || 0);
+    setMoeda(document.getElementById('lancHorasExtras'), l.horasExtras || 0);
+    setMoeda(document.getElementById('lancValeTransporte'), l.valeTransporte || 0);
+    setMoeda(document.getElementById('lancEmprestimo'), l.emprestimo || 0);
+    setMoeda(document.getElementById('lancOutros'), l.outros || 0);
+    setMoeda(document.getElementById('lancLiquidoTotal'), l.liquidoTotal || 0);
+    setMoeda(document.getElementById('lancPagamentoContab'), l.pagamentoContab || 0);
+    setMoeda(document.getElementById('lancPagamentoEspecie'), l.pagamentoEspecie || 0);
+
+    // Reconstrói o detalhamento de empréstimos a partir do que foi salvo
+    const loansDoColab = (colabDoLanc && colabDoLanc.emprestimos) || [];
+    const rowsEdit = (l.emprestimosPagos || []).map(p => {
+        const emp = loansDoColab.find(e => String(e.id) === String(p.id));
+        return {
+            id: p.id,
+            descricao: emp ? emp.descricao : 'Empréstimo',
+            parcela: emp ? (emp.valor / emp.parcelas) : (parseFloat(p.valor) || 0),
+            restante: null,
+            pago: parseFloat(p.valor) || 0
+        };
+    });
+    renderizarEmprestimosLanc(rowsEdit, false);
+    if (rowsEdit.length === 0) setMoeda(document.getElementById('lancEmprestimo'), l.emprestimo || 0);
+
     if (l.ferias === 'Férias') {
         document.getElementById('divDadosLancamento').style.display = 'none';
         document.getElementById('divMensagemFerias').style.display = 'block';
@@ -723,140 +1179,89 @@ function editarLancamento(id) {
         document.getElementById('divDadosLancamento').style.display = 'block';
         document.getElementById('divMensagemFerias').style.display = 'none';
     }
-    
-    calcularTotalRecebido();
-    calcularLiquidoTotal();
+
     document.getElementById('formLancTitle').textContent = 'Editar Lançamento';
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function visualizarLancamento(id) {
     const l = lancamentos.find(lanc => lanc.id === id);
     if (!l) return;
 
-    // Preenche os campos
-    document.getElementById('lancEditId').value = l.id;
-    document.getElementById('lancColaborador').value = l.colaboradorId;
-    document.getElementById('lancMes').value = l.mes;
-    document.getElementById('lancFerias').value = l.ferias;
-    document.getElementById('lancRemuneracao').value = l.remuneracao || l.salario || 0;
-    document.getElementById('lancBonificacao').value = l.bonificacao || l.premio || 0;
-    document.getElementById('lancTotalRecebido').value = l.totalRecebido || 0;
-    document.getElementById('lancAdiantamentoEspecie').value = l.adiantamentoEspecie || 0;
-    document.getElementById('lancAdiantamentoContab').value = l.adiantamentoContab || 0;
-    document.getElementById('lancHorasExtras').value = l.horasExtras || 0;
-    document.getElementById('lancValeTransporte').value = l.valeTransporte || 0;
-    document.getElementById('lancEmprestimo').value = l.emprestimo || 0;
-    document.getElementById('lancOutros').value = l.outros || 0;
-    document.getElementById('lancLiquidoTotal').value = l.liquidoTotal || 0;
-    document.getElementById('lancPagamentoContab').value = l.pagamentoContab || 0;
-    document.getElementById('lancPagamentoEspecie').value = l.pagamentoEspecie || 0;
-    
-    // Desabilita todos os campos para apenas visualização
-    document.getElementById('lancColaborador').disabled = true;
-    document.getElementById('lancMes').disabled = true;
-    document.getElementById('lancFerias').disabled = true;
-    document.getElementById('lancRemuneracao').disabled = true;
-    document.getElementById('lancBonificacao').disabled = true;
-    document.getElementById('lancAdiantamentoEspecie').disabled = true;
-    document.getElementById('lancAdiantamentoContab').disabled = true;
-    document.getElementById('lancHorasExtras').disabled = true;
-    document.getElementById('lancValeTransporte').disabled = true;
-    document.getElementById('lancEmprestimo').disabled = true;
-    document.getElementById('lancOutros').disabled = true;
-    document.getElementById('lancPagamentoContab').disabled = true;
-    document.getElementById('lancPagamentoEspecie').disabled = true;
-    
-    // Esconde botão salvar e muda texto do cancelar
+    editarLancamento(id);
+
+    ['lancColaborador','lancMes','lancFerias','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
+     'lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
+     'lancEmprestimo','lancOutros','lancPagamentoContab','lancPagamentoEspecie'].forEach(idc => {
+        const el = document.getElementById(idc);
+        if (el) el.disabled = true;
+    });
+    document.querySelectorAll('#emprestimosDetalheLista .emp-pago').forEach(i => i.disabled = true);
+
     const btnSalvar = document.querySelector('#formLancamento button[type="submit"]');
     if (btnSalvar) btnSalvar.style.display = 'none';
-    
+
     const btnCancelar = document.getElementById('btnCancelarLanc');
-    if (btnCancelar) btnCancelar.textContent = 'Fechar';
-    
-    if (l.ferias === 'Férias') {
-        document.getElementById('divDadosLancamento').style.display = 'none';
-        document.getElementById('divMensagemFerias').style.display = 'block';
-    } else {
-        document.getElementById('divDadosLancamento').style.display = 'block';
-        document.getElementById('divMensagemFerias').style.display = 'none';
-    }
-    
+    if (btnCancelar) btnCancelar.innerHTML = '<i class="fas fa-times"></i> Fechar';
+
     document.getElementById('formLancTitle').textContent = 'Visualizar Lançamento (Somente Leitura)';
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function editarLancamentoDash(id) {
-    // Redireciona para a página de lançamentos e edita
-    window.location.href = `lancamentos.html?editar=${id}`;
+    window.location.href = `/lancamentos?editar=${id}`;
 }
 
 function editarColaboradorDash(id) {
-    // Redireciona para a página de colaboradores e edita
-    window.location.href = `colaboradores.html?editar=${id}`;
+    window.location.href = `/colaboradores?editar=${id}`;
 }
 
 async function finalizarLancamento(id) {
-    if (!confirm('Finalizar lançamento?')) return;
-    
+    if (!await confirmar('Finalizar este lançamento?', { titulo: 'Finalizar lançamento' })) return;
     try {
-        const response = await fetch(`${API_URL}/lancamentos/${id}/finalizar`, {
-            method: 'PUT'
-        });
-
+        const response = await fetch(`${API_URL}/lancamentos/${id}/finalizar`, { method: 'PUT' });
         if (response.ok) {
-            alert('Lançamento finalizado!');
+            notificar('Lançamento finalizado!', 'success');
             await carregarDados();
         }
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro ao finalizar lançamento');
+        notificar('Erro ao finalizar lançamento', 'error');
     }
 }
 
 async function reabrirLancamento(id) {
-    if (!confirm('Reabrir lançamento?')) return;
-    
+    if (!await confirmar('Reabrir este lançamento para edição?', { titulo: 'Reabrir lançamento' })) return;
     try {
-        const response = await fetch(`${API_URL}/lancamentos/${id}/reabrir`, {
-            method: 'PUT'
-        });
-
+        const response = await fetch(`${API_URL}/lancamentos/${id}/reabrir`, { method: 'PUT' });
         if (response.ok) {
-            alert('Lançamento reaberto!');
+            notificar('Lançamento reaberto!', 'success');
             await carregarDados();
         }
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro ao reabrir lançamento');
+        notificar('Erro ao reabrir lançamento', 'error');
     }
 }
 
 async function excluirLancamento(id) {
-    if (!confirm('Excluir lançamento?')) return;
-    
+    if (!await confirmar('Excluir este lançamento? Esta ação não pode ser desfeita.', { titulo: 'Excluir lançamento', perigo: true, confirmar: 'Excluir' })) return;
     try {
-        const response = await fetch(`${API_URL}/lancamentos/${id}`, {
-            method: 'DELETE'
-        });
-
+        const response = await fetch(`${API_URL}/lancamentos/${id}`, { method: 'DELETE' });
         if (response.ok) {
-            alert('Lançamento excluído!');
+            notificar('Lançamento excluído!', 'success');
             await carregarDados();
         }
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro ao excluir lançamento');
+        notificar('Erro ao excluir lançamento', 'error');
     }
 }
 
 function atualizarSelectColaboradores() {
     const select = document.getElementById('lancColaborador');
     if (!select) return;
-    
-    const options = colaboradores.map(c => 
-        `<option value="${c.id}">${c.nome}</option>`
-    ).join('');
+    const options = colaboradores.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
     select.innerHTML = '<option value="">Selecione</option>' + options;
 }
 
@@ -868,12 +1273,11 @@ function gerarRecibo(id) {
 
     document.getElementById('reciboNome').textContent = c.nome;
     document.getElementById('reciboCPF').textContent = c.cpf;
-    document.getElementById('reciboValor').textContent = l.pagamentoEspecie.toFixed(2);
+    document.getElementById('reciboValor').textContent = numeroBR(l.liquidoTotal || 0);
     document.getElementById('reciboData').textContent = new Date().toLocaleDateString('pt-BR');
     document.getElementById('reciboMes').textContent = formatarMesAno(l.mes);
 
-    const modal = new bootstrap.Modal(document.getElementById('modalRecibo'));
-    modal.show();
+    abrirModal('modalRecibo');
 }
 
 function imprimirRecibo() {
@@ -900,7 +1304,7 @@ function imprimirRecibo() {
                     window.print();
                     window.onafterprint = function() { window.close(); }
                 }
-            </script>
+            <\/script>
         </body>
         </html>
     `);
@@ -910,182 +1314,283 @@ function imprimirRecibo() {
 // ==================== DASHBOARD ====================
 
 function renderizarDashboard() {
-    // Configurar mês atual como padrão
-    const mesAtual = new Date().toISOString().substring(0, 7);
-    const filtroMesInput = document.getElementById('filtroMes');
-    if (!filtroMesInput.value) {
-        filtroMesInput.value = mesAtual;
-    }
-    
-    atualizarSelectFiltros();
     aplicarFiltrosDashboard();
 }
 
-function atualizarSelectFiltros() {
-    const select = document.getElementById('filtroColaborador');
-    if (!select) return;
-    const options = colaboradores.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
-    select.innerHTML = '<option value="">Todos</option>' + options;
+// Competência selecionada: 'todos' ou 'YYYY-MM'
+function getCompetencia() {
+    const tipo = document.getElementById('filtroCompetencia').value;
+    if (tipo !== 'mes') return 'todos';
+    return document.getElementById('filtroMes').value || 'todos';
+}
+
+// Recorte único que alimenta indicadores, gráficos e tabelas
+function fatiaDashboard() {
+    const contrato = document.getElementById('filtroContrato').value;
+    const empresa = document.getElementById('filtroEmpresa').value;
+    const comp = getCompetencia();
+
+    const colabs = colaboradores.filter(c =>
+        (!contrato || c.contratacao === contrato) &&
+        (!empresa || c.empresa === empresa));
+
+    const ids = new Set(colabs.map(c => c.id));
+    const lancsTodosMeses = lancamentos.filter(l => ids.has(l.colaboradorId));
+    const lancs = comp === 'todos' ? lancsTodosMeses : lancsTodosMeses.filter(l => l.mes === comp);
+
+    return { colabs, lancs, lancsTodosMeses, comp };
 }
 
 function aplicarFiltrosDashboard() {
+    // O seletor de mês só aparece quando a competência é específica
+    const competenciaEspecifica = document.getElementById('filtroCompetencia').value === 'mes';
+    document.getElementById('divFiltroMes').style.display = competenciaEspecifica ? 'block' : 'none';
+    if (competenciaEspecifica && !document.getElementById('filtroMes').value) {
+        document.getElementById('filtroMes').value = new Date().toISOString().substring(0, 7);
+    }
+
+    const fatia = fatiaDashboard();
+    atualizarCardsDashboard(fatia);
+    renderizarGraficos(fatia);
+
     const tipo = document.getElementById('filtroTipo').value;
-    const mes = document.getElementById('filtroMes').value;
-    const colabId = document.getElementById('filtroColaborador').value;
-    
-    // Mostrar/esconder filtro de colaborador
-    const divFiltroColab = document.getElementById('divFiltroColaborador');
-    if (tipo === 'lancamentos') {
-        divFiltroColab.style.display = 'block';
-    } else {
-        divFiltroColab.style.display = 'none';
-    }
-    
-    // Mostrar/esconder tabelas
-    const tabelaColabContainer = document.getElementById('tabelaColaboradoresContainer');
-    const tabelaLancContainer = document.getElementById('tabelaLancamentosContainer');
-    
-    if (tipo === 'colaboradores') {
-        tabelaColabContainer.style.display = 'block';
-        tabelaLancContainer.style.display = 'none';
-        renderizarColaboradoresDash();
-    } else {
-        tabelaColabContainer.style.display = 'none';
-        tabelaLancContainer.style.display = 'block';
-        renderizarLancamentosDash(mes, colabId);
-    }
-    
-    // Atualizar cards
-    atualizarCardsDashboard(tipo, mes, colabId);
-}
+    const contColab = document.getElementById('tabelaColaboradoresContainer');
+    const contLanc = document.getElementById('tabelaLancamentosContainer');
 
-function atualizarCardsDashboard(tipo, mes, colabId) {
-    // Filtrar lançamentos pelo mês se estiver selecionado
-    let lancamentosFiltrados = [...lancamentos];
-    
-    if (mes) {
-        lancamentosFiltrados = lancamentosFiltrados.filter(l => l.mes === mes);
-    }
-    
-    if (colabId) {
-        lancamentosFiltrados = lancamentosFiltrados.filter(l => l.colaboradorId === colabId);
-    }
-    
     if (tipo === 'colaboradores') {
-        // Modo Colaboradores
-        document.getElementById('iconStat1').className = 'stat-icon fas fa-users text-primary';
-        document.getElementById('labelStat1').textContent = 'Colaboradores';
-        document.getElementById('valueStat1').textContent = colaboradores.length;
-        
-        document.getElementById('iconStat2').className = 'stat-icon fas fa-list text-info';
-        document.getElementById('labelStat2').textContent = 'Lançamentos';
-        document.getElementById('valueStat2').textContent = lancamentosFiltrados.length;
-        
+        contColab.style.display = 'block';
+        contLanc.style.display = 'none';
+        renderizarColaboradoresDash(fatia.colabs);
         document.getElementById('tipoResultado').textContent = 'Colaboradores';
-        document.getElementById('countResultados').textContent = colaboradores.length;
-        
+        document.getElementById('countResultados').textContent = fatia.colabs.length;
     } else {
-        // Modo Lançamentos
-        document.getElementById('iconStat1').className = 'stat-icon fas fa-users text-primary';
-        document.getElementById('labelStat1').textContent = 'Colaboradores';
-        document.getElementById('valueStat1').textContent = colaboradores.length;
-        
-        document.getElementById('iconStat2').className = 'stat-icon fas fa-list text-info';
-        document.getElementById('labelStat2').textContent = 'Lançamentos';
-        document.getElementById('valueStat2').textContent = lancamentosFiltrados.length;
-        
+        contColab.style.display = 'none';
+        contLanc.style.display = 'block';
+        renderizarLancamentosDash(fatia.lancs);
         document.getElementById('tipoResultado').textContent = 'Lançamentos';
-        document.getElementById('countResultados').textContent = lancamentosFiltrados.length;
+        document.getElementById('countResultados').textContent = fatia.lancs.length;
     }
-    
-    // Cards de valores (sempre com base nos lançamentos já filtrados)
-    const totalAdiantamento = lancamentosFiltrados.reduce((sum, l) => {
-        const adiantamentoEspecie = l.adiantamentoEspecie || 0;
-        const adiantamentoContab = l.adiantamentoContab || 0;
-        return sum + adiantamentoEspecie + adiantamentoContab;
-    }, 0);
-    
-    // Líquido Espécie = Pagamento Espécie - Adiantamentos
-    const totalPagamentoEspecie = lancamentosFiltrados.reduce((sum, l) => sum + (l.pagamentoEspecie || 0), 0);
-    const totalLiquidoEspecie = totalPagamentoEspecie - totalAdiantamento;
-    
-    const totalGeral = totalAdiantamento + totalPagamentoEspecie;
-    
-    document.getElementById('valueStat3').textContent = formatarMoeda(totalAdiantamento);
-    document.getElementById('valueStat4').textContent = formatarMoeda(totalLiquidoEspecie);
-    document.getElementById('valueStat5').textContent = formatarMoeda(totalGeral);
 }
 
-function renderizarColaboradoresDash() {
+function atualizarCardsDashboard(fatia) {
+    const { colabs, lancs } = fatia;
+    const soma = fn => lancs.reduce((s, l) => s + (fn(l) || 0), 0);
+
+    document.getElementById('valueStat1').textContent = colabs.length;
+    document.getElementById('valueStat2').textContent = formatarMoeda(soma(l => l.liquidoTotal));
+    document.getElementById('valueStat3').textContent =
+        formatarMoeda(soma(l => (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0)));
+    document.getElementById('valueStat4').textContent = formatarMoeda(soma(l => l.emprestimo));
+}
+
+// ==================== GRÁFICOS ====================
+// Todos os gráficos são de SÉRIE ÚNICA, numa só cor (#4f46e5 — validada: dentro da
+// banda de luminosidade, acima do piso de croma e com contraste >= 3:1 no branco).
+// O cinza é reservado para de-ênfase (padrão "emphasis"), nunca como categoria.
+
+const VIZ = { dados: '#4f46e5', neutro: '#94a3b8', grade: '#e2e8f0', eixo: '#64748b' };
+const graficos = {};
+
+function moedaEixo(v) {
+    if (Math.abs(v) >= 1000) return 'R$ ' + (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil';
+    return 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+}
+
+function alternarVazio(canvasId, vazio) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const msg = canvas.parentNode.querySelector('.chart-vazio');
+    canvas.style.visibility = vazio ? 'hidden' : 'visible';
+    if (msg) {
+        msg.classList.toggle('hidden', !vazio);
+        msg.classList.toggle('flex', vazio);
+    }
+}
+
+function graficoBarras(canvasId, labels, valores, opcoes = {}) {
+    const { horizontal = false, moeda = true, cores = null } = opcoes;
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    alternarVazio(canvasId, valores.length === 0 || valores.every(v => !v));
+    if (graficos[canvasId]) graficos[canvasId].destroy();
+
+    const eixoValor = horizontal ? 'x' : 'y';
+    graficos[canvasId] = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: cores || VIZ.dados,
+                borderRadius: 4,
+                borderSkipped: false,
+                maxBarThickness: 34
+            }]
+        },
+        options: {
+            indexAxis: horizontal ? 'y' : 'x',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 300 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    padding: 10,
+                    cornerRadius: 8,
+                    displayColors: false,
+                    callbacks: {
+                        label: ctx => moeda ? formatarMoeda(ctx.parsed[eixoValor]) : String(ctx.parsed[eixoValor])
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: horizontal,
+                    border: { display: false },
+                    grid: { display: horizontal, color: VIZ.grade },
+                    ticks: {
+                        color: VIZ.eixo, font: { size: 11 }, autoSkip: true,
+                        maxRotation: 0, minRotation: 0,
+                        maxTicksLimit: horizontal ? 5 : 12,
+                        // contagens não têm casas decimais
+                        precision: (horizontal && !moeda) ? 0 : undefined,
+                        stepSize: (horizontal && !moeda) ? 1 : undefined,
+                        callback: function (value) {
+                            if (horizontal) return moeda ? moedaEixo(value) : value;
+                            const l = this.getLabelForValue(value);
+                            return String(l).length > 14 ? String(l).slice(0, 13) + '…' : l;
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    border: { display: false },
+                    grid: { display: !horizontal, color: VIZ.grade },
+                    ticks: {
+                        color: VIZ.eixo, font: { size: 11 },
+                        maxTicksLimit: horizontal ? 12 : 6,
+                        // contagens não têm casas decimais
+                        precision: (!horizontal && !moeda) ? 0 : undefined,
+                        stepSize: (!horizontal && !moeda) ? 1 : undefined,
+                        callback: function (value) {
+                            if (!horizontal) return moeda ? moedaEixo(value) : value;
+                            const l = this.getLabelForValue(value);
+                            return String(l).length > 18 ? String(l).slice(0, 17) + '…' : l;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderizarGraficos(fatia) {
+    if (typeof Chart === 'undefined') return;
+    const { colabs, lancs, lancsTodosMeses, comp } = fatia;
+
+    const doColab = id => colaboradores.find(c => c.id === id) || {};
+    const agrupar = (arr, chave, valor) => {
+        const m = {};
+        arr.forEach(x => { const k = chave(x); m[k] = (m[k] || 0) + (valor(x) || 0); });
+        return m;
+    };
+
+    // 1. Líquido pago por empresa (CNPJ)
+    const porEmpresa = agrupar(lancs, l => doColab(l.colaboradorId).empresa || 'Não informado', l => l.liquidoTotal);
+    graficoBarras('chartEmpresa', Object.keys(porEmpresa), Object.values(porEmpresa), { horizontal: true });
+
+    // 2. Evolução mensal — sempre todos os meses; o mês filtrado fica destacado
+    const porMes = agrupar(lancsTodosMeses, l => l.mes, l => l.liquidoTotal);
+    const meses = Object.keys(porMes).sort();
+    const coresMes = comp === 'todos'
+        ? VIZ.dados
+        : meses.map(m => (m === comp ? VIZ.dados : VIZ.neutro));
+    graficoBarras('chartEvolucao', meses.map(formatarMesAno), meses.map(m => porMes[m]), { cores: coresMes });
+
+    // 3. Líquido pago por tipo de contrato
+    const porContrato = agrupar(lancs, l => doColab(l.colaboradorId).contratacao || 'Não informado', l => l.liquidoTotal);
+    graficoBarras('chartContrato', Object.keys(porContrato), Object.values(porContrato), {});
+
+    // 4. Colaboradores por tipo de contrato (quantidade)
+    const headcount = {};
+    colabs.forEach(c => { const k = c.contratacao || 'Não informado'; headcount[k] = (headcount[k] || 0) + 1; });
+    graficoBarras('chartHeadcount', Object.keys(headcount), Object.values(headcount), { moeda: false });
+
+    // 5. Composição dos descontos
+    const descontos = {
+        'Adiantamentos': lancs.reduce((s, l) => s + (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0), 0),
+        'Empréstimos': lancs.reduce((s, l) => s + (l.emprestimo || 0), 0),
+        'Vale Transporte': lancs.reduce((s, l) => s + (l.valeTransporte || 0), 0),
+        'Outros': lancs.reduce((s, l) => s + (l.outros || 0), 0)
+    };
+    graficoBarras('chartDescontos', Object.keys(descontos), Object.values(descontos), { horizontal: true });
+
+    // 6. Quantidade de férias por mês (mesma leitura da evolução: todos os meses,
+    //    com o mês filtrado destacado)
+    const feriasPorMes = {};
+    lancsTodosMeses.forEach(l => {
+        if (l.ferias === 'Férias') feriasPorMes[l.mes] = (feriasPorMes[l.mes] || 0) + 1;
+    });
+    graficoBarras('chartFerias', meses.map(formatarMesAno), meses.map(m => feriasPorMes[m] || 0),
+        { moeda: false, cores: coresMes });
+}
+
+function renderizarColaboradoresDash(lista) {
     const tbody = document.getElementById('tabelaColaboradoresDash');
     if (!tbody) return;
-    
-    tbody.innerHTML = colaboradores.map(c => {
-        const badgeColor = c.contratacao === 'CLT' ? 'primary' : 
-                          c.contratacao === 'Mensalista' ? 'success' : 'info';
-        return `
-        <tr>
-            <td>${c.nome}</td>
-            <td>${c.cpf}</td>
-            <td>${c.funcao || '-'}</td>
-            <td><span class="badge bg-${badgeColor}">${c.contratacao}</span></td>
-            <td>${formatarMoeda(c.total || c.remuneracao || 0)}</td>
-            <td class="text-center">
-                <button class="btn btn-sm btn-primary" onclick="editarColaboradorDash('${c.id}')" title="Editar colaborador">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </td>
+
+    if (!lista || lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400">Nenhum colaborador para os filtros</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = lista.map(c => `
+        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium text-slate-800">${c.nome}</td>
+            <td class="px-4 py-3 text-slate-600">${c.cpf}</td>
+            <td class="px-4 py-3 text-slate-600">${c.empresa || '-'}</td>
+            <td class="px-4 py-3">${badgeContratacao(c.contratacao)}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(c.total || c.remuneracao || 0)}</td>
+            <td class="px-4 py-3"><div class="flex justify-center">${botaoAcao(`editarColaboradorDash('${c.id}')`, 'view', 'fa-eye', 'Ver / editar colaborador')}</div></td>
         </tr>
-    `}).join('');
+    `).join('');
 }
 
-function renderizarLancamentosDash(mes, colabId) {
+function renderizarLancamentosDash(lista) {
     const tbody = document.getElementById('tabelaLancamentosDash');
     if (!tbody) return;
-    
-    let lancamentosFiltrados = [...lancamentos];
-    
-    if (mes) {
-        lancamentosFiltrados = lancamentosFiltrados.filter(l => l.mes === mes);
+
+    if (!lista || lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400">Nenhum lançamento para os filtros</td></tr>`;
+        return;
     }
-    
-    if (colabId) {
-        lancamentosFiltrados = lancamentosFiltrados.filter(l => l.colaboradorId === colabId);
-    }
-    
-    tbody.innerHTML = lancamentosFiltrados.map(l => {
+
+    tbody.innerHTML = lista.map(l => {
         const c = colaboradores.find(co => co.id === l.colaboradorId);
-        const badge = l.status === 'finalizado' 
-            ? '<span class="badge bg-success">Finalizado</span>'
-            : '<span class="badge bg-warning text-dark">Em Aberto</span>';
-        
-        // Botão de visualizar - se finalizado só visualiza, se aberto pode editar
         const btnAcao = l.status === 'finalizado'
-            ? `<button class="btn btn-sm btn-info" onclick="visualizarLancamento('${l.id}')" title="Visualizar lançamento (somente leitura)">
-                <i class="fas fa-eye"></i>
-               </button>`
-            : `<button class="btn btn-sm btn-primary" onclick="editarLancamentoDash('${l.id}')" title="Editar lançamento">
-                <i class="fas fa-eye"></i>
-               </button>`;
-        
+            ? botaoAcao(`visualizarLancamento('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)')
+            : botaoAcao(`editarLancamentoDash('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento');
+
         return `
-            <tr>
-                <td>${c ? c.nome : 'Desconhecido'}</td>
-                <td>${formatarMesAno(l.mes)}</td>
-                <td>${formatarMoeda(l.totalRecebido || 0)}</td>
-                <td>${formatarMoeda(l.adiantamento || 0)}</td>
-                <td>${formatarMoeda(l.pagamentoEspecie || 0)}</td>
-                <td>${badge}</td>
-                <td class="text-center">${btnAcao}</td>
-            </tr>
-        `;
+            <tr class="border-b border-slate-100 transition hover:bg-slate-50">
+                <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}</td>
+                <td class="px-4 py-3 text-slate-600">${formatarMesAno(l.mes)}</td>
+                <td class="px-4 py-3 text-slate-600">${formatarMoeda(l.totalRecebido || 0)}</td>
+                <td class="px-4 py-3 text-slate-600">${formatarMoeda((l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0))}</td>
+                <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(l.liquidoTotal || 0)}</td>
+                <td class="px-4 py-3">${badgeStatus(l.status)}</td>
+                <td class="px-4 py-3"><div class="flex justify-center">${btnAcao}</div></td>
+            </tr>`;
     }).join('');
 }
 
 function limparFiltros() {
+    document.getElementById('filtroCompetencia').value = 'todos';
+    document.getElementById('filtroContrato').value = '';
+    document.getElementById('filtroEmpresa').value = '';
     document.getElementById('filtroTipo').value = 'colaboradores';
-    document.getElementById('filtroMes').value = new Date().toISOString().substring(0, 7);
-    document.getElementById('filtroColaborador').value = '';
     aplicarFiltrosDashboard();
 }
 
@@ -1093,24 +1598,18 @@ function limparFiltros() {
 
 function exportarCSV() {
     const mesFiltro = document.getElementById('filtroMesCSV').value;
-    
     if (!mesFiltro) {
-        alert('Por favor, selecione um mês para exportar!');
+        notificar('Selecione um mês para exportar.', 'info');
         return;
     }
-    
-    // Filtrar lançamentos do mês
+
     const lancamentosMes = lancamentos.filter(l => l.mes === mesFiltro);
-    
     if (lancamentosMes.length === 0) {
-        alert('Não há lançamentos para o mês selecionado!');
+        notificar('Não há lançamentos para o mês selecionado.', 'info');
         return;
     }
-    
-    // Cabeçalho do CSV com ponto e vírgula
+
     let csv = 'Nome;Adiantamento Contabilidade;Adiantamento Espécie;Pagamento Contabilidade;Pagamento Espécie\n';
-    
-    // Adicionar dados
     lancamentosMes.forEach(l => {
         const colaborador = colaboradores.find(c => c.id === l.colaboradorId);
         const nome = colaborador ? colaborador.nome : 'Desconhecido';
@@ -1118,32 +1617,28 @@ function exportarCSV() {
         const adiantamentoEspecie = (l.adiantamentoEspecie || 0).toFixed(2).replace('.', ',');
         const pagamentoContab = (l.pagamentoContab || 0).toFixed(2).replace('.', ',');
         const pagamentoEspecie = (l.pagamentoEspecie || 0).toFixed(2).replace('.', ',');
-        
         csv += `${nome};${adiantamentoContab};${adiantamentoEspecie};${pagamentoContab};${pagamentoEspecie}\n`;
     });
-    
-    // Adicionar BOM UTF-8 para Excel reconhecer caracteres especiais
-    const BOM = '\uFEFF';
+
+    const BOM = '﻿';
     const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    
     const mesFormatado = formatarMesAno(mesFiltro).replace('/', '-');
     link.setAttribute('href', url);
     link.setAttribute('download', `lancamentos_${mesFormatado}.csv`);
     link.style.visibility = 'hidden';
-    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    alert(`CSV exportado com sucesso!\n${lancamentosMes.length} lançamento(s) do mês ${formatarMesAno(mesFiltro)}`);
+
+    notificar(`CSV exportado! ${lancamentosMes.length} lançamento(s) de ${formatarMesAno(mesFiltro)}.`, 'success');
 }
 
 // ==================== UTILITÁRIOS ====================
 
 function formatarMoeda(valor) {
-    return 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
+    return (parseFloat(valor) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function formatarMesAno(mesAno) {
