@@ -1572,6 +1572,9 @@ function gerarReciboAutonomo(id) {
 // ==================== DASHBOARD ====================
 
 function renderizarDashboard() {
+    // Por padrão, a Visão Geral abre já filtrada no mês corrente.
+    document.getElementById('filtroCompetencia').value = 'mes';
+    document.getElementById('filtroMes').value = new Date().toISOString().substring(0, 7);
     aplicarFiltrosDashboard();
 }
 
@@ -1658,15 +1661,21 @@ function aplicarFiltrosDashboard() {
     }
 }
 
+// Define o texto de um card e o title (tooltip), para valores que possam truncar
+function definirValorCard(id, texto) {
+    const el = document.getElementById(id);
+    el.textContent = texto;
+    el.title = texto;
+}
+
 function atualizarCardsDashboard(fatia) {
     const { colabs, lancs } = fatia;
     const soma = fn => lancs.reduce((s, l) => s + (fn(l) || 0), 0);
 
     document.getElementById('valueStat1').textContent = colabs.length;
-    document.getElementById('valueStat2').textContent = formatarMoeda(soma(l => l.liquidoTotal));
-    document.getElementById('valueStat3').textContent =
-        formatarMoeda(soma(l => (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0)));
-    document.getElementById('valueStat4').textContent = formatarMoeda(soma(l => l.emprestimo));
+    definirValorCard('valueStat2', formatarMoeda(soma(l => l.liquidoTotal)));
+    definirValorCard('valueStat3', formatarMoeda(soma(l => (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0))));
+    definirValorCard('valueStat4', formatarMoeda(soma(l => l.emprestimo)));
     document.getElementById('valueStat5').textContent = achatarFaltas(lancs).length;
     document.getElementById('valueStat6').textContent = achatarAtestados(lancs).length;
 }
