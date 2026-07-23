@@ -541,6 +541,7 @@ function renderizar() {
         }
     } else if (pathname.includes('lancamentos')) {
         renderizarLancamentos();
+        configurarFiltroContratoLancamento();
         atualizarSelectColaboradores();
 
         const filtroMesCSV = document.getElementById('filtroMesCSV');
@@ -1356,11 +1357,49 @@ async function excluirLancamento(id) {
     }
 }
 
+// Tipos de contratação ativos no filtro do select de Colaborador (padrão: todos)
+let filtroContratoLancamento = new Set(['CLT', 'Diarista', 'Mensalista']);
+
+function configurarFiltroContratoLancamento() {
+    const container = document.getElementById('lancFiltroContratoChips');
+    if (!container) return;
+
+    container.querySelectorAll('.filtro-chip').forEach(chip => {
+        chip.classList.toggle('ativo', filtroContratoLancamento.has(chip.dataset.tipo));
+        chip.addEventListener('click', function () {
+            const tipo = this.dataset.tipo;
+            if (filtroContratoLancamento.has(tipo)) {
+                filtroContratoLancamento.delete(tipo);
+            } else {
+                filtroContratoLancamento.add(tipo);
+            }
+            this.classList.toggle('ativo', filtroContratoLancamento.has(tipo));
+
+            const select = document.getElementById('lancColaborador');
+            const selecionadoAntes = select.value;
+            atualizarSelectColaboradores();
+
+            // Se o colaborador selecionado saiu do filtro, limpa a seleção e os campos dependentes
+            const aindaDisponivel = Array.from(select.options).some(o => o.value === selecionadoAntes);
+            if (selecionadoAntes && !aindaDisponivel) {
+                select.value = '';
+                atualizarBadgeContratoLancamento();
+            } else {
+                select.value = selecionadoAntes;
+            }
+            refrescarControlesCustom(document.getElementById('formLancamento'));
+        });
+    });
+}
+
 function atualizarSelectColaboradores() {
     const select = document.getElementById('lancColaborador');
     if (!select) return;
-    const options = colaboradores.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+    const valorAtual = select.value;
+    const lista = colaboradores.filter(c => filtroContratoLancamento.has(c.contratacao));
+    const options = lista.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
     select.innerHTML = '<option value="">Selecione</option>' + options;
+    if (lista.some(c => c.id === valorAtual)) select.value = valorAtual;
 }
 
 function gerarRecibo(id) {

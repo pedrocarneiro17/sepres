@@ -54,6 +54,15 @@
                     <form id="formLancamento">
                         <input type="hidden" id="lancEditId">
 
+                        <div class="mb-4">
+                            <label class="label">Filtrar Colaborador por Contratação</label>
+                            <div class="flex flex-wrap gap-2" id="lancFiltroContratoChips">
+                                <button type="button" class="filtro-chip" data-tipo="CLT">CLT</button>
+                                <button type="button" class="filtro-chip" data-tipo="Diarista">Diarista</button>
+                                <button type="button" class="filtro-chip" data-tipo="Mensalista">Mensalista</button>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div>
                                 <label class="label">Colaborador *</label>
@@ -105,7 +114,7 @@
                             <!-- EVA: aparece apenas quando o colaborador é CLT -->
                             <div id="divEva" style="display: none;">
                                 <h6 class="section-title"><i class="fas fa-layer-group"></i> EVA (adicionais CLT)</h6>
-                                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
                                         <label class="label">Prêmio</label>
                                         <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50" id="lancEvaPremio" value="0,00" readonly></div>
@@ -113,10 +122,6 @@
                                     <div>
                                         <label class="label">Assiduidade</label>
                                         <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-eva pl-9" id="lancAssiduidade" value="0,00"></div>
-                                    </div>
-                                    <div>
-                                        <label class="label">Horas Extras</label>
-                                        <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-eva pl-9" id="lancHorasExtras" value="0,00"></div>
                                     </div>
                                 </div>
                                 <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -145,10 +150,14 @@
                             </div>
 
                             <h6 class="section-title"><i class="fas fa-credit-card"></i> Pagamento</h6>
-                            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
                                 <div>
                                     <label class="label">Forma de Pagamento</label>
                                     <select class="input" id="lancFormaPagamento"><option value="Depósito">Depósito</option><option value="Espécie">Espécie</option><option value="Depósito + Espécie">Depósito + Espécie</option></select>
+                                </div>
+                                <div>
+                                    <label class="label">Horas Extras</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancHorasExtras" value="0,00"></div>
                                 </div>
                                 <div>
                                     <label class="label">Vale Transporte</label>
