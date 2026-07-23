@@ -86,7 +86,7 @@
             </div>
 
             <!-- Indicadores -->
-            <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
                 <div class="card p-5">
                     <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                         <i id="iconStat1" class="fas fa-users text-indigo-500"></i><span id="labelStat1">Colaboradores</span>
@@ -110,6 +110,18 @@
                         <i class="fas fa-file-invoice-dollar text-indigo-500"></i><span>Empréstimos</span>
                     </div>
                     <p id="valueStat4" class="mt-2 text-2xl font-bold text-slate-900">R$ 0,00</p>
+                </div>
+                <div class="card p-5">
+                    <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                        <i class="fas fa-calendar-xmark text-rose-500"></i><span>Faltas</span>
+                    </div>
+                    <p id="valueStat5" class="mt-2 text-3xl font-bold text-slate-900">0</p>
+                </div>
+                <div class="card p-5">
+                    <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                        <i class="fas fa-file-medical text-sky-500"></i><span>Atestados</span>
+                    </div>
+                    <p id="valueStat6" class="mt-2 text-3xl font-bold text-slate-900">0</p>
                 </div>
             </div>
 
@@ -168,6 +180,24 @@
                         <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Nenhuma férias registrada</div>
                     </div>
                 </div>
+
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-slate-700">Faltas por mês</h3>
+                    <p class="mb-3 text-xs text-slate-400">Total de faltas registradas · o mês filtrado aparece destacado</p>
+                    <div class="relative h-64">
+                        <canvas id="chartFaltas"></canvas>
+                        <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Nenhuma falta registrada</div>
+                    </div>
+                </div>
+
+                <div class="card p-5">
+                    <h3 class="text-sm font-semibold text-slate-700">Atestados por mês</h3>
+                    <p class="mb-3 text-xs text-slate-400">Total de atestados registrados · o mês filtrado aparece destacado</p>
+                    <div class="relative h-64">
+                        <canvas id="chartAtestados"></canvas>
+                        <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Nenhum atestado registrado</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Tabelas (visão em tabela dos mesmos dados) -->
@@ -183,6 +213,8 @@
                         <select class="input" id="filtroTipo">
                             <option value="colaboradores">Colaboradores</option>
                             <option value="lancamentos">Lançamentos</option>
+                            <option value="faltas">Faltas</option>
+                            <option value="atestados">Atestados</option>
                         </select>
                     </div>
                 </div>
@@ -220,6 +252,39 @@
                                 </tr>
                             </thead>
                             <tbody id="tabelaLancamentosDash"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="tabelaFaltasContainer" style="display: none;">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                <tr>
+                                    <th class="px-4 py-3">Colaborador</th>
+                                    <th class="px-4 py-3">Mês</th>
+                                    <th class="px-4 py-3">Data</th>
+                                    <th class="px-4 py-3">Observação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaFaltasDash"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="tabelaAtestadosContainer" style="display: none;">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                <tr>
+                                    <th class="px-4 py-3">Colaborador</th>
+                                    <th class="px-4 py-3">Mês</th>
+                                    <th class="px-4 py-3">Data</th>
+                                    <th class="px-4 py-3">Dias</th>
+                                    <th class="px-4 py-3">Observação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaAtestadosDash"></tbody>
                         </table>
                     </div>
                 </div>

@@ -196,6 +196,24 @@
                                     <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-emerald-50 font-bold text-emerald-700 ring-emerald-200" id="lancLiquidoTotal" value="0,00" readonly></div>
                                 </div>
                             </div>
+
+                            <h6 class="section-title"><i class="fas fa-calendar-xmark"></i> Faltas e Atestados</h6>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <div class="mb-2 flex items-center justify-between">
+                                        <span class="text-sm font-medium text-slate-600">Faltas</span>
+                                        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" onclick="adicionarFalta()"><i class="fas fa-plus text-rose-500"></i> Adicionar Falta</button>
+                                    </div>
+                                    <div id="faltasContainer" class="space-y-2"></div>
+                                </div>
+                                <div>
+                                    <div class="mb-2 flex items-center justify-between">
+                                        <span class="text-sm font-medium text-slate-600">Atestados</span>
+                                        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" onclick="adicionarAtestado()"><i class="fas fa-plus text-sky-500"></i> Adicionar Atestado</button>
+                                    </div>
+                                    <div id="atestadosContainer" class="space-y-2"></div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Mensagem de Férias -->
@@ -297,6 +315,85 @@
                 divDados.style.display = 'block';
                 divMensagem.style.display = 'none';
             }
+        }
+
+        // ==================== FALTAS ====================
+        let contadorFaltas = 0;
+
+        function adicionarFalta(dados = null) {
+            contadorFaltas++;
+            const container = document.getElementById('faltasContainer');
+            const div = document.createElement('div');
+            div.className = 'falta-item relative rounded-xl border border-slate-200 bg-slate-50 p-3';
+            div.id = `falta-${contadorFaltas}`;
+            div.innerHTML = `
+                <button type="button" class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50" onclick="removerFalta(${contadorFaltas})"><i class="fas fa-times text-xs"></i></button>
+                <div class="grid grid-cols-1 gap-2 pr-8 md:grid-cols-2">
+                    <div>
+                        <label class="label text-xs">Data</label>
+                        <input type="date" class="input falta-data" value="${dados ? dados.data : ''}">
+                    </div>
+                    <div>
+                        <label class="label text-xs">Observação</label>
+                        <input type="text" class="input falta-obs" placeholder="Ex: sem justificativa" value="${dados ? (dados.obs || '') : ''}">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function removerFalta(id) {
+            const el = document.getElementById(`falta-${id}`);
+            if (el) el.remove();
+        }
+
+        function coletarFaltas() {
+            return Array.from(document.querySelectorAll('.falta-item')).map(item => ({
+                data: item.querySelector('.falta-data').value,
+                obs: item.querySelector('.falta-obs').value
+            })).filter(f => f.data);
+        }
+
+        // ==================== ATESTADOS ====================
+        let contadorAtestados = 0;
+
+        function adicionarAtestado(dados = null) {
+            contadorAtestados++;
+            const container = document.getElementById('atestadosContainer');
+            const div = document.createElement('div');
+            div.className = 'atestado-item relative rounded-xl border border-slate-200 bg-slate-50 p-3';
+            div.id = `atestado-${contadorAtestados}`;
+            div.innerHTML = `
+                <button type="button" class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50" onclick="removerAtestado(${contadorAtestados})"><i class="fas fa-times text-xs"></i></button>
+                <div class="grid grid-cols-1 gap-2 pr-8 md:grid-cols-3">
+                    <div>
+                        <label class="label text-xs">Data</label>
+                        <input type="date" class="input atestado-data" value="${dados ? dados.data : ''}">
+                    </div>
+                    <div>
+                        <label class="label text-xs">Qtd. Dias</label>
+                        <input type="number" min="1" class="input atestado-dias" value="${dados ? dados.dias : 1}">
+                    </div>
+                    <div>
+                        <label class="label text-xs">Observação</label>
+                        <input type="text" class="input atestado-obs" placeholder="Ex: consulta médica" value="${dados ? (dados.obs || '') : ''}">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function removerAtestado(id) {
+            const el = document.getElementById(`atestado-${id}`);
+            if (el) el.remove();
+        }
+
+        function coletarAtestados() {
+            return Array.from(document.querySelectorAll('.atestado-item')).map(item => ({
+                data: item.querySelector('.atestado-data').value,
+                dias: parseInt(item.querySelector('.atestado-dias').value) || 1,
+                obs: item.querySelector('.atestado-obs').value
+            })).filter(a => a.data);
         }
     </script>
 </body>

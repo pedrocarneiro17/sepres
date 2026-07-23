@@ -1031,6 +1031,8 @@ async function salvarLancamento(e) {
             pagamentoContab: 0, pagamentoEspecie: 0,
             formaPagamento: document.getElementById('lancFormaPagamento').value,
             emprestimosPagos: [],
+            faltas: [],
+            atestados: [],
             status: editId ? (lancamentos.find(l => l.id === editId)?.status || 'aberto') : 'aberto'
         };
     } else {
@@ -1056,6 +1058,8 @@ async function salvarLancamento(e) {
             pagamentoEspecie: lerMoeda(document.getElementById('lancPagamentoEspecie')),
             formaPagamento: document.getElementById('lancFormaPagamento').value,
             emprestimosPagos: coletarEmprestimosPagos(),
+            faltas: coletarFaltas(),
+            atestados: coletarAtestados(),
             status: editId ? (lancamentos.find(l => l.id === editId)?.status || 'aberto') : 'aberto'
         };
     }
@@ -1105,6 +1109,12 @@ function limparFormLancamento() {
     renderizarEmprestimosLanc([]);
     document.getElementById('divEva').style.display = 'none';
     document.getElementById('lancContratoBadge').innerHTML = '';
+
+    // Limpa Faltas e Atestados
+    document.getElementById('faltasContainer').innerHTML = '';
+    document.getElementById('atestadosContainer').innerHTML = '';
+    if (typeof contadorFaltas !== 'undefined') contadorFaltas = 0;
+    if (typeof contadorAtestados !== 'undefined') contadorAtestados = 0;
 
     // Reseta e esconde o bloco de diária
     document.getElementById('divDiaria').style.display = 'none';
@@ -1270,6 +1280,15 @@ function editarLancamento(id) {
     renderizarEmprestimosLanc(rowsEdit, false);
     if (rowsEdit.length === 0) setMoeda(document.getElementById('lancEmprestimo'), l.emprestimo || 0);
 
+    // Reconstrói as linhas de Faltas e Atestados salvas
+    document.getElementById('faltasContainer').innerHTML = '';
+    contadorFaltas = 0;
+    (l.faltas || []).forEach(f => adicionarFalta(f));
+
+    document.getElementById('atestadosContainer').innerHTML = '';
+    contadorAtestados = 0;
+    (l.atestados || []).forEach(a => adicionarAtestado(a));
+
     if (l.ferias === 'Férias') {
         document.getElementById('divDadosLancamento').style.display = 'none';
         document.getElementById('divMensagemFerias').style.display = 'block';
@@ -1296,6 +1315,8 @@ function visualizarLancamento(id) {
         if (el) el.disabled = true;
     });
     document.querySelectorAll('#emprestimosDetalheLista .emp-pago').forEach(i => i.disabled = true);
+    document.querySelectorAll('#faltasContainer input, #atestadosContainer input').forEach(i => i.disabled = true);
+    document.querySelectorAll('#faltasContainer button, #atestadosContainer button').forEach(b => b.disabled = true);
 
     const btnSalvar = document.querySelector('#formLancamento button[type="submit"]');
     if (btnSalvar) btnSalvar.style.display = 'none';
@@ -1478,6 +1499,24 @@ function fatiaDashboard() {
     return { colabs, lancs, lancsTodosMeses, comp };
 }
 
+// Achata as faltas/atestados de uma lista de lançamentos em registros individuais,
+// já com o colaborador e o mês do lançamento anexados (para tabelas e gráficos).
+function achatarFaltas(lancs) {
+    const registros = [];
+    lancs.forEach(l => {
+        (l.faltas || []).forEach(f => registros.push({ colaboradorId: l.colaboradorId, mes: l.mes, data: f.data, obs: f.obs }));
+    });
+    return registros;
+}
+
+function achatarAtestados(lancs) {
+    const registros = [];
+    lancs.forEach(l => {
+        (l.atestados || []).forEach(a => registros.push({ colaboradorId: l.colaboradorId, mes: l.mes, data: a.data, dias: a.dias, obs: a.obs }));
+    });
+    return registros;
+}
+
 function aplicarFiltrosDashboard() {
     // O seletor de mês só aparece quando a competência é específica
     const competenciaEspecifica = document.getElementById('filtroCompetencia').value === 'mes';
@@ -1491,21 +1530,31 @@ function aplicarFiltrosDashboard() {
     renderizarGraficos(fatia);
 
     const tipo = document.getElementById('filtroTipo').value;
-    const contColab = document.getElementById('tabelaColaboradoresContainer');
-    const contLanc = document.getElementById('tabelaLancamentosContainer');
+    const containers = {
+        colaboradores: document.getElementById('tabelaColaboradoresContainer'),
+        lancamentos: document.getElementById('tabelaLancamentosContainer'),
+        faltas: document.getElementById('tabelaFaltasContainer'),
+        atestados: document.getElementById('tabelaAtestadosContainer')
+    };
+    Object.entries(containers).forEach(([k, el]) => { el.style.display = (k === tipo) ? 'block' : 'none'; });
+
+    const rotulos = { colaboradores: 'Colaboradores', lancamentos: 'Lançamentos', faltas: 'Faltas', atestados: 'Atestados' };
+    document.getElementById('tipoResultado').textContent = rotulos[tipo] || tipo;
 
     if (tipo === 'colaboradores') {
-        contColab.style.display = 'block';
-        contLanc.style.display = 'none';
         renderizarColaboradoresDash(fatia.colabs);
-        document.getElementById('tipoResultado').textContent = 'Colaboradores';
         document.getElementById('countResultados').textContent = fatia.colabs.length;
-    } else {
-        contColab.style.display = 'none';
-        contLanc.style.display = 'block';
+    } else if (tipo === 'lancamentos') {
         renderizarLancamentosDash(fatia.lancs);
-        document.getElementById('tipoResultado').textContent = 'Lançamentos';
         document.getElementById('countResultados').textContent = fatia.lancs.length;
+    } else if (tipo === 'faltas') {
+        const registros = achatarFaltas(fatia.lancs);
+        renderizarFaltasDash(registros);
+        document.getElementById('countResultados').textContent = registros.length;
+    } else if (tipo === 'atestados') {
+        const registros = achatarAtestados(fatia.lancs);
+        renderizarAtestadosDash(registros);
+        document.getElementById('countResultados').textContent = registros.length;
     }
 }
 
@@ -1518,6 +1567,49 @@ function atualizarCardsDashboard(fatia) {
     document.getElementById('valueStat3').textContent =
         formatarMoeda(soma(l => (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0)));
     document.getElementById('valueStat4').textContent = formatarMoeda(soma(l => l.emprestimo));
+    document.getElementById('valueStat5').textContent = achatarFaltas(lancs).length;
+    document.getElementById('valueStat6').textContent = achatarAtestados(lancs).length;
+}
+
+function renderizarFaltasDash(registros) {
+    const tbody = document.getElementById('tabelaFaltasDash');
+    if (!tbody) return;
+    if (registros.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-slate-400">Nenhuma falta no período filtrado</td></tr>`;
+        return;
+    }
+    const ordenados = [...registros].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    tbody.innerHTML = ordenados.map(r => {
+        const c = colaboradores.find(co => co.id === r.colaboradorId);
+        return `
+        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}</td>
+            <td class="px-4 py-3 text-slate-600">${formatarMesAno(r.mes)}</td>
+            <td class="px-4 py-3 text-slate-600">${formatarData(r.data)}</td>
+            <td class="px-4 py-3 text-slate-600">${r.obs || '-'}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderizarAtestadosDash(registros) {
+    const tbody = document.getElementById('tabelaAtestadosDash');
+    if (!tbody) return;
+    if (registros.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400">Nenhum atestado no período filtrado</td></tr>`;
+        return;
+    }
+    const ordenados = [...registros].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    tbody.innerHTML = ordenados.map(r => {
+        const c = colaboradores.find(co => co.id === r.colaboradorId);
+        return `
+        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}</td>
+            <td class="px-4 py-3 text-slate-600">${formatarMesAno(r.mes)}</td>
+            <td class="px-4 py-3 text-slate-600">${formatarData(r.data)}</td>
+            <td class="px-4 py-3 text-slate-600">${r.dias || 1}</td>
+            <td class="px-4 py-3 text-slate-600">${r.obs || '-'}</td>
+        </tr>`;
+    }).join('');
 }
 
 // ==================== GRÁFICOS ====================
@@ -1672,6 +1764,18 @@ function renderizarGraficos(fatia) {
     });
     graficoBarras('chartFerias', meses.map(formatarMesAno), meses.map(m => feriasPorMes[m] || 0),
         { moeda: false, cores: coresMes });
+
+    // 7. Faltas por mês (mesmo padrão: todos os meses, mês filtrado destacado)
+    const faltasPorMes = {};
+    achatarFaltas(lancsTodosMeses).forEach(f => { faltasPorMes[f.mes] = (faltasPorMes[f.mes] || 0) + 1; });
+    graficoBarras('chartFaltas', meses.map(formatarMesAno), meses.map(m => faltasPorMes[m] || 0),
+        { moeda: false, cores: coresMes });
+
+    // 8. Atestados por mês (contagem de atestados, não soma de dias)
+    const atestadosPorMes = {};
+    achatarAtestados(lancsTodosMeses).forEach(a => { atestadosPorMes[a.mes] = (atestadosPorMes[a.mes] || 0) + 1; });
+    graficoBarras('chartAtestados', meses.map(formatarMesAno), meses.map(m => atestadosPorMes[m] || 0),
+        { moeda: false, cores: coresMes });
 }
 
 function renderizarColaboradoresDash(lista) {
@@ -1783,4 +1887,10 @@ function formatarMesAno(mesAno) {
     const [ano, mes] = mesAno.split('-');
     const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     return `${meses[parseInt(mes) - 1]}/${ano}`;
+}
+
+function formatarData(data) {
+    if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return '-';
+    const [ano, mes, dia] = data.split('-');
+    return `${dia}/${mes}/${ano}`;
 }

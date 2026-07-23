@@ -172,6 +172,8 @@ class Lancamento(db.Model):
     pagamentoEspecie = db.Column(db.Float)
     formaPagamento = db.Column(db.String(20)) # 'Depósito', 'Espécie' ou 'Depósito + Espécie'
     emprestimosPagos = db.Column(db.Text) # JSON: [{"id":..., "valor":...}] pagos no mês
+    faltas = db.Column(db.Text) # JSON: [{"data":"YYYY-MM-DD", "obs":...}]
+    atestados = db.Column(db.Text) # JSON: [{"data":"YYYY-MM-DD", "dias":N, "obs":...}]
     status = db.Column(db.String(20), default='aberto') # 'aberto' ou 'finalizado'
 
     def to_dict(self):
@@ -198,6 +200,8 @@ class Lancamento(db.Model):
             "pagamentoEspecie": self.pagamentoEspecie,
             "formaPagamento": self.formaPagamento,
             "emprestimosPagos": json.loads(self.emprestimosPagos) if self.emprestimosPagos else [],
+            "faltas": json.loads(self.faltas) if self.faltas else [],
+            "atestados": json.loads(self.atestados) if self.atestados else [],
             "status": self.status
         }
 
@@ -223,6 +227,10 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN assiduidade FLOAT'))
     if 'cartaoAlimentacao' not in colunas_lancamento:
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "cartaoAlimentacao" FLOAT'))
+    if 'faltas' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN faltas TEXT'))
+    if 'atestados' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN atestados TEXT'))
 
     colunas_colaborador = {col['name'] for col in inspector.get_columns('colaborador')}
     if 'empresa' not in colunas_colaborador:
@@ -478,10 +486,11 @@ def adicionar_lancamento():
             if not lancamento:
                 return jsonify({'erro': 'Lançamento não encontrado'}), 404
             
-            # Atualiza campos (emprestimosPagos é tratado à parte, pois é JSON)
+            # Atualiza campos (emprestimosPagos/faltas/atestados são tratados à parte, pois são JSON)
+            campos_json = {'emprestimosPagos', 'faltas', 'atestados'}
             for key, value in data.items():
-                if key == 'emprestimosPagos':
-                    lancamento.emprestimosPagos = json.dumps(value or [])
+                if key in campos_json:
+                    setattr(lancamento, key, json.dumps(value or []))
                 elif hasattr(lancamento, key):
                     setattr(lancamento, key, value)
             
@@ -510,6 +519,8 @@ def adicionar_lancamento():
                 pagamentoEspecie=data.get('pagamentoEspecie'),
                 formaPagamento=data.get('formaPagamento', 'Depósito'),
                 emprestimosPagos=json.dumps(data.get('emprestimosPagos', [])),
+                faltas=json.dumps(data.get('faltas', [])),
+                atestados=json.dumps(data.get('atestados', [])),
                 status=data.get('status', 'aberto')
             )
             db.session.add(lancamento)
