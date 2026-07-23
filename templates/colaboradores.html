@@ -87,7 +87,7 @@
                             </div>
                             <div>
                                 <label class="label">Tipo de Contratação</label>
-                                <select class="input" id="colabContratacao" onchange="toggleDiaria()">
+                                <select class="input" id="colabContratacao" onchange="toggleDiaria(); toggleAdiantamento();">
                                     <option value="CLT">CLT</option>
                                     <option value="Diarista">Diarista</option>
                                     <option value="Mensalista">Mensalista</option>
@@ -264,6 +264,7 @@
             sel.innerHTML = opcoes.map(o => `<option value="${o}">${o}</option>`).join('');
             if (opcoes.includes(atual)) sel.value = atual;
             toggleDiaria();
+            toggleAdiantamento();
         }
 
         // Mostra o campo "Valor da Diária" apenas para diaristas
@@ -279,9 +280,15 @@
 
         function toggleAdiantamento() {
             const tem = document.getElementById('colabTemAdiantamento').value;
+            const ehCLT = document.getElementById('colabContratacao').value === 'CLT';
             const display = tem === 'Sim' ? 'block' : 'none';
             document.getElementById('divValorAdiantamento').style.display = display;
-            document.getElementById('divTipoAdiantamento').style.display = display;
+
+            // Mensalista e Diarista não têm adiantamento por contabilidade — é sempre em Espécie.
+            document.getElementById('divTipoAdiantamento').style.display = (display === 'block' && ehCLT) ? 'block' : 'none';
+            if (display === 'block' && !ehCLT) {
+                document.getElementById('colabTipoAdiantamento').value = 'Espécie';
+            }
         }
 
         // Gestão de múltiplos empréstimos

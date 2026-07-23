@@ -831,10 +831,24 @@ function atualizarBadgeContratoLancamento() {
     const colaboradorId = document.getElementById('lancColaborador')?.value;
     const badge = document.getElementById('lancContratoBadge');
     const divEva = document.getElementById('divEva');
+    const divAdiantamentoContab = document.getElementById('divAdiantamentoContab');
     const colaborador = colaboradores.find(c => c.id === colaboradorId);
+    const ehCLT = !!colaborador && colaborador.contratacao === 'CLT';
 
-    if (badge) badge.innerHTML = colaborador ? badgeContratacao(colaborador.contratacao) : '';
-    if (divEva) divEva.style.display = (colaborador && colaborador.contratacao === 'CLT') ? 'block' : 'none';
+    if (badge) {
+        badge.innerHTML = colaborador
+            ? `Tipo de contratação: ${badgeContratacao(colaborador.contratacao)}`
+            : '';
+    }
+    if (divEva) divEva.style.display = ehCLT ? 'block' : 'none';
+
+    // Mensalista e Diarista não têm adiantamento por contabilidade — é sempre em Espécie.
+    if (divAdiantamentoContab) {
+        divAdiantamentoContab.style.display = ehCLT ? 'block' : 'none';
+        if (!ehCLT) {
+            setMoeda(document.getElementById('lancAdiantamentoContab'), 0);
+        }
+    }
 }
 
 function preencherCamposAutomaticamente() {
@@ -860,7 +874,10 @@ function preencherCamposAutomaticamente() {
     }
     setMoeda(document.getElementById('lancBonificacao'), colaborador.premio || 0);
 
-    // Adiantamentos
+    // Adiantamentos — zera os dois campos antes de aplicar o novo valor, para não
+    // carregar sobras do colaborador selecionado anteriormente no mesmo formulário.
+    setMoeda(document.getElementById('lancAdiantamentoEspecie'), 0);
+    setMoeda(document.getElementById('lancAdiantamentoContab'), 0);
     if (colaborador.temAdiantamento === 'Sim' && colaborador.valorAdiantamento > 0) {
         if (colaborador.contratacao === 'CLT') {
             if (colaborador.tipoAdiantamento === 'Espécie') {
@@ -876,8 +893,13 @@ function preencherCamposAutomaticamente() {
     const totalPagamento = (colaborador.remuneracao || 0) + (colaborador.premio || 0);
     setMoeda(document.getElementById('lancPagamentoEspecie'), totalPagamento);
 
+    // Zera os demais campos do mês para não carregar sobras do colaborador anterior
     setMoeda(document.getElementById('lancAssiduidade'), 0);
     setMoeda(document.getElementById('lancCartaoAlimentacao'), 0);
+    setMoeda(document.getElementById('lancHorasExtras'), 0);
+    setMoeda(document.getElementById('lancValeTransporte'), 0);
+    setMoeda(document.getElementById('lancOutros'), 0);
+    setMoeda(document.getElementById('lancPagamentoContab'), 0);
 
     calcularTotalRecebido();
 }
