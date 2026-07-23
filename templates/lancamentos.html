@@ -56,7 +56,10 @@
 
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div>
-                                <label class="label">Colaborador *</label>
+                                <div class="mb-1.5 flex items-center justify-between">
+                                    <label class="label mb-0">Colaborador *</label>
+                                    <span id="lancContratoBadge"></span>
+                                </div>
                                 <select class="input" id="lancColaborador" required><option value="">Selecione</option></select>
                             </div>
                             <div>
@@ -98,6 +101,26 @@
                                 <div>
                                     <label class="label">Total Recebido</label>
                                     <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50 font-semibold" id="lancTotalRecebido" value="0,00" readonly></div>
+                                </div>
+                            </div>
+
+                            <!-- EVA: aparece apenas quando o colaborador é CLT -->
+                            <div id="divEva" style="display: none;">
+                                <h6 class="section-title"><i class="fas fa-layer-group"></i> EVA (adicionais CLT)</h6>
+                                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                    <div>
+                                        <label class="label">Assiduidade</label>
+                                        <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-eva pl-9" id="lancAssiduidade" value="0,00"></div>
+                                    </div>
+                                    <div>
+                                        <label class="label">Cartão Alimentação</label>
+                                        <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="lancCartaoAlimentacao" value="0,00"></div>
+                                        <small class="mt-1 block text-xs text-slate-400">Não entra na soma do EVA nem no líquido.</small>
+                                    </div>
+                                    <div>
+                                        <label class="label">EVA (Prêmio + Assiduidade + Horas Extras)</label>
+                                        <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50 font-semibold" id="lancEva" value="0,00" readonly></div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -153,7 +176,7 @@
                                 </div>
                                 <div>
                                     <label class="label">Pagamento Espécie</label>
-                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="lancPagamentoEspecie" value="0,00"></div>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancPagamentoEspecie" value="0,00"></div>
                                 </div>
                                 <div>
                                     <label class="label">Líquido Total</label>
@@ -251,7 +274,8 @@
             if (ferias === 'Férias') {
                 divDados.style.display = 'none';
                 divMensagem.style.display = 'block';
-                ['lancRemuneracao','lancBonificacao','lancAdiantamentoEspecie','lancAdiantamentoContab',
+                ['lancRemuneracao','lancBonificacao','lancAssiduidade','lancCartaoAlimentacao',
+                 'lancAdiantamentoEspecie','lancAdiantamentoContab',
                  'lancHorasExtras','lancValeTransporte','lancEmprestimo','lancOutros',
                  'lancPagamentoContab','lancPagamentoEspecie'].forEach(id => setMoeda(document.getElementById(id), 0));
                 calcularTotalRecebido();

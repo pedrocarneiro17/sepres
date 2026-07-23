@@ -467,6 +467,7 @@ function configurarEventos() {
         const colaboradorField = document.getElementById('lancColaborador');
         const mesField = document.getElementById('lancMes');
         if (colaboradorField && mesField) {
+            colaboradorField.addEventListener('change', atualizarBadgeContratoLancamento);
             colaboradorField.addEventListener('change', verificarLancamentoExistente);
             mesField.addEventListener('change', verificarLancamentoExistente);
         }
@@ -491,6 +492,9 @@ function configurarEventos() {
         });
         document.querySelectorAll('.calc-liquido').forEach(field => {
             field.addEventListener('input', calcularLiquidoTotal);
+        });
+        document.querySelectorAll('.calc-eva').forEach(field => {
+            field.addEventListener('input', calcularEva);
         });
 
         // Busca por nome na lista de lançamentos
@@ -821,12 +825,26 @@ function verificarLancamentoExistente() {
     }
 }
 
+// Mostra o tipo de contratação do colaborador selecionado e exibe/esconde o
+// bloco de EVA (somente CLT). Chamada sempre que o colaborador do lançamento muda.
+function atualizarBadgeContratoLancamento() {
+    const colaboradorId = document.getElementById('lancColaborador')?.value;
+    const badge = document.getElementById('lancContratoBadge');
+    const divEva = document.getElementById('divEva');
+    const colaborador = colaboradores.find(c => c.id === colaboradorId);
+
+    if (badge) badge.innerHTML = colaborador ? badgeContratacao(colaborador.contratacao) : '';
+    if (divEva) divEva.style.display = (colaborador && colaborador.contratacao === 'CLT') ? 'block' : 'none';
+}
+
 function preencherCamposAutomaticamente() {
     const colaboradorId = document.getElementById('lancColaborador').value;
     if (!colaboradorId) return;
 
     const colaborador = colaboradores.find(c => c.id === colaboradorId);
     if (!colaborador) return;
+
+    atualizarBadgeContratoLancamento();
 
     // Diarista: mostra o bloco de diária e calcula a remuneração por dias trabalhados
     const ehDiarista = colaborador.contratacao === 'Diarista';
@@ -857,6 +875,9 @@ function preencherCamposAutomaticamente() {
 
     const totalPagamento = (colaborador.remuneracao || 0) + (colaborador.premio || 0);
     setMoeda(document.getElementById('lancPagamentoEspecie'), totalPagamento);
+
+    setMoeda(document.getElementById('lancAssiduidade'), 0);
+    setMoeda(document.getElementById('lancCartaoAlimentacao'), 0);
 
     calcularTotalRecebido();
 }
@@ -981,6 +1002,7 @@ async function salvarLancamento(e) {
             ferias: 'Férias',
             diasTrabalhados: 0,
             remuneracao: 0, bonificacao: 0, totalRecebido: 0,
+            assiduidade: 0, cartaoAlimentacao: 0,
             adiantamentoEspecie: 0, adiantamentoContab: 0, horasExtras: 0,
             valeTransporte: 0, emprestimo: 0, outros: 0, liquidoTotal: 0,
             pagamentoContab: 0, pagamentoEspecie: 0,
@@ -998,6 +1020,8 @@ async function salvarLancamento(e) {
             remuneracao: lerMoeda(document.getElementById('lancRemuneracao')),
             bonificacao: lerMoeda(document.getElementById('lancBonificacao')),
             totalRecebido: lerMoeda(document.getElementById('lancTotalRecebido')),
+            assiduidade: lerMoeda(document.getElementById('lancAssiduidade')),
+            cartaoAlimentacao: lerMoeda(document.getElementById('lancCartaoAlimentacao')),
             adiantamentoEspecie: lerMoeda(document.getElementById('lancAdiantamentoEspecie')),
             adiantamentoContab: lerMoeda(document.getElementById('lancAdiantamentoContab')),
             horasExtras: lerMoeda(document.getElementById('lancHorasExtras')),
@@ -1041,6 +1065,7 @@ function limparFormLancamento() {
     document.getElementById('divMensagemFerias').style.display = 'none';
 
     ['lancColaborador','lancMes','lancFerias','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
+     'lancAssiduidade','lancCartaoAlimentacao',
      'lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
         const el = document.getElementById(id);
@@ -1048,13 +1073,15 @@ function limparFormLancamento() {
     });
 
     // Zera campos de dinheiro
-    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancAdiantamentoEspecie',
-     'lancAdiantamentoContab','lancHorasExtras','lancValeTransporte','lancEmprestimo',
-     'lancOutros','lancLiquidoTotal','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
+    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancAssiduidade','lancCartaoAlimentacao',
+     'lancEva','lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
+     'lancEmprestimo','lancOutros','lancLiquidoTotal','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
         setMoeda(document.getElementById(id), 0);
     });
     document.getElementById('detalhesEmprestimo').innerHTML = '';
     renderizarEmprestimosLanc([]);
+    document.getElementById('divEva').style.display = 'none';
+    document.getElementById('lancContratoBadge').innerHTML = '';
 
     // Reseta e esconde o bloco de diária
     document.getElementById('divDiaria').style.display = 'none';
@@ -1084,6 +1111,22 @@ function calcularTotalRecebido() {
     calcularLiquidoTotal();
 }
 
+// Colaborador CLT selecionado no lançamento atual (usado para decidir se Horas
+// Extras entra no líquido ou fica só no EVA)
+function colaboradorLancamentoEhCLT() {
+    const colaboradorId = document.getElementById('lancColaborador')?.value;
+    const colaborador = colaboradores.find(c => c.id === colaboradorId);
+    return !!colaborador && colaborador.contratacao === 'CLT';
+}
+
+// EVA (apenas CLT): Prêmio + Assiduidade + Horas Extras — Cartão Alimentação NÃO entra.
+function calcularEva() {
+    const premio = lerMoeda(document.getElementById('lancBonificacao'));
+    const assiduidade = lerMoeda(document.getElementById('lancAssiduidade'));
+    const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
+    setMoeda(document.getElementById('lancEva'), premio + assiduidade + horasExtras);
+}
+
 function calcularLiquidoTotal() {
     const totalRecebido = lerMoeda(document.getElementById('lancTotalRecebido'));
     const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
@@ -1092,12 +1135,19 @@ function calcularLiquidoTotal() {
     const outros = lerMoeda(document.getElementById('lancOutros'));
     const adiantamentoEspecie = lerMoeda(document.getElementById('lancAdiantamentoEspecie'));
     const adiantamentoContab = lerMoeda(document.getElementById('lancAdiantamentoContab'));
+    const pagamentoContab = lerMoeda(document.getElementById('lancPagamentoContab'));
+    const pagamentoEspecie = lerMoeda(document.getElementById('lancPagamentoEspecie'));
 
-    // Líquido = Total Recebido + Horas Extras - Vale Transporte - Empréstimo
-    //           - Outros - Adiantamentos (espécie + contabilidade)
-    const liquido = totalRecebido + horasExtras - valeTransporte - emprestimo - outros
+    // CLT: Horas Extras só compõe o EVA, não entra separadamente no líquido.
+    const horasExtrasNoLiquido = colaboradorLancamentoEhCLT() ? 0 : horasExtras;
+
+    // Líquido = Total Recebido + Horas Extras (exceto CLT) + Pagamento Contab. + Pagamento Espécie
+    //           - Vale Transporte - Empréstimo - Outros - Adiantamentos (espécie + contabilidade)
+    const liquido = totalRecebido + horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
+                    - valeTransporte - emprestimo - outros
                     - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
+    calcularEva();
 }
 
 function renderizarLancamentos() {
@@ -1154,8 +1204,11 @@ function editarLancamento(id) {
     document.getElementById('lancFerias').value = l.ferias;
     document.getElementById('lancFormaPagamento').value = l.formaPagamento || 'Depósito';
 
-    // Bloco de diária conforme o tipo do colaborador do lançamento
+    // Badge de tipo de contrato + bloco EVA (somente CLT)
     const colabDoLanc = colaboradores.find(c => c.id === l.colaboradorId);
+    atualizarBadgeContratoLancamento();
+
+    // Bloco de diária conforme o tipo do colaborador do lançamento
     const ehDiaristaEdit = colabDoLanc && colabDoLanc.contratacao === 'Diarista';
     const divDiariaEdit = document.getElementById('divDiaria');
     if (divDiariaEdit) divDiariaEdit.style.display = ehDiaristaEdit ? 'block' : 'none';
@@ -1165,6 +1218,8 @@ function editarLancamento(id) {
     setMoeda(document.getElementById('lancRemuneracao'), l.remuneracao || 0);
     setMoeda(document.getElementById('lancBonificacao'), l.bonificacao || 0);
     setMoeda(document.getElementById('lancTotalRecebido'), l.totalRecebido || 0);
+    setMoeda(document.getElementById('lancAssiduidade'), l.assiduidade || 0);
+    setMoeda(document.getElementById('lancCartaoAlimentacao'), l.cartaoAlimentacao || 0);
     setMoeda(document.getElementById('lancAdiantamentoEspecie'), l.adiantamentoEspecie || 0);
     setMoeda(document.getElementById('lancAdiantamentoContab'), l.adiantamentoContab || 0);
     setMoeda(document.getElementById('lancHorasExtras'), l.horasExtras || 0);
@@ -1174,6 +1229,7 @@ function editarLancamento(id) {
     setMoeda(document.getElementById('lancLiquidoTotal'), l.liquidoTotal || 0);
     setMoeda(document.getElementById('lancPagamentoContab'), l.pagamentoContab || 0);
     setMoeda(document.getElementById('lancPagamentoEspecie'), l.pagamentoEspecie || 0);
+    calcularEva();
 
     // Reconstrói o detalhamento de empréstimos a partir do que foi salvo
     const loansDoColab = (colabDoLanc && colabDoLanc.emprestimos) || [];
@@ -1209,6 +1265,7 @@ function visualizarLancamento(id) {
     editarLancamento(id);
 
     ['lancColaborador','lancMes','lancFerias','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
+     'lancAssiduidade','lancCartaoAlimentacao',
      'lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancPagamentoContab','lancPagamentoEspecie'].forEach(idc => {
         const el = document.getElementById(idc);

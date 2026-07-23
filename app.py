@@ -162,6 +162,8 @@ class Lancamento(db.Model):
     adiantamentoEspecie = db.Column(db.Float)
     adiantamentoContab = db.Column(db.Float)
     horasExtras = db.Column(db.Float)
+    assiduidade = db.Column(db.Float) # usado no cálculo do EVA (apenas CLT)
+    cartaoAlimentacao = db.Column(db.Float) # registrado, mas não entra no EVA nem no líquido
     valeTransporte = db.Column(db.Float)
     emprestimo = db.Column(db.Float)
     outros = db.Column(db.Float)
@@ -186,6 +188,8 @@ class Lancamento(db.Model):
             "adiantamentoEspecie": self.adiantamentoEspecie,
             "adiantamentoContab": self.adiantamentoContab,
             "horasExtras": self.horasExtras,
+            "assiduidade": self.assiduidade,
+            "cartaoAlimentacao": self.cartaoAlimentacao,
             "valeTransporte": self.valeTransporte,
             "emprestimo": self.emprestimo,
             "outros": self.outros,
@@ -215,6 +219,10 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "diasTrabalhados" INTEGER'))
     if 'emprestimosPagos' not in colunas_lancamento:
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "emprestimosPagos" TEXT'))
+    if 'assiduidade' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN assiduidade FLOAT'))
+    if 'cartaoAlimentacao' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "cartaoAlimentacao" FLOAT'))
 
     colunas_colaborador = {col['name'] for col in inspector.get_columns('colaborador')}
     if 'empresa' not in colunas_colaborador:
@@ -492,6 +500,8 @@ def adicionar_lancamento():
                 adiantamentoEspecie=data.get('adiantamentoEspecie'),
                 adiantamentoContab=data.get('adiantamentoContab'),
                 horasExtras=data.get('horasExtras'),
+                assiduidade=data.get('assiduidade', 0),
+                cartaoAlimentacao=data.get('cartaoAlimentacao', 0),
                 valeTransporte=data.get('valeTransporte'),
                 emprestimo=data.get('emprestimo'),
                 outros=data.get('outros'),
