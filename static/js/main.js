@@ -585,7 +585,7 @@ function botaoAcao(onclick, cor, icone, title) {
         recibo: 'text-indigo-600 hover:bg-indigo-50',
         reabrir: 'text-slate-500 hover:bg-slate-100',
         premio: 'text-amber-600 hover:bg-amber-50',
-        assiduidade: 'text-teal-600 hover:bg-teal-50'
+        autonomo: 'text-teal-600 hover:bg-teal-50'
     };
     return `<button onclick="${onclick}" title="${title}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg transition ${cores[cor]}"><i class="fas ${icone}"></i></button>`;
 }
@@ -1226,11 +1226,10 @@ function renderizarLancamentos() {
         } else {
             acoes = botaoAcao(`visualizarLancamento('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)') +
                     botaoAcao(`gerarRecibo('${l.id}')`, 'recibo', 'fa-file-lines', 'Gerar recibo de pagamento');
-            if (ehCLT && (l.bonificacao || 0) > 0) {
+            if (ehCLT) {
                 acoes += botaoAcao(`gerarReciboPremio('${l.id}')`, 'premio', 'fa-award', 'Gerar recibo de prêmio');
-            }
-            if (ehCLT && (l.assiduidade || 0) > 0) {
-                acoes += botaoAcao(`gerarReciboAssiduidade('${l.id}')`, 'assiduidade', 'fa-calendar-check', 'Gerar recibo de assiduidade');
+            } else {
+                acoes += botaoAcao(`gerarReciboAutonomo('${l.id}')`, 'autonomo', 'fa-file-contract', 'Gerar recibo de pagamento de autônomo');
             }
             acoes += botaoAcao(`reabrirLancamento('${l.id}')`, 'reabrir', 'fa-rotate-left', 'Reabrir para edição');
         }
@@ -1539,16 +1538,18 @@ function gerarReciboPremio(id) {
     abrirModal('modalReciboEva');
 }
 
-function gerarReciboAssiduidade(id) {
+function gerarReciboAutonomo(id) {
     const l = lancamentos.find(lanc => lanc.id === id);
     if (!l) return;
     const c = colaboradores.find(co => co.id === l.colaboradorId);
     if (!c) return;
 
-    const valor = numeroBR(l.assiduidade || 0);
+    // Diarista/Mensalista: o valor do recibo é o líquido do lançamento (para o
+    // diarista já é a soma dos dias trabalhados no mês).
+    const valor = numeroBR(l.liquidoTotal || 0);
     const dataExtenso = formatarDataExtenso(new Date());
 
-    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Assiduidade';
+    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Pagamento de Autônomo';
     document.getElementById('reciboEvaConteudo').innerHTML = `
         ${logoReciboHtml()}
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO DE AUTÔNOMO</h4></div>
