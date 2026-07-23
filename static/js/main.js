@@ -1761,7 +1761,7 @@ function renderizarGraficos(fatia) {
         return { nome: c.nome || 'Desconhecido', empresa: c.empresa || 'Não informado', valor };
     }).sort((a, b) => a.empresa.localeCompare(b.empresa) || b.valor - a.valor);
     montarLegendaLista('legendaEmpresa', itensEmpresa, i =>
-        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.empresa}</span></span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
+        `<div class="legenda-linha"><span class="text-slate-600">${i.nome}</span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
 
     // 2. Evolução mensal — sempre todos os meses; o mês filtrado fica destacado
     const porMes = agrupar(lancsTodosMeses, l => l.mes, l => l.liquidoTotal);
@@ -1781,7 +1781,7 @@ function renderizarGraficos(fatia) {
         return { nome: c.nome || 'Desconhecido', contratacao: c.contratacao || 'Não informado', valor };
     }).sort((a, b) => a.contratacao.localeCompare(b.contratacao) || b.valor - a.valor);
     montarLegendaLista('legendaContrato', itensContrato, i =>
-        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.contratacao}</span></span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
+        `<div class="legenda-linha"><span class="text-slate-600">${i.nome}</span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
 
     // 4. Colaboradores por tipo de contrato (quantidade)
     const headcount = {};
