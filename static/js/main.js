@@ -1167,7 +1167,6 @@ function calcularEva() {
 }
 
 function calcularLiquidoTotal() {
-    const totalRecebido = lerMoeda(document.getElementById('lancTotalRecebido'));
     const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
     const valeTransporte = lerMoeda(document.getElementById('lancValeTransporte'));
     const emprestimo = lerMoeda(document.getElementById('lancEmprestimo'));
@@ -1180,9 +1179,13 @@ function calcularLiquidoTotal() {
     // CLT: Horas Extras só compõe o EVA, não entra separadamente no líquido.
     const horasExtrasNoLiquido = colaboradorLancamentoEhCLT() ? 0 : horasExtras;
 
-    // Líquido = Total Recebido + Horas Extras (exceto CLT) + Pagamento Contab. + Pagamento Espécie
+    // Líquido = Pagamento Contab. + Pagamento Espécie + Horas Extras (exceto CLT)
     //           - Vale Transporte - Empréstimo - Outros - Adiantamentos (espécie + contabilidade)
-    const liquido = totalRecebido + horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
+    //
+    // Observação: "Total Recebido" (Remuneração + Prêmio) NÃO entra aqui separadamente —
+    // esse valor já é a base usada para pré-preencher o Pagamento Espécie, então somá-lo
+    // de novo duplicaria o mesmo dinheiro no líquido.
+    const liquido = horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
                     - valeTransporte - emprestimo - outros
                     - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
