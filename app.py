@@ -155,6 +155,7 @@ class Lancamento(db.Model):
     colaboradorId = db.Column(db.String(50), db.ForeignKey('colaborador.id'), nullable=False)
     mes = db.Column(db.String(7), nullable=False) # YYYY-MM
     ferias = db.Column(db.String(50))
+    diasFerias = db.Column(db.Integer) # quantidade de dias de férias no mês (usado quando ferias = 'Férias')
     diasTrabalhados = db.Column(db.Integer) # usado quando o colaborador é Diarista
     remuneracao = db.Column(db.Float)
     bonificacao = db.Column(db.Float)
@@ -183,6 +184,7 @@ class Lancamento(db.Model):
             "colaboradorId": self.colaboradorId,
             "mes": self.mes,
             "ferias": self.ferias,
+            "diasFerias": self.diasFerias,
             "diasTrabalhados": self.diasTrabalhados,
             "remuneracao": self.remuneracao,
             "bonificacao": self.bonificacao,
@@ -221,6 +223,8 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "formaPagamento" VARCHAR(20)'))
     if 'diasTrabalhados' not in colunas_lancamento:
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "diasTrabalhados" INTEGER'))
+    if 'diasFerias' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "diasFerias" INTEGER'))
     if 'emprestimosPagos' not in colunas_lancamento:
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "emprestimosPagos" TEXT'))
     if 'assiduidade' not in colunas_lancamento:
@@ -502,6 +506,7 @@ def adicionar_lancamento():
                 colaboradorId=data['colaboradorId'],
                 mes=data['mes'],
                 ferias=data.get('ferias'),
+                diasFerias=data.get('diasFerias', 0),
                 diasTrabalhados=data.get('diasTrabalhados', 0),
                 remuneracao=data.get('remuneracao'),
                 bonificacao=data.get('bonificacao'),

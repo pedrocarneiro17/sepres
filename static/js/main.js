@@ -1023,6 +1023,7 @@ async function salvarLancamento(e) {
             colaboradorId: document.getElementById('lancColaborador').value,
             mes: document.getElementById('lancMes').value,
             ferias: 'Férias',
+            diasFerias: parseInt(document.getElementById('lancDiasFerias').value) || 30,
             diasTrabalhados: 0,
             remuneracao: 0, bonificacao: 0, totalRecebido: 0,
             assiduidade: 0, cartaoAlimentacao: 0,
@@ -1041,6 +1042,7 @@ async function salvarLancamento(e) {
             colaboradorId: document.getElementById('lancColaborador').value,
             mes: document.getElementById('lancMes').value,
             ferias: ferias,
+            diasFerias: 0,
             diasTrabalhados: parseInt(document.getElementById('lancDiasTrabalhados').value) || 0,
             remuneracao: lerMoeda(document.getElementById('lancRemuneracao')),
             bonificacao: lerMoeda(document.getElementById('lancBonificacao')),
@@ -1120,6 +1122,7 @@ function limparFormLancamento() {
     document.getElementById('divDiaria').style.display = 'none';
     document.getElementById('lancDiasTrabalhados').value = 0;
     setMoeda(document.getElementById('lancValorDiaria'), 0);
+    document.getElementById('lancDiasFerias').value = 30;
     refrescarControlesCustom(document.getElementById('formLancamento'));
 
     const btnSalvar = document.querySelector('#formLancamento button[type="submit"]');
@@ -1248,6 +1251,7 @@ function editarLancamento(id) {
     if (divDiariaEdit) divDiariaEdit.style.display = ehDiaristaEdit ? 'block' : 'none';
     if (ehDiaristaEdit) setMoeda(document.getElementById('lancValorDiaria'), colabDoLanc.valorDiaria || 0);
     document.getElementById('lancDiasTrabalhados').value = l.diasTrabalhados || 0;
+    document.getElementById('lancDiasFerias').value = l.diasFerias || 30;
 
     setMoeda(document.getElementById('lancRemuneracao'), l.remuneracao || 0);
     setMoeda(document.getElementById('lancBonificacao'), l.bonificacao || 0);
@@ -1715,6 +1719,26 @@ function graficoBarras(canvasId, labels, valores, opcoes = {}) {
     });
 }
 
+// Expande/recolhe o painel de detalhamento embaixo de um gráfico.
+// O conteúdo é montado sempre (em renderizarGraficos), então o clique só mostra/esconde.
+function toggleLegendaChart(botao) {
+    const painel = document.getElementById(botao.dataset.painel);
+    if (!painel) return;
+    painel.classList.toggle('hidden');
+    botao.classList.toggle('aberto');
+}
+
+// Preenche um painel de legenda com uma lista de linhas (nome à esquerda, valor à direita)
+function montarLegendaLista(painelId, itens, montarLinha) {
+    const painel = document.getElementById(painelId);
+    if (!painel) return;
+    if (!itens || itens.length === 0) {
+        painel.innerHTML = '<div class="p-3 text-center text-xs text-slate-400">Sem dados no período filtrado</div>';
+        return;
+    }
+    painel.innerHTML = itens.map(montarLinha).join('');
+}
+
 function renderizarGraficos(fatia) {
     if (typeof Chart === 'undefined') return;
     const { colabs, lancs, lancsTodosMeses, comp } = fatia;
@@ -1730,6 +1754,15 @@ function renderizarGraficos(fatia) {
     const porEmpresa = agrupar(lancs, l => doColab(l.colaboradorId).empresa || 'Não informado', l => l.liquidoTotal);
     graficoBarras('chartEmpresa', Object.keys(porEmpresa), Object.values(porEmpresa), { horizontal: true });
 
+    // Legenda: líquido recebido por colaborador, agrupado por empresa
+    const porColabEmpresa = agrupar(lancs, l => l.colaboradorId, l => l.liquidoTotal);
+    const itensEmpresa = Object.entries(porColabEmpresa).map(([id, valor]) => {
+        const c = doColab(id);
+        return { nome: c.nome || 'Desconhecido', empresa: c.empresa || 'Não informado', valor };
+    }).sort((a, b) => a.empresa.localeCompare(b.empresa) || b.valor - a.valor);
+    montarLegendaLista('legendaEmpresa', itensEmpresa, i =>
+        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.empresa}</span></span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
+
     // 2. Evolução mensal — sempre todos os meses; o mês filtrado fica destacado
     const porMes = agrupar(lancsTodosMeses, l => l.mes, l => l.liquidoTotal);
     const meses = Object.keys(porMes).sort();
@@ -1741,6 +1774,14 @@ function renderizarGraficos(fatia) {
     // 3. Líquido pago por tipo de contrato
     const porContrato = agrupar(lancs, l => doColab(l.colaboradorId).contratacao || 'Não informado', l => l.liquidoTotal);
     graficoBarras('chartContrato', Object.keys(porContrato), Object.values(porContrato), {});
+
+    // Legenda: líquido recebido por colaborador, agrupado por tipo de contrato (ex.: quanto cada CLT recebeu)
+    const itensContrato = Object.entries(porColabEmpresa).map(([id, valor]) => {
+        const c = doColab(id);
+        return { nome: c.nome || 'Desconhecido', contratacao: c.contratacao || 'Não informado', valor };
+    }).sort((a, b) => a.contratacao.localeCompare(b.contratacao) || b.valor - a.valor);
+    montarLegendaLista('legendaContrato', itensContrato, i =>
+        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.contratacao}</span></span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
 
     // 4. Colaboradores por tipo de contrato (quantidade)
     const headcount = {};
@@ -1765,17 +1806,41 @@ function renderizarGraficos(fatia) {
     graficoBarras('chartFerias', meses.map(formatarMesAno), meses.map(m => feriasPorMes[m] || 0),
         { moeda: false, cores: coresMes });
 
+    // Legenda: quem teve férias no período filtrado e quantos dias
+    const itensFerias = lancs.filter(l => l.ferias === 'Férias').map(l => {
+        const c = doColab(l.colaboradorId);
+        return { nome: c.nome || 'Desconhecido', mes: formatarMesAno(l.mes), dias: l.diasFerias || 30 };
+    }).sort((a, b) => a.nome.localeCompare(b.nome));
+    montarLegendaLista('legendaFerias', itensFerias, i =>
+        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.mes}</span></span><span class="font-medium text-slate-800">${i.dias} dia(s)</span></div>`);
+
     // 7. Faltas por mês (mesmo padrão: todos os meses, mês filtrado destacado)
     const faltasPorMes = {};
     achatarFaltas(lancsTodosMeses).forEach(f => { faltasPorMes[f.mes] = (faltasPorMes[f.mes] || 0) + 1; });
     graficoBarras('chartFaltas', meses.map(formatarMesAno), meses.map(m => faltasPorMes[m] || 0),
         { moeda: false, cores: coresMes });
 
+    // Legenda: quem teve falta no período filtrado
+    const itensFaltas = achatarFaltas(lancs).map(f => {
+        const c = doColab(f.colaboradorId);
+        return { nome: c.nome || 'Desconhecido', data: formatarData(f.data), obs: f.obs || '-' };
+    }).sort((a, b) => a.nome.localeCompare(b.nome));
+    montarLegendaLista('legendaFaltas', itensFaltas, i =>
+        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.data}</span></span><span class="max-w-[50%] truncate font-medium text-slate-800" title="${i.obs}">${i.obs}</span></div>`);
+
     // 8. Atestados por mês (contagem de atestados, não soma de dias)
     const atestadosPorMes = {};
     achatarAtestados(lancsTodosMeses).forEach(a => { atestadosPorMes[a.mes] = (atestadosPorMes[a.mes] || 0) + 1; });
     graficoBarras('chartAtestados', meses.map(formatarMesAno), meses.map(m => atestadosPorMes[m] || 0),
         { moeda: false, cores: coresMes });
+
+    // Legenda: quem teve atestado no período filtrado e quantos dias
+    const itensAtestados = achatarAtestados(lancs).map(a => {
+        const c = doColab(a.colaboradorId);
+        return { nome: c.nome || 'Desconhecido', data: formatarData(a.data), dias: a.dias || 1 };
+    }).sort((a, b) => a.nome.localeCompare(b.nome));
+    montarLegendaLista('legendaAtestados', itensAtestados, i =>
+        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.data}</span></span><span class="font-medium text-slate-800">${i.dias} dia(s)</span></div>`);
 }
 
 function renderizarColaboradoresDash(lista) {

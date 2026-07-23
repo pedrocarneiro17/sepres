@@ -134,6 +134,11 @@
                         <canvas id="chartEmpresa"></canvas>
                         <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Sem dados no período</div>
                     </div>
+                    <button type="button" class="legenda-toggle" onclick="toggleLegendaChart(this)" data-painel="legendaEmpresa">
+                        <span><i class="fas fa-list-ul mr-1"></i> Ver detalhamento por colaborador</span>
+                        <i class="fas fa-chevron-down legenda-chevron"></i>
+                    </button>
+                    <div id="legendaEmpresa" class="legenda-painel hidden"></div>
                 </div>
 
                 <div class="card p-5">
@@ -152,6 +157,11 @@
                         <canvas id="chartContrato"></canvas>
                         <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Sem dados no período</div>
                     </div>
+                    <button type="button" class="legenda-toggle" onclick="toggleLegendaChart(this)" data-painel="legendaContrato">
+                        <span><i class="fas fa-list-ul mr-1"></i> Ver detalhamento por colaborador</span>
+                        <i class="fas fa-chevron-down legenda-chevron"></i>
+                    </button>
+                    <div id="legendaContrato" class="legenda-painel hidden"></div>
                 </div>
 
                 <div class="card p-5">
@@ -179,6 +189,11 @@
                         <canvas id="chartFerias"></canvas>
                         <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Nenhuma férias registrada</div>
                     </div>
+                    <button type="button" class="legenda-toggle" onclick="toggleLegendaChart(this)" data-painel="legendaFerias">
+                        <span><i class="fas fa-list-ul mr-1"></i> Ver quem teve férias e quantos dias</span>
+                        <i class="fas fa-chevron-down legenda-chevron"></i>
+                    </button>
+                    <div id="legendaFerias" class="legenda-painel hidden"></div>
                 </div>
 
                 <div class="card p-5">
@@ -188,6 +203,11 @@
                         <canvas id="chartFaltas"></canvas>
                         <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Nenhuma falta registrada</div>
                     </div>
+                    <button type="button" class="legenda-toggle" onclick="toggleLegendaChart(this)" data-painel="legendaFaltas">
+                        <span><i class="fas fa-list-ul mr-1"></i> Ver quem teve falta</span>
+                        <i class="fas fa-chevron-down legenda-chevron"></i>
+                    </button>
+                    <div id="legendaFaltas" class="legenda-painel hidden"></div>
                 </div>
 
                 <div class="card p-5">
@@ -197,6 +217,11 @@
                         <canvas id="chartAtestados"></canvas>
                         <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Nenhum atestado registrado</div>
                     </div>
+                    <button type="button" class="legenda-toggle" onclick="toggleLegendaChart(this)" data-painel="legendaAtestados">
+                        <span><i class="fas fa-list-ul mr-1"></i> Ver quem teve atestado</span>
+                        <i class="fas fa-chevron-down legenda-chevron"></i>
+                    </button>
+                    <div id="legendaAtestados" class="legenda-painel hidden"></div>
                 </div>
             </div>
 
