@@ -1495,9 +1495,9 @@ const EMPRESA_RECIBO = {
     cnpj: '00.601.780.0001-25'
 };
 
-// Caminho do arquivo de logo. Coloque a imagem em static/img/logo-sepres.png
+// Caminho do arquivo de logo. Coloque a imagem em static/img/logo-sepres.jpeg
 // para que ela apareça automaticamente no topo dos recibos impressos.
-const LOGO_RECIBO_SRC = '/static/img/logo-sepres.png';
+const LOGO_RECIBO_SRC = '/static/img/logo-sepres.jpeg';
 
 function logoReciboHtml() {
     return `<img src="${LOGO_RECIBO_SRC}" class="recibo-logo" onerror="this.remove()" alt="${EMPRESA_RECIBO.nome}">`;
