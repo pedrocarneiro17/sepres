@@ -109,16 +109,25 @@
                                 <h6 class="section-title"><i class="fas fa-layer-group"></i> EVA (adicionais CLT)</h6>
                                 <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                                     <div>
+                                        <label class="label">Prêmio</label>
+                                        <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50" id="lancEvaPremio" value="0,00" readonly></div>
+                                    </div>
+                                    <div>
                                         <label class="label">Assiduidade</label>
                                         <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-eva pl-9" id="lancAssiduidade" value="0,00"></div>
                                     </div>
                                     <div>
+                                        <label class="label">Horas Extras</label>
+                                        <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-eva pl-9" id="lancHorasExtras" value="0,00"></div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div>
                                         <label class="label">Cartão Alimentação</label>
                                         <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="lancCartaoAlimentacao" value="0,00"></div>
-                                        <small class="mt-1 block text-xs text-slate-400">Não entra na soma do EVA nem no líquido.</small>
                                     </div>
                                     <div>
-                                        <label class="label">EVA (Prêmio + Assiduidade + Horas Extras)</label>
+                                        <label class="label">EVA</label>
                                         <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50 font-semibold" id="lancEva" value="0,00" readonly></div>
                                     </div>
                                 </div>
@@ -137,14 +146,10 @@
                             </div>
 
                             <h6 class="section-title"><i class="fas fa-credit-card"></i> Pagamento</h6>
-                            <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div>
                                     <label class="label">Forma de Pagamento</label>
                                     <select class="input" id="lancFormaPagamento"><option value="Depósito">Depósito</option><option value="Espécie">Espécie</option><option value="Depósito + Espécie">Depósito + Espécie</option></select>
-                                </div>
-                                <div>
-                                    <label class="label">Horas Extras</label>
-                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancHorasExtras" value="0,00"></div>
                                 </div>
                                 <div>
                                     <label class="label">Vale Transporte</label>

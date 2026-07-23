@@ -1073,7 +1073,7 @@ function limparFormLancamento() {
     });
 
     // Zera campos de dinheiro
-    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancAssiduidade','lancCartaoAlimentacao',
+    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancEvaPremio','lancAssiduidade','lancCartaoAlimentacao',
      'lancEva','lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancLiquidoTotal','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
         setMoeda(document.getElementById(id), 0);
@@ -1124,6 +1124,7 @@ function calcularEva() {
     const premio = lerMoeda(document.getElementById('lancBonificacao'));
     const assiduidade = lerMoeda(document.getElementById('lancAssiduidade'));
     const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
+    setMoeda(document.getElementById('lancEvaPremio'), premio);
     setMoeda(document.getElementById('lancEva'), premio + assiduidade + horasExtras);
 }
 
