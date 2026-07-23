@@ -277,6 +277,7 @@
             </div>
             <div class="px-6 py-5">
                 <div id="reciboConteudo" style="border: 2px solid #000; padding: 30px; font-family: 'Courier New', monospace;">
+                    <img src="/static/img/logo-sepres.png" class="recibo-logo" style="max-width: 260px; display: block; margin: 0 auto 16px;" onerror="this.remove()" alt="SEPRES">
                     <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO EM ESPÉCIE</h4></div>
                     <p><strong>Nome:</strong> <span id="reciboNome"></span></p>
                     <p><strong>CPF:</strong> <span id="reciboCPF"></span></p>
@@ -294,7 +295,24 @@
             </div>
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
                 <button type="button" class="btn-secondary" onclick="fecharModal('modalRecibo')"><i class="fas fa-times"></i> Fechar</button>
-                <button type="button" class="btn-primary" onclick="imprimirRecibo()"><i class="fas fa-print"></i> Imprimir</button>
+                <button type="button" class="btn-primary" onclick="imprimirRecibo('reciboConteudo')"><i class="fas fa-print"></i> Imprimir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Recibo de Prêmio / Assiduidade (EVA) -->
+    <div id="modalReciboEva" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-receipt text-indigo-500"></i> <span id="reciboEvaTitulo">Recibo</span></h3>
+                <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalReciboEva')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="px-6 py-5">
+                <div id="reciboEvaConteudo" style="border: 2px solid #000; padding: 30px; font-family: 'Courier New', monospace;"></div>
+            </div>
+            <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
+                <button type="button" class="btn-secondary" onclick="fecharModal('modalReciboEva')"><i class="fas fa-times"></i> Fechar</button>
+                <button type="button" class="btn-primary" onclick="imprimirRecibo('reciboEvaConteudo')"><i class="fas fa-print"></i> Imprimir</button>
             </div>
         </div>
     </div>

@@ -583,7 +583,9 @@ function botaoAcao(onclick, cor, icone, title) {
         finalize: 'text-emerald-600 hover:bg-emerald-50',
         view: 'text-sky-600 hover:bg-sky-50',
         recibo: 'text-indigo-600 hover:bg-indigo-50',
-        reabrir: 'text-slate-500 hover:bg-slate-100'
+        reabrir: 'text-slate-500 hover:bg-slate-100',
+        premio: 'text-amber-600 hover:bg-amber-50',
+        assiduidade: 'text-teal-600 hover:bg-teal-50'
     };
     return `<button onclick="${onclick}" title="${title}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg transition ${cores[cor]}"><i class="fas ${icone}"></i></button>`;
 }
@@ -1212,13 +1214,23 @@ function renderizarLancamentos() {
 
     tbody.innerHTML = lista.map(l => {
         const c = colaboradores.find(co => co.id === l.colaboradorId);
-        const acoes = l.status === 'aberto'
-            ? botaoAcao(`editarLancamento('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento') +
-              botaoAcao(`finalizarLancamento('${l.id}')`, 'finalize', 'fa-check', 'Finalizar lançamento') +
-              botaoAcao(`excluirLancamento('${l.id}')`, 'delete', 'fa-trash', 'Excluir lançamento')
-            : botaoAcao(`visualizarLancamento('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)') +
-              botaoAcao(`gerarRecibo('${l.id}')`, 'recibo', 'fa-file-lines', 'Gerar recibo de pagamento') +
-              botaoAcao(`reabrirLancamento('${l.id}')`, 'reabrir', 'fa-rotate-left', 'Reabrir para edição');
+        const ehCLT = c && c.contratacao === 'CLT';
+        let acoes;
+        if (l.status === 'aberto') {
+            acoes = botaoAcao(`editarLancamento('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento') +
+                    botaoAcao(`finalizarLancamento('${l.id}')`, 'finalize', 'fa-check', 'Finalizar lançamento') +
+                    botaoAcao(`excluirLancamento('${l.id}')`, 'delete', 'fa-trash', 'Excluir lançamento');
+        } else {
+            acoes = botaoAcao(`visualizarLancamento('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)') +
+                    botaoAcao(`gerarRecibo('${l.id}')`, 'recibo', 'fa-file-lines', 'Gerar recibo de pagamento');
+            if (ehCLT && (l.bonificacao || 0) > 0) {
+                acoes += botaoAcao(`gerarReciboPremio('${l.id}')`, 'premio', 'fa-award', 'Gerar recibo de prêmio');
+            }
+            if (ehCLT && (l.assiduidade || 0) > 0) {
+                acoes += botaoAcao(`gerarReciboAssiduidade('${l.id}')`, 'assiduidade', 'fa-calendar-check', 'Gerar recibo de assiduidade');
+            }
+            acoes += botaoAcao(`reabrirLancamento('${l.id}')`, 'reabrir', 'fa-rotate-left', 'Reabrir para edição');
+        }
 
         return `
         <tr class="border-b border-slate-100 transition hover:bg-slate-50">
@@ -1442,8 +1454,8 @@ function gerarRecibo(id) {
     abrirModal('modalRecibo');
 }
 
-function imprimirRecibo() {
-    const conteudo = document.getElementById('reciboConteudo').innerHTML;
+function imprimirRecibo(elementId) {
+    const conteudo = document.getElementById(elementId || 'reciboConteudo').innerHTML;
     const janela = window.open('', '', 'width=800,height=600');
     janela.document.write(`
         <!DOCTYPE html>
@@ -1455,6 +1467,7 @@ function imprimirRecibo() {
                 .text-center { text-align: center; }
                 p { margin: 10px 0; }
                 hr { border: 1px solid #000; margin: 20px 0; }
+                img.recibo-logo { max-width: 260px; display: block; margin: 0 auto 16px; }
             </style>
         </head>
         <body>
@@ -1471,6 +1484,85 @@ function imprimirRecibo() {
         </html>
     `);
     janela.document.close();
+}
+
+// ==================== RECIBOS DE PRÊMIO E ASSIDUIDADE (EVA) ====================
+// Dados fixos da empresa, usados nos textos oficiais de recibo.
+const EMPRESA_RECIBO = {
+    nome: 'SEPRES Engenharia Ltda',
+    cnpj: '00.601.780.0001-25'
+};
+
+// Caminho do arquivo de logo. Coloque a imagem em static/img/logo-sepres.png
+// para que ela apareça automaticamente no topo dos recibos impressos.
+const LOGO_RECIBO_SRC = '/static/img/logo-sepres.png';
+
+function logoReciboHtml() {
+    return `<img src="${LOGO_RECIBO_SRC}" class="recibo-logo" onerror="this.remove()" alt="${EMPRESA_RECIBO.nome}">`;
+}
+
+function formatarDataExtenso(data) {
+    const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
+                   'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    return `${data.getDate()} de ${meses[data.getMonth()]} de ${data.getFullYear()}`;
+}
+
+function gerarReciboPremio(id) {
+    const l = lancamentos.find(lanc => lanc.id === id);
+    if (!l) return;
+    const c = colaboradores.find(co => co.id === l.colaboradorId);
+    if (!c) return;
+
+    const valor = numeroBR(l.bonificacao || 0);
+    const dataExtenso = formatarDataExtenso(new Date());
+
+    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Prêmio';
+    document.getElementById('reciboEvaConteudo').innerHTML = `
+        ${logoReciboHtml()}
+        <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PRÊMIO</h4></div>
+        <p>Eu, <strong>${c.nome}</strong>, declaro que recebi nesta data, como forma de prêmio a quantia de
+        R$ ${valor} (reais) da empresa denominada ${EMPRESA_RECIBO.nome}, inscrita no CNPJ ${EMPRESA_RECIBO.cnpj},
+        com sede na Rua Anibal Cota, n°25, Sala 06, Edifício Jardins, Jardim Itacolomi, Ouro Preto/MG,
+        não ficando nenhum valor pendente. Totalizando o valor de R$ ${valor} (reais).</p>
+        <br>
+        <p>Ouro Preto/MG, ${dataExtenso}</p>
+        <br><br>
+        <div class="text-center">
+            <p>______________________________________________________</p>
+            <p>${c.nome.toUpperCase()}</p>
+        </div>
+    `;
+
+    abrirModal('modalReciboEva');
+}
+
+function gerarReciboAssiduidade(id) {
+    const l = lancamentos.find(lanc => lanc.id === id);
+    if (!l) return;
+    const c = colaboradores.find(co => co.id === l.colaboradorId);
+    if (!c) return;
+
+    const valor = numeroBR(l.assiduidade || 0);
+    const dataExtenso = formatarDataExtenso(new Date());
+
+    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Assiduidade';
+    document.getElementById('reciboEvaConteudo').innerHTML = `
+        ${logoReciboHtml()}
+        <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO DE AUTÔNOMO</h4></div>
+        <p>Eu, <strong>${c.nome}</strong>, inscrito no CPF: ${c.cpf}, declaro ter recebido nesta data, da
+        ${EMPRESA_RECIBO.nome}, inscrita no CNPJ ${EMPRESA_RECIBO.cnpj} com sede na Rua Anibal Cotta, n°25,
+        Bairro Jardim Itacolomi, Ouro Preto, Minas Gerais, a importância líquida de R$ ${valor} (REAIS)
+        referente ao pagamento dos serviços contratados para serviços.</p>
+        <br>
+        <p>Ouro Preto, ${dataExtenso}.</p>
+        <br><br>
+        <div class="text-center">
+            <p>__________________________________________</p>
+            <p>${c.nome.toUpperCase()}</p>
+        </div>
+    `;
+
+    abrirModal('modalReciboEva');
 }
 
 // ==================== DASHBOARD ====================
@@ -1788,16 +1880,7 @@ function renderizarGraficos(fatia) {
     colabs.forEach(c => { const k = c.contratacao || 'Não informado'; headcount[k] = (headcount[k] || 0) + 1; });
     graficoBarras('chartHeadcount', Object.keys(headcount), Object.values(headcount), { moeda: false });
 
-    // 5. Composição dos descontos
-    const descontos = {
-        'Adiantamentos': lancs.reduce((s, l) => s + (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0), 0),
-        'Empréstimos': lancs.reduce((s, l) => s + (l.emprestimo || 0), 0),
-        'Vale Transporte': lancs.reduce((s, l) => s + (l.valeTransporte || 0), 0),
-        'Outros': lancs.reduce((s, l) => s + (l.outros || 0), 0)
-    };
-    graficoBarras('chartDescontos', Object.keys(descontos), Object.values(descontos), { horizontal: true });
-
-    // 6. Quantidade de férias por mês (mesma leitura da evolução: todos os meses,
+    // 5. Quantidade de férias por mês (mesma leitura da evolução: todos os meses,
     //    com o mês filtrado destacado)
     const feriasPorMes = {};
     lancsTodosMeses.forEach(l => {
@@ -1814,7 +1897,7 @@ function renderizarGraficos(fatia) {
     montarLegendaLista('legendaFerias', itensFerias, i =>
         `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.mes}</span></span><span class="font-medium text-slate-800">${i.dias} dia(s)</span></div>`);
 
-    // 7. Faltas por mês (mesmo padrão: todos os meses, mês filtrado destacado)
+    // 6. Faltas por mês (mesmo padrão: todos os meses, mês filtrado destacado)
     const faltasPorMes = {};
     achatarFaltas(lancsTodosMeses).forEach(f => { faltasPorMes[f.mes] = (faltasPorMes[f.mes] || 0) + 1; });
     graficoBarras('chartFaltas', meses.map(formatarMesAno), meses.map(m => faltasPorMes[m] || 0),
@@ -1828,7 +1911,7 @@ function renderizarGraficos(fatia) {
     montarLegendaLista('legendaFaltas', itensFaltas, i =>
         `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.data}</span></span><span class="max-w-[50%] truncate font-medium text-slate-800" title="${i.obs}">${i.obs}</span></div>`);
 
-    // 8. Atestados por mês (contagem de atestados, não soma de dias)
+    // 7. Atestados por mês (contagem de atestados, não soma de dias)
     const atestadosPorMes = {};
     achatarAtestados(lancsTodosMeses).forEach(a => { atestadosPorMes[a.mes] = (atestadosPorMes[a.mes] || 0) + 1; });
     graficoBarras('chartAtestados', meses.map(formatarMesAno), meses.map(m => atestadosPorMes[m] || 0),
