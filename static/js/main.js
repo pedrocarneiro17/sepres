@@ -735,6 +735,7 @@ function limparFormColaborador() {
     if (typeof toggleDiaria === 'function') toggleDiaria();
     if (typeof toggleDependentes === 'function') toggleDependentes();
     if (typeof toggleAdiantamento === 'function') toggleAdiantamento();
+    if (typeof togglePremio === 'function') togglePremio();
     refrescarControlesCustom(document.getElementById('formColaborador'));
 }
 
@@ -807,6 +808,7 @@ function editarColaborador(id) {
     // Reaplica visibilidade condicional
     if (typeof toggleDependentes === 'function') toggleDependentes();
     if (typeof toggleAdiantamento === 'function') toggleAdiantamento();
+    if (typeof togglePremio === 'function') togglePremio();
 
     // Empréstimos
     const container = document.getElementById('emprestimosContainer');
@@ -894,6 +896,11 @@ function atualizarBadgeContratoLancamento() {
             : '';
     }
     if (divEva) divEva.style.display = ehCLT ? 'block' : 'none';
+
+    // Prêmio só existe para CLT (é o valor que compõe o EVA). Preenche assim que o
+    // colaborador é selecionado, com o valor atual do cadastro.
+    setMoeda(document.getElementById('lancBonificacao'), ehCLT ? (colaborador.premio || 0) : 0);
+    if (typeof calcularTotalRecebido === 'function') calcularTotalRecebido();
 
     // Mensalista e Diarista não têm adiantamento por contabilidade — é sempre em Espécie.
     if (divAdiantamentoContab) {
@@ -1178,7 +1185,7 @@ function limparFormLancamento() {
     });
 
     // Zera campos de dinheiro
-    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancEvaPremio','lancAssiduidade','lancCartaoAlimentacao',
+    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancAssiduidade','lancCartaoAlimentacao',
      'lancEva','lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancLiquidoTotal','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
         setMoeda(document.getElementById(id), 0);
@@ -1236,7 +1243,6 @@ function calcularEva() {
     const premio = lerMoeda(document.getElementById('lancBonificacao'));
     const assiduidade = lerMoeda(document.getElementById('lancAssiduidade'));
     const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
-    setMoeda(document.getElementById('lancEvaPremio'), premio);
     setMoeda(document.getElementById('lancEva'), premio + assiduidade + horasExtras);
 }
 

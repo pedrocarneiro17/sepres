@@ -86,7 +86,7 @@
                             </div>
                             <div>
                                 <label class="label">Tipo de Contratação</label>
-                                <select class="input" id="colabContratacao" onchange="toggleDiaria(); toggleAdiantamento();">
+                                <select class="input" id="colabContratacao" onchange="toggleDiaria(); toggleAdiantamento(); togglePremio();">
                                     <option value="CLT">CLT</option>
                                     <option value="Diarista">Diarista</option>
                                     <option value="Mensalista">Mensalista</option>
@@ -108,7 +108,7 @@
                                     <input type="text" inputmode="decimal" class="input money pl-9" id="colabRemuneracao" value="0,00">
                                 </div>
                             </div>
-                            <div>
+                            <div id="divColabPremio">
                                 <label class="label">Prêmio</label>
                                 <div class="relative">
                                     <span class="money-prefix">R$</span>
@@ -264,12 +264,23 @@
             if (opcoes.includes(atual)) sel.value = atual;
             toggleDiaria();
             toggleAdiantamento();
+            togglePremio();
         }
 
         // Mostra o campo "Valor da Diária" apenas para diaristas
         function toggleDiaria() {
             const diarista = document.getElementById('colabContratacao').value === 'Diarista';
             document.getElementById('divValorDiaria').style.display = diarista ? 'block' : 'none';
+        }
+
+        // Prêmio só existe para CLT (é o valor que compõe o EVA no lançamento)
+        function togglePremio() {
+            const ehCLT = document.getElementById('colabContratacao').value === 'CLT';
+            document.getElementById('divColabPremio').style.display = ehCLT ? 'block' : 'none';
+            if (!ehCLT) {
+                setMoeda(document.getElementById('colabPremio'), 0);
+                calcularTotalColaborador();
+            }
         }
 
         function toggleDependentes() {
