@@ -909,6 +909,23 @@ function atualizarBadgeContratoLancamento() {
     const divDiaria = document.getElementById('divDiaria');
     if (divDiaria) divDiaria.style.display = ehDiarista ? 'block' : 'none';
     if (ehDiarista) setMoeda(document.getElementById('lancValorDiaria'), colaborador.valorDiaria || 0);
+
+    // Adiantamento do cadastro: preenche assim que o colaborador é selecionado,
+    // sem depender de o mês já estar escolhido (editarLancamento sobrescreve
+    // esses campos em seguida, quando um lançamento salvo estiver sendo aberto).
+    setMoeda(document.getElementById('lancAdiantamentoEspecie'), 0);
+    setMoeda(document.getElementById('lancAdiantamentoContab'), 0);
+    if (colaborador && colaborador.temAdiantamento === 'Sim' && colaborador.valorAdiantamento > 0) {
+        if (colaborador.contratacao === 'CLT') {
+            if (colaborador.tipoAdiantamento === 'Espécie') {
+                setMoeda(document.getElementById('lancAdiantamentoEspecie'), colaborador.valorAdiantamento);
+            } else {
+                setMoeda(document.getElementById('lancAdiantamentoContab'), colaborador.valorAdiantamento);
+            }
+        } else {
+            setMoeda(document.getElementById('lancAdiantamentoEspecie'), colaborador.valorAdiantamento);
+        }
+    }
 }
 
 function preencherCamposAutomaticamente() {
@@ -1347,6 +1364,23 @@ function editarLancamento(id) {
         if (colabDoLanc.contratacao !== 'Diarista') {
             setMoeda(document.getElementById('lancRemuneracao'), colabDoLanc.remuneracao || 0);
         }
+
+        // Mesma lógica: adiantamento também deve refletir o cadastro atual, não o
+        // valor salvo na época em que o lançamento foi criado.
+        setMoeda(document.getElementById('lancAdiantamentoEspecie'), 0);
+        setMoeda(document.getElementById('lancAdiantamentoContab'), 0);
+        if (colabDoLanc.temAdiantamento === 'Sim' && colabDoLanc.valorAdiantamento > 0) {
+            if (colabDoLanc.contratacao === 'CLT') {
+                if (colabDoLanc.tipoAdiantamento === 'Espécie') {
+                    setMoeda(document.getElementById('lancAdiantamentoEspecie'), colabDoLanc.valorAdiantamento);
+                } else {
+                    setMoeda(document.getElementById('lancAdiantamentoContab'), colabDoLanc.valorAdiantamento);
+                }
+            } else {
+                setMoeda(document.getElementById('lancAdiantamentoEspecie'), colabDoLanc.valorAdiantamento);
+            }
+        }
+
         calcularTotalRecebido();
     }
 
