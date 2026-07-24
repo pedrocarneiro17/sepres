@@ -902,6 +902,13 @@ function atualizarBadgeContratoLancamento() {
             setMoeda(document.getElementById('lancAdiantamentoContab'), 0);
         }
     }
+
+    // Diarista: mostra o bloco de diária assim que o colaborador é selecionado,
+    // sem depender de o mês já estar escolhido.
+    const ehDiarista = !!colaborador && colaborador.contratacao === 'Diarista';
+    const divDiaria = document.getElementById('divDiaria');
+    if (divDiaria) divDiaria.style.display = ehDiarista ? 'block' : 'none';
+    if (ehDiarista) setMoeda(document.getElementById('lancValorDiaria'), colaborador.valorDiaria || 0);
 }
 
 function preencherCamposAutomaticamente() {
