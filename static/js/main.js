@@ -212,9 +212,14 @@ function configurarSelectCustomizado(select) {
     sincronizarDisabled();
 }
 
-// Fecha o dropdown ao clicar fora, rolar a página ou redimensionar
+// Fecha o dropdown ao clicar fora, rolar a página ou redimensionar — mas NÃO quando
+// a rolagem acontece dentro do próprio menu (senão o menu fecha assim que o usuário
+// tenta rolar a lista para ver mais itens).
 document.addEventListener('click', function () { if (csMenuAberto) csMenuAberto(); });
-window.addEventListener('scroll', function () { if (csMenuAberto) csMenuAberto(); }, true);
+window.addEventListener('scroll', function (e) {
+    const dentroDoMenu = e.target && e.target.closest && e.target.closest('.cs-menu');
+    if (csMenuAberto && !dentroDoMenu) csMenuAberto();
+}, true);
 window.addEventListener('resize', function () { if (csMenuAberto) csMenuAberto(); });
 
 // ==================== SELETOR DE MÊS EM PORTUGUÊS ====================
