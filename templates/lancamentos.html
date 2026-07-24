@@ -15,8 +15,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-40 flex -translate-x-full flex-col border-r border-slate-200 bg-white transition-all duration-200 lg:translate-x-0">
         <div class="side-hdr flex h-16 items-center gap-2.5 border-b border-slate-100 px-4">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><i class="fas fa-briefcase"></i></span>
-            <span class="side-label text-lg font-bold tracking-tight text-slate-800">Sistema DP</span>
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="side-logo">
         </div>
         <nav class="flex-1 space-y-1 p-3">
             <a href="/" class="side-link" title="Dashboard"><i class="fas fa-chart-line w-5 shrink-0 text-center"></i><span class="side-label">Dashboard</span></a>
@@ -26,7 +25,7 @@
         <div class="border-t border-slate-100 p-3">
             <a href="/logout" class="side-link" title="Sair"><i class="fas fa-right-from-bracket w-5 shrink-0 text-center"></i><span class="side-label">Sair</span></a>
         </div>
-        <button onclick="collapseSidebar()" title="Recolher menu" class="absolute -right-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-indigo-600 lg:flex">
+        <button onclick="collapseSidebar()" title="Recolher menu" class="absolute -right-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-sepres-600 lg:flex">
             <i id="collapseIcon" class="fas fa-angle-left text-xs"></i>
         </button>
     </aside>
@@ -36,7 +35,7 @@
         <!-- Barra superior (mobile) -->
         <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur lg:hidden">
             <button onclick="toggleSidebar()" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-bars"></i></button>
-            <span class="flex items-center gap-2 font-bold text-slate-800"><span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white"><i class="fas fa-briefcase text-sm"></i></span> Sistema DP</span>
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="h-7 w-auto object-contain">
         </header>
 
         <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -48,7 +47,7 @@
             <!-- Formulário -->
             <div class="card mb-6 overflow-hidden">
                 <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 text-sm font-semibold text-slate-700">
-                    <i class="fas fa-dollar-sign text-indigo-500"></i> <span id="formLancTitle">Novo Lançamento</span>
+                    <i class="fas fa-dollar-sign text-sepres-600"></i> <span id="formLancTitle">Novo Lançamento</span>
                 </div>
                 <div class="p-6">
                     <form id="formLancamento">
@@ -173,7 +172,7 @@
                             <!-- Detalhamento dos empréstimos do mês (valor editável por empréstimo) -->
                             <div id="emprestimosDetalhe" class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4" style="display: none;">
                                 <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    <i class="fas fa-file-invoice-dollar text-indigo-500"></i> Empréstimos deste mês
+                                    <i class="fas fa-file-invoice-dollar text-sepres-600"></i> Empréstimos deste mês
                                 </div>
                                 <div id="emprestimosDetalheLista" class="space-y-2"></div>
                             </div>
@@ -240,7 +239,7 @@
             <!-- Lista -->
             <div class="card overflow-hidden">
                 <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-table text-indigo-500"></i> Todos os Lançamentos</div>
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-table text-sepres-600"></i> Todos os Lançamentos</div>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div class="relative w-full sm:w-56">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><i class="fas fa-search text-xs"></i></span>
@@ -272,7 +271,7 @@
     <div id="modalRecibo" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
         <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-receipt text-indigo-500"></i> Recibo de Pagamento</h3>
+                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-receipt text-sepres-600"></i> Recibo de Pagamento</h3>
                 <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalRecibo')"><i class="fas fa-times"></i></button>
             </div>
             <div class="px-6 py-5">
@@ -304,7 +303,7 @@
     <div id="modalReciboEva" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
         <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-receipt text-indigo-500"></i> <span id="reciboEvaTitulo">Recibo</span></h3>
+                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-receipt text-sepres-600"></i> <span id="reciboEvaTitulo">Recibo</span></h3>
                 <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalReciboEva')"><i class="fas fa-times"></i></button>
             </div>
             <div class="px-6 py-5">

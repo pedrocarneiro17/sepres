@@ -6,7 +6,7 @@
     /* Sidebar */
     .sidebar { @apply w-64; }
     .side-link { @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800; }
-    .side-link.active { @apply bg-indigo-50 text-indigo-700; }
+    .side-link.active { @apply bg-sepres-50 text-sepres-800; }
     .side-label { @apply inline; }
     .app-shell { @apply transition-all duration-200 lg:pl-64; }
 
@@ -22,7 +22,7 @@
 
     /* Formulários */
     .label { @apply mb-1.5 block text-sm font-medium text-slate-600; }
-    .input { @apply w-full rounded-xl border-0 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm ring-1 ring-inset ring-slate-200 transition placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500; }
+    .input { @apply w-full rounded-xl border-0 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm ring-1 ring-inset ring-slate-200 transition placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-sepres-500 disabled:bg-slate-100 disabled:text-slate-500; }
 
     /* Selects estilizados: remove aparência nativa e adiciona seta customizada */
     select.input {
@@ -34,7 +34,7 @@
 
     /* Botões */
     .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50; }
-    .btn-primary { @apply btn bg-indigo-600 text-white shadow-sm hover:bg-indigo-500; }
+    .btn-primary { @apply btn bg-sepres-600 text-white shadow-sm hover:bg-sepres-500; }
     .btn-secondary { @apply btn bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50; }
     .btn-success { @apply btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-500; }
     .btn-danger { @apply btn bg-rose-600 text-white shadow-sm hover:bg-rose-500; }
@@ -55,22 +55,30 @@
     .cs-menu { @apply rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl; z-index: 60; max-height: 16rem; overflow-y: auto; }
     .cs-option { @apply cursor-pointer truncate rounded-lg px-3 py-2 text-sm text-slate-700 transition; }
     .cs-option:hover { @apply bg-slate-100; }
-    .cs-option.cs-selected { @apply bg-indigo-50 font-medium text-indigo-700; }
+    .cs-option.cs-selected { @apply bg-sepres-50 font-medium text-sepres-800; }
 
     /* Seletor de mês em português */
     .mp-panel { min-width: 15rem; }
     .mp-nav { @apply flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100; }
     .mp-mes { @apply rounded-lg px-2 py-2 text-sm text-slate-700 transition hover:bg-slate-100; }
-    .mp-mes.cs-selected { @apply bg-indigo-50 font-medium text-indigo-700; }
+    .mp-mes.cs-selected { @apply bg-sepres-50 font-medium text-sepres-800; }
 
     /* Chips de filtro (ex.: tipo de contratação) */
     .filtro-chip { @apply cursor-pointer rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-50; }
-    .filtro-chip.ativo { @apply border-indigo-200 bg-indigo-50 text-indigo-700; }
+    .filtro-chip.ativo { @apply border-sepres-200 bg-sepres-50 text-sepres-800; }
 
     /* Legenda expansível dos gráficos (clique para ver o detalhamento) */
-    .legenda-toggle { @apply mt-3 flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50; }
+    .legenda-toggle { @apply mt-3 flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs font-medium text-sepres-600 transition hover:bg-sepres-50; }
     .legenda-chevron { @apply text-xs transition-transform duration-150; }
     .legenda-toggle.aberto .legenda-chevron { @apply rotate-180; }
     .legenda-painel { @apply mt-1 max-h-56 overflow-y-auto rounded-lg border border-slate-100; }
     .legenda-linha { @apply flex items-center justify-between gap-3 border-b border-slate-50 px-3 py-2 text-xs last:border-0; }
+
+    /* Logo da marca no cabeçalho do menu lateral */
+    .side-logo { @apply h-8 w-auto shrink-0 object-contain; max-width: 160px; }
+    body.sidebar-collapsed .side-hdr .side-logo { @apply h-7; max-width: 40px; }
+
+    /* Variante compacta (usada na barra de filtros, para ocupar menos altura) */
+    .input.compact { @apply px-2.5 py-1.5 text-xs; }
+    .btn-secondary.compact { @apply px-3 py-1.5 text-xs; }
 }

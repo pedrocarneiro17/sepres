@@ -355,7 +355,7 @@ function notificar(mensagem, tipo = 'success') {
     const estilos = {
         success: { icon: 'fa-circle-check', box: 'border-emerald-200 bg-emerald-50 text-emerald-800', ic: 'text-emerald-500' },
         error:   { icon: 'fa-circle-exclamation', box: 'border-rose-200 bg-rose-50 text-rose-800', ic: 'text-rose-500' },
-        info:    { icon: 'fa-circle-info', box: 'border-indigo-200 bg-indigo-50 text-indigo-800', ic: 'text-indigo-500' }
+        info:    { icon: 'fa-circle-info', box: 'border-sepres-200 bg-sepres-50 text-sepres-800', ic: 'text-sepres-600' }
     };
     const e = estilos[tipo] || estilos.success;
     const t = document.createElement('div');
@@ -562,7 +562,7 @@ function renderizar() {
 
 function badgeContratacao(tipo) {
     const map = {
-        'CLT': 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+        'CLT': 'bg-sepres-50 text-sepres-800 ring-sepres-600/20',
         'Mensalista': 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
         'Diarista': 'bg-sky-50 text-sky-700 ring-sky-600/20'
     };
@@ -582,7 +582,7 @@ function botaoAcao(onclick, cor, icone, title) {
         delete: 'text-rose-600 hover:bg-rose-50',
         finalize: 'text-emerald-600 hover:bg-emerald-50',
         view: 'text-sky-600 hover:bg-sky-50',
-        recibo: 'text-indigo-600 hover:bg-indigo-50',
+        recibo: 'text-sepres-600 hover:bg-sepres-50',
         reabrir: 'text-slate-500 hover:bg-slate-100',
         premio: 'text-amber-600 hover:bg-amber-50',
         autonomo: 'text-teal-600 hover:bg-teal-50'
@@ -1726,7 +1726,10 @@ function renderizarAtestadosDash(registros) {
 // banda de luminosidade, acima do piso de croma e com contraste >= 3:1 no branco).
 // O cinza é reservado para de-ênfase (padrão "emphasis"), nunca como categoria.
 
-const VIZ = { dados: '#4f46e5', neutro: '#94a3b8', grade: '#e2e8f0', eixo: '#64748b' };
+// Cor de dados: dourado da SEPRES escurecido um pouco (#8a7d1f) para garantir
+// contraste >= 3:1 sobre o fundo branco do gráfico (o tom de marca #a89826
+// puro fica em ~2,9:1, abaixo do mínimo recomendado para conteúdo sobre branco).
+const VIZ = { dados: '#8a7d1f', neutro: '#94a3b8', grade: '#e2e8f0', eixo: '#64748b' };
 const graficos = {};
 
 function moedaEixo(v) {

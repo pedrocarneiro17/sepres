@@ -15,8 +15,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-40 flex -translate-x-full flex-col border-r border-slate-200 bg-white transition-all duration-200 lg:translate-x-0">
         <div class="side-hdr flex h-16 items-center gap-2.5 border-b border-slate-100 px-4">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><i class="fas fa-briefcase"></i></span>
-            <span class="side-label text-lg font-bold tracking-tight text-slate-800">Sistema DP</span>
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="side-logo">
         </div>
         <nav class="flex-1 space-y-1 p-3">
             <a href="/" class="side-link" title="Dashboard"><i class="fas fa-chart-line w-5 shrink-0 text-center"></i><span class="side-label">Dashboard</span></a>
@@ -26,7 +25,7 @@
         <div class="border-t border-slate-100 p-3">
             <a href="/logout" class="side-link" title="Sair"><i class="fas fa-right-from-bracket w-5 shrink-0 text-center"></i><span class="side-label">Sair</span></a>
         </div>
-        <button onclick="collapseSidebar()" title="Recolher menu" class="absolute -right-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-indigo-600 lg:flex">
+        <button onclick="collapseSidebar()" title="Recolher menu" class="absolute -right-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-sepres-600 lg:flex">
             <i id="collapseIcon" class="fas fa-angle-left text-xs"></i>
         </button>
     </aside>
@@ -36,7 +35,7 @@
         <!-- Barra superior (mobile) -->
         <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur lg:hidden">
             <button onclick="toggleSidebar()" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-bars"></i></button>
-            <span class="flex items-center gap-2 font-bold text-slate-800"><span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white"><i class="fas fa-briefcase text-sm"></i></span> Sistema DP</span>
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="h-7 w-auto object-contain">
         </header>
 
         <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -48,7 +47,7 @@
             <!-- Formulário -->
             <div class="card mb-6 overflow-hidden">
                 <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 text-sm font-semibold text-slate-700">
-                    <i class="fas fa-user-plus text-indigo-500"></i> <span id="formColabTitle">Cadastrar Colaborador</span>
+                    <i class="fas fa-user-plus text-sepres-600"></i> <span id="formColabTitle">Cadastrar Colaborador</span>
                 </div>
                 <div class="p-6">
                     <form id="formColaborador">
@@ -199,7 +198,7 @@
             <!-- Lista -->
             <div class="card overflow-hidden">
                 <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-list text-indigo-500"></i> Colaboradores Cadastrados</div>
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-list text-sepres-600"></i> Colaboradores Cadastrados</div>
                     <div class="relative w-full sm:w-72">
                         <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><i class="fas fa-search text-xs"></i></span>
                         <input type="text" class="input pl-9" id="filtroNome" placeholder="Buscar por nome..." onkeyup="filtrarColaboradores()">
@@ -306,7 +305,7 @@
             const valorFmt = dados ? numeroBR(dados.valor) : '0,00';
             div.innerHTML = `
                 <button type="button" class="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50" onclick="removerEmprestimo(${contadorEmprestimos})"><i class="fas fa-times"></i></button>
-                <h6 class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-money-check text-indigo-500"></i> Empréstimo #${contadorEmprestimos}</h6>
+                <h6 class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-money-check text-sepres-600"></i> Empréstimo #${contadorEmprestimos}</h6>
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
                     <div>
                         <label class="label">Valor</label>

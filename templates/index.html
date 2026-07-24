@@ -15,8 +15,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-40 flex -translate-x-full flex-col border-r border-slate-200 bg-white transition-all duration-200 lg:translate-x-0">
         <div class="side-hdr flex h-16 items-center gap-2.5 border-b border-slate-100 px-4">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><i class="fas fa-briefcase"></i></span>
-            <span class="side-label text-lg font-bold tracking-tight text-slate-800">Sistema DP</span>
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="side-logo">
         </div>
         <nav class="flex-1 space-y-1 p-3">
             <a href="/" class="side-link active" title="Dashboard"><i class="fas fa-chart-line w-5 shrink-0 text-center"></i><span class="side-label">Dashboard</span></a>
@@ -26,7 +25,7 @@
         <div class="border-t border-slate-100 p-3">
             <a href="/logout" class="side-link" title="Sair"><i class="fas fa-right-from-bracket w-5 shrink-0 text-center"></i><span class="side-label">Sair</span></a>
         </div>
-        <button onclick="collapseSidebar()" title="Recolher menu" class="absolute -right-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-indigo-600 lg:flex">
+        <button onclick="collapseSidebar()" title="Recolher menu" class="absolute -right-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-sepres-600 lg:flex">
             <i id="collapseIcon" class="fas fa-angle-left text-xs"></i>
         </button>
     </aside>
@@ -36,7 +35,7 @@
         <!-- Barra superior (mobile) -->
         <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur lg:hidden">
             <button onclick="toggleSidebar()" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-bars"></i></button>
-            <span class="flex items-center gap-2 font-bold text-slate-800"><span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white"><i class="fas fa-briefcase text-sm"></i></span> Sistema DP</span>
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="h-7 w-auto object-contain">
         </header>
 
         <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -46,25 +45,25 @@
             </div>
 
             <!-- Filtros: uma única linha que controla todos os gráficos e tabelas -->
-            <div class="card mb-6 p-5">
-                <div class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <i class="fas fa-filter text-indigo-500"></i> Filtros
+            <div class="card mb-6 p-3">
+                <div class="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                    <i class="fas fa-filter text-sepres-600"></i> Filtros
                 </div>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                     <div>
-                        <label class="label">Competência</label>
-                        <select class="input" id="filtroCompetencia">
+                        <label class="label mb-1 text-xs">Competência</label>
+                        <select class="input compact" id="filtroCompetencia">
                             <option value="todos">Todos os meses</option>
                             <option value="mes">Mês específico</option>
                         </select>
                     </div>
                     <div id="divFiltroMes" style="display: none;">
-                        <label class="label">Mês/Ano</label>
-                        <input type="month" class="input mes-ptbr" id="filtroMes">
+                        <label class="label mb-1 text-xs">Mês/Ano</label>
+                        <input type="month" class="input compact mes-ptbr" id="filtroMes">
                     </div>
                     <div>
-                        <label class="label">Tipo de Contrato</label>
-                        <select class="input" id="filtroContrato">
+                        <label class="label mb-1 text-xs">Tipo de Contrato</label>
+                        <select class="input compact" id="filtroContrato">
                             <option value="">Todos</option>
                             <option value="CLT">CLT</option>
                             <option value="Diarista">Diarista</option>
@@ -72,15 +71,15 @@
                         </select>
                     </div>
                     <div>
-                        <label class="label">Empresa (CNPJ)</label>
-                        <select class="input" id="filtroEmpresa">
+                        <label class="label mb-1 text-xs">Empresa (CNPJ)</label>
+                        <select class="input compact" id="filtroEmpresa">
                             <option value="">Todas</option>
                             <option value="Engenharia">Engenharia</option>
                             <option value="Gerenciadora">Gerenciadora</option>
                         </select>
                     </div>
                     <div class="flex items-end">
-                        <button class="btn-secondary w-full" id="btnLimparFiltros"><i class="fas fa-eraser"></i> Limpar</button>
+                        <button class="btn-secondary compact w-full" id="btnLimparFiltros"><i class="fas fa-eraser"></i> Limpar</button>
                     </div>
                 </div>
             </div>
@@ -89,25 +88,25 @@
             <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-6">
                 <div class="card p-5">
                     <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <i id="iconStat1" class="fas fa-users text-indigo-500"></i><span id="labelStat1">Colaboradores</span>
+                        <i id="iconStat1" class="fas fa-users text-sepres-600"></i><span id="labelStat1">Colaboradores</span>
                     </div>
                     <p id="valueStat1" class="mt-2 truncate text-3xl font-bold text-slate-900">0</p>
                 </div>
                 <div class="card p-5">
                     <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <i class="fas fa-money-bill-wave text-indigo-500"></i><span>Líquido Pago</span>
+                        <i class="fas fa-money-bill-wave text-sepres-600"></i><span>Líquido Pago</span>
                     </div>
                     <p id="valueStat2" class="mt-2 truncate text-base font-bold text-slate-900 sm:text-lg" title="">R$ 0,00</p>
                 </div>
                 <div class="card p-5">
                     <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <i class="fas fa-hand-holding-dollar text-indigo-500"></i><span>Adiantamentos</span>
+                        <i class="fas fa-hand-holding-dollar text-sepres-600"></i><span>Adiantamentos</span>
                     </div>
                     <p id="valueStat3" class="mt-2 truncate text-base font-bold text-slate-900 sm:text-lg" title="">R$ 0,00</p>
                 </div>
                 <div class="card p-5">
                     <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <i class="fas fa-file-invoice-dollar text-indigo-500"></i><span>Empréstimos</span>
+                        <i class="fas fa-file-invoice-dollar text-sepres-600"></i><span>Empréstimos</span>
                     </div>
                     <p id="valueStat4" class="mt-2 truncate text-base font-bold text-slate-900 sm:text-lg" title="">R$ 0,00</p>
                 </div>
@@ -220,8 +219,8 @@
             <div class="card overflow-hidden">
                 <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <i class="fas fa-table text-indigo-500"></i> Detalhamento
-                        <span class="ml-1 inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                        <i class="fas fa-table text-sepres-600"></i> Detalhamento
+                        <span class="ml-1 inline-flex items-center rounded-full bg-sepres-50 px-2.5 py-0.5 text-xs font-medium text-sepres-800">
                             <span id="tipoResultado">Colaboradores</span>: <strong id="countResultados" class="ml-1">0</strong>
                         </span>
                     </div>
