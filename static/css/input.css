@@ -52,10 +52,13 @@
     .cs-placeholder .cs-label { @apply text-slate-400; }
     .cs-chevron { @apply text-xs text-slate-400 transition-transform duration-150; }
     .cs-open .cs-chevron { @apply rotate-180; }
-    .cs-menu { @apply rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl; z-index: 60; max-height: 16rem; overflow-y: auto; }
+    .cs-menu { @apply flex flex-col rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl; z-index: 60; max-height: 18rem; }
+    .cs-busca { @apply mb-1 w-full shrink-0 rounded-lg border-0 bg-slate-100 px-3 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sepres-500; }
+    .cs-lista { @apply overflow-y-auto; max-height: 14rem; }
     .cs-option { @apply cursor-pointer truncate rounded-lg px-3 py-2 text-sm text-slate-700 transition; }
     .cs-option:hover { @apply bg-slate-100; }
     .cs-option.cs-selected { @apply bg-sepres-50 font-medium text-sepres-800; }
+    .cs-option.cs-oculta { @apply hidden; }
 
     /* Seletor de mês em português */
     .mp-panel { min-width: 15rem; }

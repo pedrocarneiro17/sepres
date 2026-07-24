@@ -149,12 +149,42 @@ function configurarSelectCustomizado(select) {
         botao.classList.toggle('cs-disabled', select.disabled);
     }
 
+    // Selects com mais opções que isso ganham uma caixa de busca no topo do menu
+    const LIMITE_BUSCA = 6;
+
     function construirMenu() {
         menu.innerHTML = '';
-        Array.from(select.options).forEach((opt, i) => {
+        const opcoes = Array.from(select.options);
+        let inputBusca = null;
+
+        if (opcoes.length > LIMITE_BUSCA) {
+            inputBusca = document.createElement('input');
+            inputBusca.type = 'text';
+            inputBusca.className = 'cs-busca';
+            inputBusca.placeholder = 'Buscar...';
+            inputBusca.addEventListener('click', e => e.stopPropagation());
+            inputBusca.addEventListener('input', filtrarOpcoes);
+            inputBusca.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    fecharMenu();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const primeiraVisivel = lista.querySelector('.cs-option:not(.cs-oculta)');
+                    if (primeiraVisivel) primeiraVisivel.click();
+                }
+            });
+            menu.appendChild(inputBusca);
+        }
+
+        const lista = document.createElement('div');
+        lista.className = 'cs-lista';
+        menu.appendChild(lista);
+
+        opcoes.forEach((opt, i) => {
             const item = document.createElement('div');
             item.className = 'cs-option' + (i === select.selectedIndex ? ' cs-selected' : '');
             item.textContent = opt.textContent;
+            item.dataset.texto = opt.textContent.toLowerCase();
             item.addEventListener('click', function (e) {
                 e.stopPropagation();
                 select.value = opt.value;
@@ -162,8 +192,17 @@ function configurarSelectCustomizado(select) {
                 atualizarLabel();
                 fecharMenu();
             });
-            menu.appendChild(item);
+            lista.appendChild(item);
         });
+
+        function filtrarOpcoes() {
+            const termo = inputBusca.value.trim().toLowerCase();
+            lista.querySelectorAll('.cs-option').forEach(item => {
+                item.classList.toggle('cs-oculta', !(!termo || item.dataset.texto.includes(termo)));
+            });
+        }
+
+        return inputBusca;
     }
 
     function posicionarMenu() {
@@ -177,11 +216,12 @@ function configurarSelectCustomizado(select) {
     function abrirMenu() {
         if (select.disabled) return;
         if (csMenuAberto) csMenuAberto();
-        construirMenu();
+        const inputBusca = construirMenu();
         posicionarMenu();
         menu.classList.remove('hidden');
         botao.classList.add('cs-open');
         csMenuAberto = fecharMenu;
+        if (inputBusca) setTimeout(() => inputBusca.focus(), 0);
     }
 
     function fecharMenu() {
@@ -447,6 +487,11 @@ async function carregarDados() {
         const dados = await response.json();
         colaboradores = Array.isArray(dados.colaboradores) ? dados.colaboradores : [];
         lancamentos = Array.isArray(dados.lancamentos) ? dados.lancamentos : [];
+
+        // Ordena por nome (A-Z) uma única vez aqui, para que toda tela que lista
+        // colaboradores (selects, tabelas, filtros) já receba em ordem alfabética.
+        colaboradores.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+
         renderizar();
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
@@ -1286,6 +1331,18 @@ function editarLancamento(id) {
     setMoeda(document.getElementById('lancLiquidoTotal'), l.liquidoTotal || 0);
     setMoeda(document.getElementById('lancPagamentoContab'), l.pagamentoContab || 0);
     setMoeda(document.getElementById('lancPagamentoEspecie'), l.pagamentoEspecie || 0);
+
+    // Lançamentos ainda em aberto (não finalizados) sempre refletem o prêmio/remuneração
+    // ATUAIS do cadastro do colaborador, para não ficarem presos a um valor antigo caso
+    // o cadastro seja editado depois de o lançamento já existir.
+    if (l.status === 'aberto' && colabDoLanc) {
+        setMoeda(document.getElementById('lancBonificacao'), colabDoLanc.premio || 0);
+        if (colabDoLanc.contratacao !== 'Diarista') {
+            setMoeda(document.getElementById('lancRemuneracao'), colabDoLanc.remuneracao || 0);
+        }
+        calcularTotalRecebido();
+    }
+
     calcularEva();
 
     // Reconstrói o detalhamento de empréstimos a partir do que foi salvo
