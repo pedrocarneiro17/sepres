@@ -904,9 +904,16 @@ function atualizarBadgeContratoLancamento() {
     if (divDiaria) divDiaria.style.display = ehDiarista ? 'block' : 'none';
 
     // Prêmio existe para CLT e Mensalista — só Diarista não tem. Preenche assim que
-    // o colaborador é selecionado, com o valor atual do cadastro.
+    // o colaborador é selecionado, com o valor atual do cadastro. Para CLT, o campo
+    // fica visualmente dentro do bloco EVA; para Mensalista, na seção Remuneração.
     const divLancPremio = document.getElementById('divLancPremio');
-    if (divLancPremio) divLancPremio.style.display = ehDiarista ? 'none' : 'block';
+    const evaPremioSlot = document.getElementById('evaPremioSlot');
+    const remuneracaoPremioSlot = document.getElementById('remuneracaoPremioSlot');
+    if (divLancPremio) {
+        divLancPremio.style.display = ehDiarista ? 'none' : 'block';
+        const destino = ehCLT ? evaPremioSlot : remuneracaoPremioSlot;
+        if (destino && divLancPremio.parentElement !== destino) destino.appendChild(divLancPremio);
+    }
     setMoeda(document.getElementById('lancBonificacao'), ehDiarista ? 0 : (colaborador ? (colaborador.premio || 0) : 0));
     if (typeof calcularTotalRecebido === 'function') calcularTotalRecebido();
 
@@ -1195,6 +1202,7 @@ function limparFormLancamento() {
     document.getElementById('detalhesEmprestimo').innerHTML = '';
     renderizarEmprestimosLanc([]);
     document.getElementById('divEva').style.display = 'none';
+    document.getElementById('divLancPremio').style.display = 'none';
     document.getElementById('lancContratoBadge').innerHTML = '';
 
     // Limpa Faltas e Atestados
@@ -1249,6 +1257,7 @@ function calcularEva() {
 }
 
 function calcularLiquidoTotal() {
+    const totalRecebido = lerMoeda(document.getElementById('lancTotalRecebido'));
     const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
     const valeTransporte = lerMoeda(document.getElementById('lancValeTransporte'));
     const emprestimo = lerMoeda(document.getElementById('lancEmprestimo'));
@@ -1261,13 +1270,13 @@ function calcularLiquidoTotal() {
     // CLT: Horas Extras só compõe o EVA, não entra separadamente no líquido.
     const horasExtrasNoLiquido = colaboradorLancamentoEhCLT() ? 0 : horasExtras;
 
-    // Líquido = Pagamento Contab. + Pagamento Espécie + Horas Extras (exceto CLT)
-    //           - Vale Transporte - Empréstimo - Outros - Adiantamentos (espécie + contabilidade)
+    // Líquido = Total Recebido (Remuneração + Prêmio) + Pagamento Contab. + Pagamento
+    //           Espécie + Horas Extras (exceto CLT) - Vale Transporte - Empréstimo
+    //           - Outros - Adiantamentos (espécie + contabilidade)
     //
-    // Observação: "Total Recebido" (Remuneração + Prêmio) NÃO entra aqui separadamente —
-    // esse valor já é a base usada para pré-preencher o Pagamento Espécie, então somá-lo
-    // de novo duplicaria o mesmo dinheiro no líquido.
-    const liquido = horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
+    // Pagamento Contab./Espécie agora servem só para lançar ajustes extras do mês
+    // (não são mais pré-preenchidos com o salário), então somam à parte do Total Recebido.
+    const liquido = totalRecebido + horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
                     - valeTransporte - emprestimo - outros
                     - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
