@@ -905,13 +905,13 @@ function atualizarBadgeContratoLancamento() {
 
     // Prêmio existe para CLT e Mensalista — só Diarista não tem. Preenche assim que
     // o colaborador é selecionado, com o valor atual do cadastro. Para CLT, o campo
-    // fica visualmente dentro do bloco EVA; para Mensalista, na seção Remuneração.
+    // fica visualmente dentro do bloco EVA; para Mensalista, na seção Pagamento.
     const divLancPremio = document.getElementById('divLancPremio');
     const evaPremioSlot = document.getElementById('evaPremioSlot');
-    const remuneracaoPremioSlot = document.getElementById('remuneracaoPremioSlot');
+    const pagamentoPremioSlot = document.getElementById('pagamentoPremioSlot');
     if (divLancPremio) {
         divLancPremio.style.display = ehDiarista ? 'none' : 'block';
-        const destino = ehCLT ? evaPremioSlot : remuneracaoPremioSlot;
+        const destino = ehCLT ? evaPremioSlot : pagamentoPremioSlot;
         if (destino && divLancPremio.parentElement !== destino) destino.appendChild(divLancPremio);
     }
     setMoeda(document.getElementById('lancBonificacao'), ehDiarista ? 0 : (colaborador ? (colaborador.premio || 0) : 0));
