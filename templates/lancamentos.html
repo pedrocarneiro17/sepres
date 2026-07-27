@@ -79,13 +79,6 @@
                         </div>
 
                         <div id="divDadosLancamento">
-                            <!-- Salário Bruto: só para consulta (readonly), pra quem lança não precisar supor o valor.
-                                 Não entra editável em lugar nenhum — vem do cadastro (ou diária × dias, p/ Diarista). -->
-                            <div class="mb-4">
-                                <label class="label">Salário Bruto (referência do cadastro)</label>
-                                <div class="relative max-w-xs"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50" id="lancRemuneracao" value="0,00" readonly></div>
-                            </div>
-
                             <!-- Diária: aparece apenas quando o colaborador é Diarista -->
                             <div id="divDiaria" style="display: none;">
                                 <h6 class="section-title"><i class="fas fa-calendar-day"></i> Diária</h6>
@@ -151,6 +144,12 @@
 
                             <h6 class="section-title"><i class="fas fa-credit-card"></i> Pagamento</h6>
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                                <!-- Salário Bruto: só para consulta (readonly), pra quem lança não precisar supor o valor.
+                                     Não entra editável em lugar nenhum — vem do cadastro (ou diária × dias, p/ Diarista). -->
+                                <div>
+                                    <label class="label">Salário Bruto (referência do cadastro)</label>
+                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50" id="lancRemuneracao" value="0,00" readonly></div>
+                                </div>
                                 <div>
                                     <label class="label">Forma de Pagamento</label>
                                     <select class="input" id="lancFormaPagamento"><option value="Depósito">Depósito</option><option value="Espécie">Espécie</option><option value="Depósito + Espécie">Depósito + Espécie</option></select>
