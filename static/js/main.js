@@ -923,6 +923,9 @@ function atualizarBadgeContratoLancamento() {
         const destino = ehCLT ? evaPremioSlot : pagamentoPremioSlot;
         if (destino && divLancPremio.parentElement !== destino) destino.appendChild(divLancPremio);
     }
+    // O slot vazio na seção Pagamento só ocupa espaço no grid quando realmente
+    // recebe o campo (Mensalista) — senão deixa um buraco na grade.
+    if (pagamentoPremioSlot) pagamentoPremioSlot.style.display = ehCLT || ehDiarista ? 'none' : 'block';
     setMoeda(document.getElementById('lancBonificacao'), ehDiarista ? 0 : (colaborador ? (colaborador.premio || 0) : 0));
     if (typeof calcularTotalRecebido === 'function') calcularTotalRecebido();
 
@@ -1211,6 +1214,7 @@ function limparFormLancamento() {
     renderizarEmprestimosLanc([]);
     document.getElementById('divEva').style.display = 'none';
     document.getElementById('divLancPremio').style.display = 'none';
+    document.getElementById('pagamentoPremioSlot').style.display = 'none';
     document.getElementById('lancContratoBadge').innerHTML = '';
 
     // Limpa Faltas e Atestados
