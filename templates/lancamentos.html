@@ -79,6 +79,13 @@
                         </div>
 
                         <div id="divDadosLancamento">
+                            <!-- Salário Bruto: só para consulta (readonly), pra quem lança não precisar supor o valor.
+                                 Não entra editável em lugar nenhum — vem do cadastro (ou diária × dias, p/ Diarista). -->
+                            <div class="mb-4">
+                                <label class="label">Salário Bruto (referência do cadastro)</label>
+                                <div class="relative max-w-xs"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50" id="lancRemuneracao" value="0,00" readonly></div>
+                            </div>
+
                             <!-- Diária: aparece apenas quando o colaborador é Diarista -->
                             <div id="divDiaria" style="display: none;">
                                 <h6 class="section-title"><i class="fas fa-calendar-day"></i> Diária</h6>
@@ -94,10 +101,9 @@
                                 </div>
                             </div>
 
-                            <!-- Remuneração e Total Recebido não têm mais campo próprio na tela: o valor
-                                 vem do cadastro (ou da diária × dias, para Diarista) e entra direto no
-                                 cálculo do Líquido Total através destes campos ocultos. -->
-                            <input type="hidden" id="lancRemuneracao" value="0,00">
+                            <!-- Total Recebido não tem mais campo próprio na tela: o valor continua sendo
+                                 calculado (Remuneração + Prêmio) e entra direto na fórmula do Líquido Total
+                                 através deste campo oculto. -->
                             <input type="hidden" id="lancTotalRecebido" value="0,00">
 
                             <!-- EVA: aparece apenas quando o colaborador é CLT. -->
