@@ -144,15 +144,15 @@
 
                             <h6 class="section-title"><i class="fas fa-credit-card"></i> Pagamento</h6>
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                                <div>
+                                    <label class="label">Forma de Pagamento</label>
+                                    <select class="input" id="lancFormaPagamento"><option value="Depósito">Depósito</option><option value="Espécie">Espécie</option><option value="Depósito + Espécie">Depósito + Espécie</option></select>
+                                </div>
                                 <!-- Salário Bruto: só para consulta (readonly), pra quem lança não precisar supor o valor.
                                      Não entra editável em lugar nenhum — vem do cadastro (ou diária × dias, p/ Diarista). -->
                                 <div>
                                     <label class="label">Salário Bruto</label>
                                     <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50" id="lancRemuneracao" value="0,00" readonly></div>
-                                </div>
-                                <div>
-                                    <label class="label">Forma de Pagamento</label>
-                                    <select class="input" id="lancFormaPagamento"><option value="Depósito">Depósito</option><option value="Espécie">Espécie</option><option value="Depósito + Espécie">Depósito + Espécie</option></select>
                                 </div>
                                 <div>
                                     <label class="label">Horas Extras</label>
@@ -167,17 +167,6 @@
                                     <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancEmprestimo" value="0,00"></div>
                                     <small id="detalhesEmprestimo" class="mt-1 block text-xs text-slate-500"></small>
                                 </div>
-                            </div>
-
-                            <!-- Detalhamento dos empréstimos do mês (valor editável por empréstimo) -->
-                            <div id="emprestimosDetalhe" class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4" style="display: none;">
-                                <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    <i class="fas fa-file-invoice-dollar text-sepres-600"></i> Empréstimos deste mês
-                                </div>
-                                <div id="emprestimosDetalheLista" class="space-y-2"></div>
-                            </div>
-
-                            <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
                                 <!-- Slot do Prêmio para Mensalista (CLT mostra o campo dentro do EVA). -->
                                 <div id="pagamentoPremioSlot"></div>
                                 <div>
@@ -192,10 +181,20 @@
                                     <label class="label">Pagamento Espécie</label>
                                     <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancPagamentoEspecie" value="0,00"></div>
                                 </div>
-                                <div>
-                                    <label class="label">Líquido Total</label>
-                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-emerald-50 font-bold text-emerald-700 ring-emerald-200" id="lancLiquidoTotal" value="0,00" readonly></div>
+                            </div>
+
+                            <!-- Detalhamento dos empréstimos do mês (valor editável por empréstimo) -->
+                            <div id="emprestimosDetalhe" class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4" style="display: none;">
+                                <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <i class="fas fa-file-invoice-dollar text-sepres-600"></i> Empréstimos deste mês
                                 </div>
+                                <div id="emprestimosDetalheLista" class="space-y-2"></div>
+                            </div>
+
+                            <!-- Líquido Total: resumo final, em linha própria pra não ficar desalinhado no grid. -->
+                            <div class="mt-4">
+                                <label class="label">Líquido Total</label>
+                                <div class="relative max-w-xs"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-emerald-50 font-bold text-emerald-700 ring-emerald-200" id="lancLiquidoTotal" value="0,00" readonly></div>
                             </div>
 
                             <h6 class="section-title"><i class="fas fa-calendar-xmark"></i> Faltas e Atestados</h6>
