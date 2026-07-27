@@ -94,17 +94,11 @@
                                 </div>
                             </div>
 
-                            <h6 class="section-title"><i class="fas fa-money-bill-wave"></i> Remuneração</h6>
-                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div>
-                                    <label class="label">Remuneração Líquida</label>
-                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-field pl-9" id="lancRemuneracao" value="0,00"></div>
-                                </div>
-                                <div>
-                                    <label class="label">Total Recebido</label>
-                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50 font-semibold" id="lancTotalRecebido" value="0,00" readonly></div>
-                                </div>
-                            </div>
+                            <!-- Remuneração e Total Recebido não têm mais campo próprio na tela: o valor
+                                 vem do cadastro (ou da diária × dias, para Diarista) e entra direto no
+                                 cálculo do Líquido Total através destes campos ocultos. -->
+                            <input type="hidden" id="lancRemuneracao" value="0,00">
+                            <input type="hidden" id="lancTotalRecebido" value="0,00">
 
                             <!-- EVA: aparece apenas quando o colaborador é CLT. -->
                             <div id="divEva" style="display: none;">

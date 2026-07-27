@@ -902,6 +902,15 @@ function atualizarBadgeContratoLancamento() {
     const ehDiarista = !!colaborador && colaborador.contratacao === 'Diarista';
     const divDiaria = document.getElementById('divDiaria');
     if (divDiaria) divDiaria.style.display = ehDiarista ? 'block' : 'none';
+    if (ehDiarista) setMoeda(document.getElementById('lancValorDiaria'), colaborador.valorDiaria || 0);
+
+    // Remuneração não tem mais campo próprio na tela — preenche o valor oculto assim
+    // que o colaborador é selecionado (Diarista usa diária × dias, calculado à parte).
+    if (colaborador && !ehDiarista) {
+        setMoeda(document.getElementById('lancRemuneracao'), colaborador.remuneracao || 0);
+    } else if (!colaborador) {
+        setMoeda(document.getElementById('lancRemuneracao'), 0);
+    }
 
     // Prêmio existe para CLT e Mensalista — só Diarista não tem. Preenche assim que
     // o colaborador é selecionado, com o valor atual do cadastro. Para CLT, o campo
@@ -924,7 +933,6 @@ function atualizarBadgeContratoLancamento() {
             setMoeda(document.getElementById('lancAdiantamentoContab'), 0);
         }
     }
-    if (ehDiarista) setMoeda(document.getElementById('lancValorDiaria'), colaborador.valorDiaria || 0);
 
     // Adiantamento do cadastro: preenche assim que o colaborador é selecionado,
     // sem depender de o mês já estar escolhido (editarLancamento sobrescreve
