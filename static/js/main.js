@@ -897,9 +897,17 @@ function atualizarBadgeContratoLancamento() {
     }
     if (divEva) divEva.style.display = ehCLT ? 'block' : 'none';
 
-    // Prêmio só existe para CLT (é o valor que compõe o EVA). Preenche assim que o
-    // colaborador é selecionado, com o valor atual do cadastro.
-    setMoeda(document.getElementById('lancBonificacao'), ehCLT ? (colaborador.premio || 0) : 0);
+    // Diarista: mostra o bloco de diária assim que o colaborador é selecionado,
+    // sem depender de o mês já estar escolhido.
+    const ehDiarista = !!colaborador && colaborador.contratacao === 'Diarista';
+    const divDiaria = document.getElementById('divDiaria');
+    if (divDiaria) divDiaria.style.display = ehDiarista ? 'block' : 'none';
+
+    // Prêmio existe para CLT e Mensalista — só Diarista não tem. Preenche assim que
+    // o colaborador é selecionado, com o valor atual do cadastro.
+    const divLancPremio = document.getElementById('divLancPremio');
+    if (divLancPremio) divLancPremio.style.display = ehDiarista ? 'none' : 'block';
+    setMoeda(document.getElementById('lancBonificacao'), ehDiarista ? 0 : (colaborador ? (colaborador.premio || 0) : 0));
     if (typeof calcularTotalRecebido === 'function') calcularTotalRecebido();
 
     // Mensalista e Diarista não têm adiantamento por contabilidade — é sempre em Espécie.
@@ -909,12 +917,6 @@ function atualizarBadgeContratoLancamento() {
             setMoeda(document.getElementById('lancAdiantamentoContab'), 0);
         }
     }
-
-    // Diarista: mostra o bloco de diária assim que o colaborador é selecionado,
-    // sem depender de o mês já estar escolhido.
-    const ehDiarista = !!colaborador && colaborador.contratacao === 'Diarista';
-    const divDiaria = document.getElementById('divDiaria');
-    if (divDiaria) divDiaria.style.display = ehDiarista ? 'block' : 'none';
     if (ehDiarista) setMoeda(document.getElementById('lancValorDiaria'), colaborador.valorDiaria || 0);
 
     // Adiantamento do cadastro: preenche assim que o colaborador é selecionado,
@@ -974,15 +976,15 @@ function preencherCamposAutomaticamente() {
         }
     }
 
-    const totalPagamento = (colaborador.remuneracao || 0) + (colaborador.premio || 0);
-    setMoeda(document.getElementById('lancPagamentoEspecie'), totalPagamento);
-
-    // Zera os demais campos do mês para não carregar sobras do colaborador anterior
+    // Zera os demais campos do mês para não carregar sobras do colaborador anterior.
+    // Pagamento Espécie/Contab. NÃO são pré-preenchidos — são digitados manualmente
+    // a cada mês, conforme como o pagamento realmente será dividido.
     setMoeda(document.getElementById('lancAssiduidade'), 0);
     setMoeda(document.getElementById('lancCartaoAlimentacao'), 0);
     setMoeda(document.getElementById('lancHorasExtras'), 0);
     setMoeda(document.getElementById('lancValeTransporte'), 0);
     setMoeda(document.getElementById('lancOutros'), 0);
+    setMoeda(document.getElementById('lancPagamentoEspecie'), 0);
     setMoeda(document.getElementById('lancPagamentoContab'), 0);
 
     calcularTotalRecebido();

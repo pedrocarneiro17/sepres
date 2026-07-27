@@ -274,10 +274,11 @@
         }
 
         // Prêmio só existe para CLT (é o valor que compõe o EVA no lançamento)
+        // Prêmio existe para CLT e Mensalista — só Diarista não tem.
         function togglePremio() {
-            const ehCLT = document.getElementById('colabContratacao').value === 'CLT';
-            document.getElementById('divColabPremio').style.display = ehCLT ? 'block' : 'none';
-            if (!ehCLT) {
+            const ehDiarista = document.getElementById('colabContratacao').value === 'Diarista';
+            document.getElementById('divColabPremio').style.display = ehDiarista ? 'none' : 'block';
+            if (ehDiarista) {
                 setMoeda(document.getElementById('colabPremio'), 0);
                 calcularTotalColaborador();
             }
