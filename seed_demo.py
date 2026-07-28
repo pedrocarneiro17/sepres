@@ -35,10 +35,11 @@ def meses_recentes(qtd=6):
 
 
 # nome, cpf, empresa, contratação, remuneração, prêmio, valor da diária
+# Regra atual: Prêmio existe para CLT e Mensalista — Diarista não tem.
 PESSOAS = [
     ('Ana Souza',      '111.222.333-01', 'Engenharia',   'CLT',        4200.0, 300.0, 0.0),
     ('Bruno Lima',     '111.222.333-02', 'Engenharia',   'Diarista',      0.0,   0.0, 180.0),
-    ('Carla Dias',     '111.222.333-03', 'Engenharia',   'Mensalista', 2800.0,   0.0, 0.0),
+    ('Carla Dias',     '111.222.333-03', 'Engenharia',   'Mensalista', 2800.0, 150.0, 0.0),
     ('Felipe Rocha',   '111.222.333-04', 'Engenharia',   'CLT',        3900.0, 200.0, 0.0),
     ('Diego Alves',    '111.222.333-05', 'Gerenciadora', 'CLT',        6500.0, 500.0, 0.0),
     ('Elis Moura',     '111.222.333-06', 'Gerenciadora', 'CLT',        5100.0,   0.0, 0.0),
@@ -125,6 +126,8 @@ def semear():
                 horas_extras = round(bruto * (0.04 + 0.01 * (idx % 3)), 2)
                 adiantamento = round(bruto * 0.10, 2)
                 vale_transporte = round(bruto * 0.03, 2)
+                outros = round(bruto * 0.01, 2)
+                pagamento_especie = round(bruto * 0.02, 2)
 
                 # Parcela do empréstimo nos meses em que ele está ativo
                 parcela, pagos = 0.0, []
@@ -132,8 +135,17 @@ def semear():
                     parcela = 200.0
                     pagos = [{'id': emprestimo_id, 'valor': parcela}]
 
+                # CLT: Horas Extras só compõe o EVA, não entra separadamente no líquido.
+                eh_clt = contratacao == 'CLT'
+                horas_extras_no_liquido = 0.0 if eh_clt else horas_extras
+
                 total_recebido = bruto + premio
-                liquido = total_recebido + horas_extras - vale_transporte - parcela - adiantamento
+
+                # Líquido = Total Recebido + Pagamento Contab. + Pagamento Espécie
+                #           + Horas Extras (não-CLT) + Vale Transporte + Outros
+                #           + Adiantamentos - Empréstimo
+                liquido = (total_recebido + horas_extras_no_liquido + pagamento_especie
+                           + vale_transporte + outros + adiantamento - parcela)
 
                 db.session.add(Lancamento(
                     id=f'{colab_id}{idx:02d}', colaboradorId=colab_id, mes=mes,
@@ -141,9 +153,8 @@ def semear():
                     remuneracao=bruto, bonificacao=premio, totalRecebido=total_recebido,
                     adiantamentoEspecie=adiantamento, adiantamentoContab=0,
                     horasExtras=horas_extras, valeTransporte=vale_transporte,
-                    emprestimo=parcela, outros=0, liquidoTotal=liquido,
-                    pagamentoContab=round(liquido * 0.5, 2),
-                    pagamentoEspecie=round(liquido * 0.5, 2),
+                    emprestimo=parcela, outros=outros, liquidoTotal=liquido,
+                    pagamentoContab=0, pagamentoEspecie=pagamento_especie,
                     formaPagamento='Depósito + Espécie',
                     emprestimosPagos=json.dumps(pagos),
                     status='finalizado',
