@@ -1298,13 +1298,13 @@ function calcularLiquidoTotal() {
 
     // Líquido = Total Recebido (Remuneração + Prêmio) + Pagamento Contab. + Pagamento
     //           Espécie + Horas Extras (exceto CLT) + Vale Transporte + Outros
-    //           - Empréstimo - Adiantamentos (espécie + contabilidade)
+    //           + Adiantamentos (espécie + contabilidade) - Empréstimo
     //
     // Pagamento Contab./Espécie agora servem só para lançar ajustes extras do mês
     // (não são mais pré-preenchidos com o salário), então somam à parte do Total Recebido.
     const liquido = totalRecebido + horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
                     + valeTransporte + outros - emprestimo
-                    - adiantamentoEspecie - adiantamentoContab;
+                    + adiantamentoEspecie + adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
     calcularEva();
 }
