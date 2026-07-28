@@ -929,6 +929,18 @@ function atualizarBadgeContratoLancamento() {
     setMoeda(document.getElementById('lancBonificacao'), ehDiarista ? 0 : (colaborador ? (colaborador.premio || 0) : 0));
     if (typeof calcularTotalRecebido === 'function') calcularTotalRecebido();
 
+    // Horas Extras: para CLT fica dentro do EVA (já que soma lá); para os demais
+    // fica em Pagamento (onde soma direto no líquido).
+    const divLancHorasExtras = document.getElementById('divLancHorasExtras');
+    const evaHorasExtrasSlot = document.getElementById('evaHorasExtrasSlot');
+    const pagamentoHorasExtrasSlot = document.getElementById('pagamentoHorasExtrasSlot');
+    if (divLancHorasExtras && colaborador) {
+        divLancHorasExtras.style.display = 'block';
+        const destinoHoras = ehCLT ? evaHorasExtrasSlot : pagamentoHorasExtrasSlot;
+        if (destinoHoras && divLancHorasExtras.parentElement !== destinoHoras) destinoHoras.appendChild(divLancHorasExtras);
+    }
+    if (pagamentoHorasExtrasSlot) pagamentoHorasExtrasSlot.style.display = (colaborador && !ehCLT) ? 'block' : 'none';
+
     // Mensalista e Diarista não têm adiantamento por contabilidade — é sempre em Espécie.
     if (divAdiantamentoContab) {
         divAdiantamentoContab.style.display = ehCLT ? 'block' : 'none';
@@ -1215,6 +1227,8 @@ function limparFormLancamento() {
     document.getElementById('divEva').style.display = 'none';
     document.getElementById('divLancPremio').style.display = 'none';
     document.getElementById('pagamentoPremioSlot').style.display = 'none';
+    document.getElementById('divLancHorasExtras').style.display = 'none';
+    document.getElementById('pagamentoHorasExtrasSlot').style.display = 'none';
     document.getElementById('lancContratoBadge').innerHTML = '';
 
     // Limpa Faltas e Atestados
@@ -1283,13 +1297,13 @@ function calcularLiquidoTotal() {
     const horasExtrasNoLiquido = colaboradorLancamentoEhCLT() ? 0 : horasExtras;
 
     // Líquido = Total Recebido (Remuneração + Prêmio) + Pagamento Contab. + Pagamento
-    //           Espécie + Horas Extras (exceto CLT) - Vale Transporte - Empréstimo
-    //           - Outros - Adiantamentos (espécie + contabilidade)
+    //           Espécie + Horas Extras (exceto CLT) + Vale Transporte + Outros
+    //           - Empréstimo - Adiantamentos (espécie + contabilidade)
     //
     // Pagamento Contab./Espécie agora servem só para lançar ajustes extras do mês
     // (não são mais pré-preenchidos com o salário), então somam à parte do Total Recebido.
     const liquido = totalRecebido + horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
-                    - valeTransporte - emprestimo - outros
+                    + valeTransporte + outros - emprestimo
                     - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
     calcularEva();

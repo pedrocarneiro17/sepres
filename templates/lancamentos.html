@@ -115,6 +115,10 @@
                                         <label class="label">Cartão Alimentação</label>
                                         <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="lancCartaoAlimentacao" value="0,00"></div>
                                     </div>
+                                    <!-- Slot de Horas Extras para CLT (não-CLT mostra o campo em Pagamento). -->
+                                    <div id="evaHorasExtrasSlot"></div>
+                                </div>
+                                <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
                                         <label class="label">EVA</label>
                                         <div class="relative"><span class="money-prefix">R$</span><input type="text" class="input money pl-9 bg-slate-50 font-semibold" id="lancEva" value="0,00" readonly></div>
@@ -127,6 +131,13 @@
                             <div id="divLancPremio" style="display: none;">
                                 <label class="label">Prêmio</label>
                                 <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-field calc-eva pl-9" id="lancBonificacao" value="0,00"></div>
+                            </div>
+
+                            <!-- Horas Extras: campo único, movido entre os slots conforme o tipo de contratação
+                                 (CLT → dentro do EVA, já que soma lá; não-CLT → em Pagamento, onde soma no líquido). -->
+                            <div id="divLancHorasExtras" style="display: none;">
+                                <label class="label">Horas Extras</label>
+                                <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido calc-eva pl-9" id="lancHorasExtras" value="0,00"></div>
                             </div>
 
                             <h6 class="section-title"><i class="fas fa-hand-holding-dollar"></i> Adiantamentos</h6>
@@ -163,10 +174,8 @@
                                     <label class="label">Vale Transporte</label>
                                     <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancValeTransporte" value="0,00"></div>
                                 </div>
-                                <div>
-                                    <label class="label">Horas Extras</label>
-                                    <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money calc-liquido pl-9" id="lancHorasExtras" value="0,00"></div>
-                                </div>
+                                <!-- Slot de Horas Extras para não-CLT (CLT mostra o campo dentro do EVA). -->
+                                <div id="pagamentoHorasExtrasSlot" style="display: none;"></div>
                                 <!-- Slot do Prêmio para Mensalista (CLT mostra o campo dentro do EVA). -->
                                 <div id="pagamentoPremioSlot" style="display: none;"></div>
                                 <div>
