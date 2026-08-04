@@ -246,11 +246,35 @@
         // Cálculo automático do total
         document.getElementById('colabRemuneracao').addEventListener('input', calcularTotalColaborador);
         document.getElementById('colabPremio').addEventListener('input', calcularTotalColaborador);
+        document.getElementById('colabValorAdiantamento').addEventListener('input', calcularTotalColaborador);
+
+        // Soma a parcela mensal de cada empréstimo ainda não quitado (empréstimos
+        // salvos usam o saldo real pago nos lançamentos; novos contam a parcela cheia).
+        function calcularParcelasEmprestimosAtivos() {
+            let total = 0;
+            document.querySelectorAll('#emprestimosContainer .emprestimo-item').forEach(item => {
+                const valor = lerMoeda(item.querySelector('.emprestimo-valor'));
+                const parcelas = parseInt(item.querySelector('.emprestimo-parcelas').value) || 1;
+                if (valor <= 0) return;
+                const parcela = parcelas > 0 ? valor / parcelas : 0;
+                const empId = item.dataset.emprestimoId;
+                if (empId) {
+                    const saldo = Math.max(valor - calcularPagoEmprestimo(empId), 0);
+                    if (saldo > 0.001) total += parcela;
+                } else {
+                    total += parcela;
+                }
+            });
+            return total;
+        }
 
         function calcularTotalColaborador() {
             const rem = lerMoeda(document.getElementById('colabRemuneracao'));
             const premio = lerMoeda(document.getElementById('colabPremio'));
-            setMoeda(document.getElementById('colabTotal'), rem + premio);
+            const temAdiantamento = document.getElementById('colabTemAdiantamento').value === 'Sim';
+            const adiantamento = temAdiantamento ? lerMoeda(document.getElementById('colabValorAdiantamento')) : 0;
+            const parcelas = calcularParcelasEmprestimosAtivos();
+            setMoeda(document.getElementById('colabTotal'), rem + premio - adiantamento - parcelas);
         }
 
         // Opções de contratação dependem da empresa onde está registrado
@@ -273,7 +297,6 @@
             document.getElementById('divValorDiaria').style.display = diarista ? 'block' : 'none';
         }
 
-        // Prêmio só existe para CLT (é o valor que compõe o EVA no lançamento)
         // Prêmio existe para CLT e Mensalista — só Diarista não tem.
         function togglePremio() {
             const ehDiarista = document.getElementById('colabContratacao').value === 'Diarista';
@@ -300,6 +323,7 @@
             if (display === 'block' && !ehCLT) {
                 document.getElementById('colabTipoAdiantamento').value = 'Espécie';
             }
+            if (typeof calcularTotalColaborador === 'function') calcularTotalColaborador();
         }
 
         // Gestão de múltiplos empréstimos
@@ -349,17 +373,19 @@
             // Recalcula a informação de parcela/status ao alterar valor, parcelas ou início
             ['.emprestimo-valor', '.emprestimo-parcelas', '.emprestimo-inicio'].forEach(sel => {
                 const campo = div.querySelector(sel);
-                campo.addEventListener('input', () => atualizarInfoEmprestimo(div));
-                campo.addEventListener('change', () => atualizarInfoEmprestimo(div));
+                campo.addEventListener('input', () => { atualizarInfoEmprestimo(div); calcularTotalColaborador(); });
+                campo.addEventListener('change', () => { atualizarInfoEmprestimo(div); calcularTotalColaborador(); });
             });
 
             if (typeof inicializarSeletoresMes === 'function') inicializarSeletoresMes(div);
             atualizarInfoEmprestimo(div);
+            calcularTotalColaborador();
         }
 
         function removerEmprestimo(id) {
             const elemento = document.getElementById(`emprestimo-${id}`);
             if (elemento) elemento.remove();
+            calcularTotalColaborador();
         }
 
         // Mostra o valor da parcela e o status do empréstimo (em andamento / quitado)
