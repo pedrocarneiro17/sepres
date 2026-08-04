@@ -82,22 +82,32 @@ def semear():
                 continue
 
             colab_id = str(base_id + i)
+            valor_adiantamento = round((remun or diaria * 20) * 0.10, 2)
+
+            # Um empréstimo para a primeira pessoa, começando 3 meses atrás
+            emprestimo_id = None
+            parcela_emprestimo = 0.0
+            if nome == 'Ana Souza':
+                parcela_emprestimo = round(1200.0 / 6, 2)
+
+            # Total = Remuneração + Prêmio - Adiantamento - Parcela do empréstimo ativo
+            # (mesma fórmula usada no cadastro do colaborador na tela).
+            total = remun + premio - valor_adiantamento - parcela_emprestimo
+
             colaborador = Colaborador(
                 id=colab_id, nome=nome, cpf=cpf, empresa=empresa,
                 contratacao=contratacao, endereco='Rua Exemplo, 100',
                 funcao='Operacional', admissao=f'{meses[0]}-01',
                 remuneracao=remun, premio=premio, valorDiaria=diaria,
-                total=remun + premio,
+                total=total,
                 valeRefeicao='Sim', valeTransporte='Sim', seguroVida='Ativo',
                 planoOdonto='Não', dependentes=0,
-                temAdiantamento='Sim', valorAdiantamento=round((remun or diaria * 20) * 0.10, 2),
+                temAdiantamento='Sim', valorAdiantamento=valor_adiantamento,
                 tipoAdiantamento='Espécie', observacoes=MARCADOR,
             )
             db.session.add(colaborador)
             db.session.flush()
 
-            # Um empréstimo para a primeira pessoa, começando 3 meses atrás
-            emprestimo_id = None
             if nome == 'Ana Souza':
                 emprestimo_id = str(base_id + 500 + i)
                 db.session.add(Emprestimo(
