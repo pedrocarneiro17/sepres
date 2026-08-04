@@ -601,9 +601,13 @@ function renderizar() {
 
         const urlParams = new URLSearchParams(window.location.search);
         const editarId = urlParams.get('editar');
+        const visualizarId = urlParams.get('visualizar');
         if (editarId) {
             window.history.replaceState({}, document.title, window.location.pathname);
             setTimeout(() => editarLancamento(editarId), 300);
+        } else if (visualizarId) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            setTimeout(() => visualizarLancamento(visualizarId), 300);
         }
     }
 }
@@ -1498,6 +1502,10 @@ function editarLancamentoDash(id) {
     window.location.href = `/lancamentos?editar=${id}`;
 }
 
+function visualizarLancamentoDash(id) {
+    window.location.href = `/lancamentos?visualizar=${id}`;
+}
+
 function editarColaboradorDash(id) {
     window.location.href = `/colaboradores?editar=${id}`;
 }
@@ -2123,7 +2131,7 @@ function renderizarLancamentosDash(lista) {
     tbody.innerHTML = lista.map(l => {
         const c = colaboradores.find(co => co.id === l.colaboradorId);
         const btnAcao = l.status === 'finalizado'
-            ? botaoAcao(`visualizarLancamento('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)')
+            ? botaoAcao(`visualizarLancamentoDash('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)')
             : botaoAcao(`editarLancamentoDash('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento');
 
         return `
