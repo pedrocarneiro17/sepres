@@ -1298,13 +1298,15 @@ function calcularLiquidoTotal() {
 
     // Líquido = Total Recebido (Remuneração + Prêmio) + Pagamento Contab. + Pagamento
     //           Espécie + Horas Extras (exceto CLT) + Vale Transporte + Outros
-    //           + Adiantamentos (espécie + contabilidade) - Empréstimo
+    //           - Empréstimo - Adiantamentos (espécie + contabilidade)
     //
+    // Adiantamento é um valor já recebido antecipadamente pelo colaborador, então
+    // desconta do bruto a receber no mês — e por consequência do líquido também.
     // Pagamento Contab./Espécie agora servem só para lançar ajustes extras do mês
     // (não são mais pré-preenchidos com o salário), então somam à parte do Total Recebido.
     const liquido = totalRecebido + horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
                     + valeTransporte + outros - emprestimo
-                    + adiantamentoEspecie + adiantamentoContab;
+                    - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
     calcularEva();
 }
@@ -1611,15 +1613,15 @@ function imprimirRecibo(elementId) {
         <head>
             <title>Recibo</title>
             <style>
-                body { font-family: 'Courier New', monospace; padding: 20px; }
+                body { font-family: 'Courier New', monospace; padding: 12px; font-size: 13px; }
                 .text-center { text-align: center; }
-                p { margin: 10px 0; }
-                hr { border: 1px solid #000; margin: 20px 0; }
-                img.recibo-logo { max-width: 260px; display: block; margin: 0 auto 16px; }
+                p { margin: 6px 0; }
+                hr { border: 1px solid #000; margin: 12px 0; }
+                img.recibo-logo { max-width: 160px; display: block; margin: 0 auto 12px; }
             </style>
         </head>
         <body>
-            <div style="border: 2px solid #000; padding: 30px; max-width: 700px; margin: 0 auto;">
+            <div style="border: 2px solid #000; padding: 18px; max-width: 480px; margin: 0 auto;">
                 ${conteudo}
             </div>
             <script>
