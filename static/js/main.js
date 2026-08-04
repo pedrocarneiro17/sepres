@@ -544,7 +544,7 @@ function configurarEventos() {
             field.addEventListener('input', calcularLiquidoTotal);
         });
         document.querySelectorAll('.calc-eva').forEach(field => {
-            field.addEventListener('input', calcularEva);
+            field.addEventListener('input', calcularLiquidoTotal);
         });
 
         // Busca por nome na lista de lançamentos
@@ -1287,7 +1287,11 @@ function calcularEva() {
 }
 
 function calcularLiquidoTotal() {
-    const totalRecebido = lerMoeda(document.getElementById('lancTotalRecebido'));
+    calcularEva();
+
+    const remuneracao = lerMoeda(document.getElementById('lancRemuneracao'));
+    const premio = lerMoeda(document.getElementById('lancBonificacao'));
+    const eva = lerMoeda(document.getElementById('lancEva'));
     const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
     const valeTransporte = lerMoeda(document.getElementById('lancValeTransporte'));
     const emprestimo = lerMoeda(document.getElementById('lancEmprestimo'));
@@ -1296,23 +1300,25 @@ function calcularLiquidoTotal() {
     const adiantamentoContab = lerMoeda(document.getElementById('lancAdiantamentoContab'));
     const pagamentoContab = lerMoeda(document.getElementById('lancPagamentoContab'));
     const pagamentoEspecie = lerMoeda(document.getElementById('lancPagamentoEspecie'));
+    const ehCLT = colaboradorLancamentoEhCLT();
 
-    // CLT: Horas Extras só compõe o EVA, não entra separadamente no líquido.
-    const horasExtrasNoLiquido = colaboradorLancamentoEhCLT() ? 0 : horasExtras;
+    // CLT: o EVA (Prêmio + Assiduidade + Horas Extras) já soma tudo isso, então entra
+    // como um bloco só — Prêmio e Horas Extras não entram separadamente pra não duplicar.
+    // Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto.
+    const baseVariavel = ehCLT ? eva : (premio + horasExtras);
 
-    // Líquido = Total Recebido (Remuneração + Prêmio) + Pagamento Contab. + Pagamento
-    //           Espécie + Horas Extras (exceto CLT) + Vale Transporte + Outros
+    // Líquido = Remuneração + (EVA, se CLT | Prêmio + Horas Extras, se não) + Pagamento
+    //           Contab. + Pagamento Espécie + Vale Transporte + Outros
     //           - Empréstimo - Adiantamentos (espécie + contabilidade)
     //
     // Adiantamento é um valor já recebido antecipadamente pelo colaborador, então
     // desconta do bruto a receber no mês — e por consequência do líquido também.
-    // Pagamento Contab./Espécie agora servem só para lançar ajustes extras do mês
-    // (não são mais pré-preenchidos com o salário), então somam à parte do Total Recebido.
-    const liquido = totalRecebido + horasExtrasNoLiquido + pagamentoContab + pagamentoEspecie
+    // Pagamento Contab./Espécie servem só para lançar ajustes extras do mês (não são
+    // pré-preenchidos com o salário).
+    const liquido = remuneracao + baseVariavel + pagamentoContab + pagamentoEspecie
                     + valeTransporte + outros - emprestimo
                     - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
-    calcularEva();
 }
 
 function renderizarLancamentos() {
