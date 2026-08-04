@@ -143,9 +143,9 @@ def semear():
 
                 # Líquido = Total Recebido + Pagamento Contab. + Pagamento Espécie
                 #           + Horas Extras (não-CLT) + Vale Transporte + Outros
-                #           + Adiantamentos - Empréstimo
+                #           - Empréstimo - Adiantamentos
                 liquido = (total_recebido + horas_extras_no_liquido + pagamento_especie
-                           + vale_transporte + outros + adiantamento - parcela)
+                           + vale_transporte + outros - parcela - adiantamento)
 
                 db.session.add(Lancamento(
                     id=f'{colab_id}{idx:02d}', colaboradorId=colab_id, mes=mes,
