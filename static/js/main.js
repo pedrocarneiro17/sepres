@@ -592,14 +592,16 @@ function renderizar() {
             setTimeout(() => editarColaborador(editarId), 300);
         }
     } else if (pathname.includes('lancamentos')) {
+        // Carrega sempre o mês vigente por padrão — evita renderizar a listagem
+        // inteira de uma vez. O usuário troca ou limpa o período se quiser ver outro.
+        const filtroPeriodoLanc = document.getElementById('filtroPeriodoLanc');
+        if (filtroPeriodoLanc && !filtroPeriodoLanc.value) {
+            filtroPeriodoLanc.value = new Date().toISOString().substring(0, 7);
+        }
+
         renderizarLancamentos();
         configurarFiltroContratoLancamento();
         atualizarSelectColaboradores();
-
-        const filtroMesCSV = document.getElementById('filtroMesCSV');
-        if (filtroMesCSV && !filtroMesCSV.value) {
-            filtroMesCSV.value = new Date().toISOString().substring(0, 7);
-        }
 
         const urlParams = new URLSearchParams(window.location.search);
         const editarId = urlParams.get('editar');
@@ -745,16 +747,27 @@ function limparFormColaborador() {
     if (typeof togglePremio === 'function') togglePremio();
     refrescarControlesCustom(document.getElementById('formColaborador'));
 
-    // A tela abre com foco na listagem — o formulário só aparece quando pedido.
+    // A tela abre com foco na listagem — formulário e lista são mutuamente exclusivos:
+    // só um fica visível por vez.
     const painel = document.getElementById('painelFormColaborador');
     if (painel) painel.style.display = 'none';
+    const painelLista = document.getElementById('painelListaColaboradores');
+    if (painelLista) painelLista.style.display = 'block';
 }
 
-// Mostra o formulário zerado para um novo colaborador.
+// Mostra o formulário zerado para um novo colaborador, escondendo a lista.
 function abrirNovoColaborador() {
     limparFormColaborador();
     const painel = document.getElementById('painelFormColaborador');
     if (painel) painel.style.display = 'block';
+    const painelLista = document.getElementById('painelListaColaboradores');
+    if (painelLista) painelLista.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Botão "Voltar" no topo do formulário: mesma ação do Cancelar.
+function fecharFormColaborador() {
+    limparFormColaborador();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -768,7 +781,7 @@ function renderizarColaboradores() {
     }
 
     tbody.innerHTML = colaboradores.map(c => `
-        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
+        <tr class="border-b border-slate-100 transition hover:bg-slate-50" data-contratacao="${c.contratacao}">
             <td class="px-4 py-3 font-medium text-slate-800">${c.nome}</td>
             <td class="px-4 py-3 text-slate-600">${c.cpf}</td>
             <td class="px-4 py-3 text-slate-600">${c.funcao || '-'}</td>
@@ -782,6 +795,7 @@ function renderizarColaboradores() {
             </td>
         </tr>
     `).join('');
+    if (typeof filtrarColaboradores === 'function') filtrarColaboradores();
 }
 
 function editarColaborador(id) {
@@ -790,6 +804,8 @@ function editarColaborador(id) {
 
     const painel = document.getElementById('painelFormColaborador');
     if (painel) painel.style.display = 'block';
+    const painelLista = document.getElementById('painelListaColaboradores');
+    if (painelLista) painelLista.style.display = 'none';
 
     document.getElementById('colabEditId').value = c.id;
     document.getElementById('colabNome').value = c.nome;
@@ -1276,16 +1292,27 @@ function limparFormLancamento() {
     const btnCancelar = document.getElementById('btnCancelarLanc');
     if (btnCancelar) btnCancelar.innerHTML = '<i class="fas fa-times"></i> Cancelar';
 
-    // A tela abre com foco na listagem — o formulário só aparece quando pedido.
+    // A tela abre com foco na listagem — formulário e lista são mutuamente exclusivos:
+    // só um fica visível por vez.
     const painel = document.getElementById('painelFormLancamento');
     if (painel) painel.style.display = 'none';
+    const painelLista = document.getElementById('painelListaLancamentos');
+    if (painelLista) painelLista.style.display = 'block';
 }
 
-// Mostra o formulário zerado para um novo lançamento.
+// Mostra o formulário zerado para um novo lançamento, escondendo a lista.
 function abrirNovoLancamento() {
     limparFormLancamento();
     const painel = document.getElementById('painelFormLancamento');
     if (painel) painel.style.display = 'block';
+    const painelLista = document.getElementById('painelListaLancamentos');
+    if (painelLista) painelLista.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Botão "Voltar" no topo do formulário: mesma ação do Cancelar.
+function fecharFormLancamento() {
+    limparFormLancamento();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1378,6 +1405,16 @@ function renderizarLancamentos() {
         return true;
     });
 
+    // Ordena por nome do colaborador (A-Z) e, dentro do mesmo colaborador, por mês —
+    // assim os lançamentos da mesma pessoa ficam sempre agrupados e em ordem cronológica.
+    lista.sort((a, b) => {
+        const nomeA = colaboradores.find(co => co.id === a.colaboradorId)?.nome || '';
+        const nomeB = colaboradores.find(co => co.id === b.colaboradorId)?.nome || '';
+        const cmpNome = nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
+        if (cmpNome !== 0) return cmpNome;
+        return a.mes.localeCompare(b.mes);
+    });
+
     if (lista.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400"><i class="fas fa-magnifying-glass mb-2 block text-2xl"></i>Nenhum lançamento encontrado para os filtros aplicados</td></tr>`;
         return;
@@ -1419,6 +1456,8 @@ function editarLancamento(id) {
 
     const painel = document.getElementById('painelFormLancamento');
     if (painel) painel.style.display = 'block';
+    const painelLista = document.getElementById('painelListaLancamentos');
+    if (painelLista) painelLista.style.display = 'none';
 
     document.getElementById('lancEditId').value = l.id;
     document.getElementById('lancColaborador').value = l.colaboradorId;
@@ -2209,12 +2248,24 @@ function limparFiltros() {
 
 // ==================== EXPORTAÇÃO CSV ====================
 
+// Abre o modal pedindo o mês só na hora de exportar (evita um segundo filtro de
+// data sempre visível na tela, competindo com o filtro de período da listagem).
+function abrirExportarCSV() {
+    const mesInput = document.getElementById('exportarCSVMes');
+    if (mesInput && !mesInput.value) {
+        mesInput.value = document.getElementById('filtroPeriodoLanc')?.value || new Date().toISOString().substring(0, 7);
+        mesInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    abrirModal('modalExportarCSV');
+}
+
 function exportarCSV() {
-    const mesFiltro = document.getElementById('filtroMesCSV').value;
+    const mesFiltro = document.getElementById('exportarCSVMes').value;
     if (!mesFiltro) {
         notificar('Selecione um mês para exportar.', 'info');
         return;
     }
+    fecharModal('modalExportarCSV');
 
     const lancamentosMes = lancamentos.filter(l => l.mes === mesFiltro);
     if (lancamentosMes.length === 0) {

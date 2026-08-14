@@ -49,8 +49,9 @@
 
             <!-- Formulário: escondido por padrão — a tela abre com foco na listagem. -->
             <div class="card mb-6 overflow-hidden" id="painelFormLancamento" style="display: none;">
-                <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 text-sm font-semibold text-slate-700">
-                    <i class="fas fa-dollar-sign text-sepres-600"></i> <span id="formLancTitle">Novo Lançamento</span>
+                <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-6 py-4 text-sm font-semibold text-slate-700">
+                    <span class="flex items-center gap-2"><i class="fas fa-dollar-sign text-sepres-600"></i> <span id="formLancTitle">Novo Lançamento</span></span>
+                    <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" onclick="fecharFormLancamento()"><i class="fas fa-arrow-left"></i> Voltar</button>
                 </div>
                 <div class="p-6">
                     <form id="formLancamento">
@@ -249,8 +250,8 @@
                 </div>
             </div>
 
-            <!-- Lista -->
-            <div class="card overflow-hidden">
+            <!-- Lista: escondida enquanto o formulário está aberto (foco em uma coisa por vez). -->
+            <div class="card overflow-hidden" id="painelListaLancamentos">
                 <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-table text-sepres-600"></i> Todos os Lançamentos</div>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -262,8 +263,7 @@
                             <input type="month" class="input mes-ptbr" id="filtroPeriodoLanc" placeholder="Todos os períodos">
                             <button type="button" onclick="limparFiltroPeriodoLanc()" title="Limpar período" class="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600"><i class="fas fa-xmark text-xs"></i></button>
                         </div>
-                        <div class="w-full sm:w-48"><input type="month" class="input mes-ptbr" id="filtroMesCSV"></div>
-                        <button class="btn-success" onclick="exportarCSV()" title="Exportar CSV do mês selecionado"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+                        <button class="btn-success" onclick="abrirExportarCSV()" title="Exportar CSV de um mês"><i class="fas fa-file-csv"></i> Exportar CSV</button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -329,6 +329,24 @@
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
                 <button type="button" class="btn-secondary" onclick="fecharModal('modalReciboEva')"><i class="fas fa-times"></i> Fechar</button>
                 <button type="button" class="btn-primary" onclick="imprimirRecibo('reciboEvaConteudo')"><i class="fas fa-print"></i> Imprimir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Exportar CSV: pede o mês só na hora de exportar -->
+    <div id="modalExportarCSV" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-sm rounded-2xl bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-file-csv text-emerald-600"></i> Exportar CSV</h3>
+                <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalExportarCSV')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="px-6 py-5">
+                <label class="label">Mês/Ano</label>
+                <input type="month" class="input mes-ptbr" id="exportarCSVMes">
+            </div>
+            <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
+                <button type="button" class="btn-secondary" onclick="fecharModal('modalExportarCSV')"><i class="fas fa-times"></i> Cancelar</button>
+                <button type="button" class="btn-success" onclick="exportarCSV()"><i class="fas fa-file-csv"></i> Exportar</button>
             </div>
         </div>
     </div>
