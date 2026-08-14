@@ -565,7 +565,7 @@ function configurarEventos() {
     // Filtros do dashboard (uma linha que controla gráficos, indicadores e tabelas)
     const filtroCompetencia = document.getElementById('filtroCompetencia');
     if (filtroCompetencia) {
-        ['filtroCompetencia', 'filtroMes', 'filtroContrato', 'filtroEmpresa', 'filtroTipo'].forEach(id => {
+        ['filtroCompetencia', 'filtroMes', 'filtroContrato', 'filtroEmpresa'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', aplicarFiltrosDashboard);
         });
@@ -1585,18 +1585,6 @@ function visualizarLancamento(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function editarLancamentoDash(id) {
-    window.location.href = `/lancamentos?editar=${id}`;
-}
-
-function visualizarLancamentoDash(id) {
-    window.location.href = `/lancamentos?visualizar=${id}`;
-}
-
-function editarColaboradorDash(id) {
-    window.location.href = `/colaboradores?editar=${id}`;
-}
-
 async function finalizarLancamento(id) {
     if (!await confirmar('Finalizar este lançamento?', { titulo: 'Finalizar lançamento' })) return;
     try {
@@ -1878,34 +1866,6 @@ function aplicarFiltrosDashboard() {
     const fatia = fatiaDashboard();
     atualizarCardsDashboard(fatia);
     renderizarGraficos(fatia);
-
-    const tipo = document.getElementById('filtroTipo').value;
-    const containers = {
-        colaboradores: document.getElementById('tabelaColaboradoresContainer'),
-        lancamentos: document.getElementById('tabelaLancamentosContainer'),
-        faltas: document.getElementById('tabelaFaltasContainer'),
-        atestados: document.getElementById('tabelaAtestadosContainer')
-    };
-    Object.entries(containers).forEach(([k, el]) => { el.style.display = (k === tipo) ? 'block' : 'none'; });
-
-    const rotulos = { colaboradores: 'Colaboradores', lancamentos: 'Lançamentos', faltas: 'Faltas', atestados: 'Atestados' };
-    document.getElementById('tipoResultado').textContent = rotulos[tipo] || tipo;
-
-    if (tipo === 'colaboradores') {
-        renderizarColaboradoresDash(fatia.colabs);
-        document.getElementById('countResultados').textContent = fatia.colabs.length;
-    } else if (tipo === 'lancamentos') {
-        renderizarLancamentosDash(fatia.lancs);
-        document.getElementById('countResultados').textContent = fatia.lancs.length;
-    } else if (tipo === 'faltas') {
-        const registros = achatarFaltas(fatia.lancs);
-        renderizarFaltasDash(registros);
-        document.getElementById('countResultados').textContent = registros.length;
-    } else if (tipo === 'atestados') {
-        const registros = achatarAtestados(fatia.lancs);
-        renderizarAtestadosDash(registros);
-        document.getElementById('countResultados').textContent = registros.length;
-    }
 }
 
 // Define o texto de um card e o title (tooltip), para valores que possam truncar
@@ -1925,47 +1885,6 @@ function atualizarCardsDashboard(fatia) {
     definirValorCard('valueStat4', formatarMoeda(soma(l => l.emprestimo)));
     document.getElementById('valueStat5').textContent = achatarFaltas(lancs).length;
     document.getElementById('valueStat6').textContent = achatarAtestados(lancs).length;
-}
-
-function renderizarFaltasDash(registros) {
-    const tbody = document.getElementById('tabelaFaltasDash');
-    if (!tbody) return;
-    if (registros.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-slate-400">Nenhuma falta no período filtrado</td></tr>`;
-        return;
-    }
-    const ordenados = [...registros].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-    tbody.innerHTML = ordenados.map(r => {
-        const c = colaboradores.find(co => co.id === r.colaboradorId);
-        return `
-        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}</td>
-            <td class="px-4 py-3 text-slate-600">${formatarMesAno(r.mes)}</td>
-            <td class="px-4 py-3 text-slate-600">${formatarData(r.data)}</td>
-            <td class="px-4 py-3 text-slate-600">${r.obs || '-'}</td>
-        </tr>`;
-    }).join('');
-}
-
-function renderizarAtestadosDash(registros) {
-    const tbody = document.getElementById('tabelaAtestadosDash');
-    if (!tbody) return;
-    if (registros.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400">Nenhum atestado no período filtrado</td></tr>`;
-        return;
-    }
-    const ordenados = [...registros].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-    tbody.innerHTML = ordenados.map(r => {
-        const c = colaboradores.find(co => co.id === r.colaboradorId);
-        return `
-        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}</td>
-            <td class="px-4 py-3 text-slate-600">${formatarMesAno(r.mes)}</td>
-            <td class="px-4 py-3 text-slate-600">${formatarData(r.data)}</td>
-            <td class="px-4 py-3 text-slate-600">${r.dias || 1}</td>
-            <td class="px-4 py-3 text-slate-600">${r.obs || '-'}</td>
-        </tr>`;
-    }).join('');
 }
 
 // ==================== GRÁFICOS ====================
@@ -2189,69 +2108,10 @@ function renderizarGraficos(fatia) {
         `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.data}</span></span><span class="font-medium text-slate-800">${i.dias} dia(s)</span></div>`);
 }
 
-function renderizarColaboradoresDash(lista) {
-    const tbody = document.getElementById('tabelaColaboradoresDash');
-    if (!tbody) return;
-
-    if (!lista || lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400">Nenhum colaborador para os filtros</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = lista.map(c => `
-        <tr class="border-b border-slate-100 transition hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium text-slate-800">${c.nome}</td>
-            <td class="px-4 py-3 text-slate-600">${c.cpf}</td>
-            <td class="px-4 py-3 text-slate-600">${c.empresa || '-'}</td>
-            <td class="px-4 py-3">${badgeContratacao(c.contratacao)}</td>
-            <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(c.total || c.remuneracao || 0)}</td>
-            <td class="px-4 py-3"><div class="flex justify-center">${botaoAcao(`editarColaboradorDash('${c.id}')`, 'view', 'fa-eye', 'Ver / editar colaborador')}</div></td>
-        </tr>
-    `).join('');
-}
-
-function renderizarLancamentosDash(lista) {
-    const tbody = document.getElementById('tabelaLancamentosDash');
-    if (!tbody) return;
-
-    if (!lista || lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400">Nenhum lançamento para os filtros</td></tr>`;
-        return;
-    }
-
-    // Ordena por nome do colaborador (A-Z) e, dentro do mesmo colaborador, por mês.
-    const listaOrdenada = [...lista].sort((a, b) => {
-        const nomeA = colaboradores.find(co => co.id === a.colaboradorId)?.nome || '';
-        const nomeB = colaboradores.find(co => co.id === b.colaboradorId)?.nome || '';
-        const cmpNome = nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
-        if (cmpNome !== 0) return cmpNome;
-        return a.mes.localeCompare(b.mes);
-    });
-
-    tbody.innerHTML = listaOrdenada.map(l => {
-        const c = colaboradores.find(co => co.id === l.colaboradorId);
-        const btnAcao = l.status === 'finalizado'
-            ? botaoAcao(`visualizarLancamentoDash('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)')
-            : botaoAcao(`editarLancamentoDash('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento');
-
-        return `
-            <tr class="border-b border-slate-100 transition hover:bg-slate-50">
-                <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}</td>
-                <td class="px-4 py-3 text-slate-600">${formatarMesAno(l.mes)}</td>
-                <td class="px-4 py-3 text-slate-600">${formatarMoeda(l.totalRecebido || 0)}</td>
-                <td class="px-4 py-3 text-slate-600">${formatarMoeda((l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0))}</td>
-                <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(l.liquidoTotal || 0)}</td>
-                <td class="px-4 py-3">${badgeStatus(l.status)}</td>
-                <td class="px-4 py-3"><div class="flex justify-center">${btnAcao}</div></td>
-            </tr>`;
-    }).join('');
-}
-
 function limparFiltros() {
     document.getElementById('filtroCompetencia').value = 'todos';
     document.getElementById('filtroContrato').value = '';
     document.getElementById('filtroEmpresa').value = '';
-    document.getElementById('filtroTipo').value = 'colaboradores';
     aplicarFiltrosDashboard();
 }
 

@@ -39,6 +39,9 @@
         </header>
 
         <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+            <div class="mb-4">
+                <a href="/" class="btn-secondary !px-3 !py-1.5 text-xs"><i class="fas fa-arrow-left"></i> Voltar</a>
+            </div>
             <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 class="text-2xl font-bold tracking-tight text-slate-900">Colaboradores</h1>
@@ -207,10 +210,7 @@
             <!-- Lista: escondida enquanto o formulário está aberto (foco em uma coisa por vez). -->
             <div class="card overflow-hidden" id="painelListaColaboradores">
                 <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex items-center gap-3">
-                        <a href="/" class="btn-secondary !px-3 !py-1.5 text-xs"><i class="fas fa-arrow-left"></i> Voltar</a>
-                        <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-list text-sepres-600"></i> Colaboradores Cadastrados</div>
-                    </div>
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-list text-sepres-600"></i> Colaboradores Cadastrados</div>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div class="flex flex-wrap gap-2" id="filtroContratoColabChips">
                             <button type="button" class="filtro-chip ativo" data-tipo="CLT">CLT</button>
