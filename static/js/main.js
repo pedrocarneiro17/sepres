@@ -2219,7 +2219,16 @@ function renderizarLancamentosDash(lista) {
         return;
     }
 
-    tbody.innerHTML = lista.map(l => {
+    // Ordena por nome do colaborador (A-Z) e, dentro do mesmo colaborador, por mês.
+    const listaOrdenada = [...lista].sort((a, b) => {
+        const nomeA = colaboradores.find(co => co.id === a.colaboradorId)?.nome || '';
+        const nomeB = colaboradores.find(co => co.id === b.colaboradorId)?.nome || '';
+        const cmpNome = nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' });
+        if (cmpNome !== 0) return cmpNome;
+        return a.mes.localeCompare(b.mes);
+    });
+
+    tbody.innerHTML = listaOrdenada.map(l => {
         const c = colaboradores.find(co => co.id === l.colaboradorId);
         const btnAcao = l.status === 'finalizado'
             ? botaoAcao(`visualizarLancamentoDash('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)')
