@@ -1537,6 +1537,8 @@ async function reabrirLancamento(id) {
         if (response.ok) {
             notificar('Lançamento reaberto!', 'success');
             await carregarDados();
+            editarLancamento(id);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     } catch (error) {
         console.error('Erro:', error);
