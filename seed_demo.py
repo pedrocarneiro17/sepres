@@ -139,21 +139,19 @@ def semear():
                     parcela = 200.0
                     pagos = [{'id': emprestimo_id, 'valor': parcela}]
 
-                # CLT: o líquido soma o EVA (Prêmio + Assiduidade + Horas Extras) como um
-                # bloco só, em vez do Prêmio/Horas Extras separados (evita duplicar).
-                # Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto.
+                # CLT: Prêmio, Assiduidade e Horas Extras ficam só no EVA — não entram no
+                # líquido. Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto.
                 eh_clt = contratacao == 'CLT'
-                assiduidade = 0.0  # mock não varia assiduidade por mês
-                eva = premio + assiduidade + horas_extras
-                base_variavel = eva if eh_clt else (premio + horas_extras)
+                base_variavel = 0.0 if eh_clt else (premio + horas_extras)
 
                 total_recebido = bruto + premio
 
-                # Líquido = Remuneração + (EVA, se CLT | Prêmio + Horas Extras, se não)
-                #           + Pagamento Contab. + Pagamento Espécie + Vale Transporte
-                #           + Outros - Empréstimo - Adiantamentos
-                liquido = (bruto + base_variavel + pagamento_especie
-                           + vale_transporte + outros - parcela - adiantamento)
+                # Líquido = Remuneração + (Prêmio + Horas Extras, se não-CLT)
+                #           + Vale Transporte + Outros - Empréstimo - Adiantamentos
+                #
+                # Pagamento Contab./Espécie NÃO entram — são só registro de como o
+                # pagamento é feito, não somam no líquido.
+                liquido = bruto + base_variavel + vale_transporte + outros - parcela - adiantamento
 
                 db.session.add(Lancamento(
                     id=f'{colab_id}{idx:02d}', colaboradorId=colab_id, mes=mes,
