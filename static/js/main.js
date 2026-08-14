@@ -766,9 +766,16 @@ function abrirNovoColaborador() {
 }
 
 // Botão "Voltar" no topo do formulário: mesma ação do Cancelar.
-function fecharFormColaborador() {
-    limparFormColaborador();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+// Único botão "Voltar" da tela: se o formulário estiver aberto, fecha ele e volta
+// pra listagem; se já estiver na listagem, volta pro Dashboard.
+function voltarColaboradores() {
+    const painel = document.getElementById('painelFormColaborador');
+    if (painel && painel.style.display !== 'none') {
+        limparFormColaborador();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        window.location.href = '/';
+    }
 }
 
 function renderizarColaboradores() {
@@ -1310,10 +1317,16 @@ function abrirNovoLancamento() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Botão "Voltar" no topo do formulário: mesma ação do Cancelar.
-function fecharFormLancamento() {
-    limparFormLancamento();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+// Único botão "Voltar" da tela: se o formulário estiver aberto, fecha ele e volta
+// pra listagem; se já estiver na listagem, volta pro Dashboard.
+function voltarLancamentos() {
+    const painel = document.getElementById('painelFormLancamento');
+    if (painel && painel.style.display !== 'none') {
+        limparFormLancamento();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        window.location.href = '/';
+    }
 }
 
 // Para diaristas: remuneração = valor da diária × dias trabalhados
