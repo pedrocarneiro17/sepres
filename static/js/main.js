@@ -755,8 +755,26 @@ function limparFormColaborador() {
     if (painelLista) painelLista.style.display = 'block';
 }
 
+// Há dados preenchidos no formulário de colaborador (editando ou já começando a
+// preencher um novo)? Usado para avisar antes de descartar ao abrir "Novo".
+function formColaboradorTemDados() {
+    const painel = document.getElementById('painelFormColaborador');
+    if (!painel || painel.style.display === 'none') return false;
+    if (document.getElementById('colabEditId').value) return true;
+    if (document.getElementById('colabNome').value.trim()) return true;
+    if (document.getElementById('colabCPF').value.trim()) return true;
+    return false;
+}
+
 // Mostra o formulário zerado para um novo colaborador, escondendo a lista.
-function abrirNovoColaborador() {
+async function abrirNovoColaborador() {
+    if (formColaboradorTemDados()) {
+        const ok = await confirmar(
+            'Já há dados preenchidos no colaborador atual. Quer mesmo abrir um novo colaborador e descartar essas informações?',
+            { titulo: 'Descartar colaborador atual?', confirmar: 'Abrir novo', perigo: true }
+        );
+        if (!ok) return;
+    }
     limparFormColaborador();
     const painel = document.getElementById('painelFormColaborador');
     if (painel) painel.style.display = 'block';
@@ -765,7 +783,6 @@ function abrirNovoColaborador() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Botão "Voltar" no topo do formulário: mesma ação do Cancelar.
 // Único botão "Voltar" da tela: se o formulário estiver aberto, fecha ele e volta
 // pra listagem; se já estiver na listagem, volta pro Dashboard.
 function voltarColaboradores() {
@@ -1307,8 +1324,26 @@ function limparFormLancamento() {
     if (painelLista) painelLista.style.display = 'block';
 }
 
+// Há dados preenchidos no formulário de lançamento (editando ou já começando a
+// preencher um novo)? Usado para avisar antes de descartar ao abrir "Novo".
+function formLancamentoTemDados() {
+    const painel = document.getElementById('painelFormLancamento');
+    if (!painel || painel.style.display === 'none') return false;
+    if (document.getElementById('lancEditId').value) return true;
+    if (document.getElementById('lancColaborador').value) return true;
+    if (document.getElementById('lancMes').value) return true;
+    return false;
+}
+
 // Mostra o formulário zerado para um novo lançamento, escondendo a lista.
-function abrirNovoLancamento() {
+async function abrirNovoLancamento() {
+    if (formLancamentoTemDados()) {
+        const ok = await confirmar(
+            'Já há dados preenchidos no lançamento atual. Quer mesmo abrir um novo lançamento e descartar essas informações?',
+            { titulo: 'Descartar lançamento atual?', confirmar: 'Abrir novo', perigo: true }
+        );
+        if (!ok) return;
+    }
     limparFormLancamento();
     const painel = document.getElementById('painelFormLancamento');
     if (painel) painel.style.display = 'block';
