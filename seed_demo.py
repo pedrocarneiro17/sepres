@@ -147,11 +147,14 @@ def semear():
                 total_recebido = bruto + premio
 
                 # Líquido = Remuneração + (Prêmio + Horas Extras, se não-CLT)
-                #           + Vale Transporte + Outros - Empréstimo - Adiantamentos
+                #           + Pagamento Espécie + Vale Transporte + Outros
+                #           - Empréstimo - Adiantamentos
                 #
-                # Pagamento Contab./Espécie NÃO entram — são só registro de como o
-                # pagamento é feito, não somam no líquido.
-                liquido = bruto + base_variavel + vale_transporte + outros - parcela - adiantamento
+                # Pagamento Contab. NÃO entra — é só registro de como o pagamento é
+                # feito, não soma no líquido. Pagamento Espécie entra, pois é dinheiro
+                # pago de fato.
+                liquido = (bruto + base_variavel + pagamento_especie
+                           + vale_transporte + outros - parcela - adiantamento)
 
                 db.session.add(Lancamento(
                     id=f'{colab_id}{idx:02d}', colaboradorId=colab_id, mes=mes,
