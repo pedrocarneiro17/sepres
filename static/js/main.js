@@ -680,6 +680,7 @@ async function salvarColaborador(e) {
         empresa: document.getElementById('colabEmpresa').value,
         contratacao: document.getElementById('colabContratacao').value,
         admissao: document.getElementById('colabAdmissao')?.value || '',
+        fimContrato: document.getElementById('colabFimContrato')?.value || '',
         remuneracao: lerMoeda(document.getElementById('colabRemuneracao')),
         premio: lerMoeda(document.getElementById('colabPremio')),
         valorDiaria: lerMoeda(document.getElementById('colabValorDiaria')),
@@ -784,8 +785,12 @@ function editarColaborador(id) {
     }
     document.getElementById('colabContratacao').value = c.contratacao;
     if (typeof toggleDiaria === 'function') toggleDiaria();
+    if (typeof toggleFimContrato === 'function') toggleFimContrato();
     if (document.getElementById('colabAdmissao')) {
         document.getElementById('colabAdmissao').value = c.admissao || '';
+    }
+    if (document.getElementById('colabFimContrato')) {
+        document.getElementById('colabFimContrato').value = c.fimContrato || '';
     }
     setMoeda(document.getElementById('colabRemuneracao'), c.remuneracao || 0);
     setMoeda(document.getElementById('colabPremio'), c.premio || 0);
@@ -1291,31 +1296,26 @@ function calcularLiquidoTotal() {
 
     const remuneracao = lerMoeda(document.getElementById('lancRemuneracao'));
     const premio = lerMoeda(document.getElementById('lancBonificacao'));
-    const eva = lerMoeda(document.getElementById('lancEva'));
     const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
     const valeTransporte = lerMoeda(document.getElementById('lancValeTransporte'));
     const emprestimo = lerMoeda(document.getElementById('lancEmprestimo'));
     const outros = lerMoeda(document.getElementById('lancOutros'));
     const adiantamentoEspecie = lerMoeda(document.getElementById('lancAdiantamentoEspecie'));
     const adiantamentoContab = lerMoeda(document.getElementById('lancAdiantamentoContab'));
-    const pagamentoContab = lerMoeda(document.getElementById('lancPagamentoContab'));
-    const pagamentoEspecie = lerMoeda(document.getElementById('lancPagamentoEspecie'));
     const ehCLT = colaboradorLancamentoEhCLT();
 
-    // CLT: o EVA (Prêmio + Assiduidade + Horas Extras) já soma tudo isso, então entra
-    // como um bloco só — Prêmio e Horas Extras não entram separadamente pra não duplicar.
-    // Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto.
-    const baseVariavel = ehCLT ? eva : (premio + horasExtras);
+    // CLT: Prêmio, Assiduidade e Horas Extras ficam só no EVA — não entram no líquido.
+    // Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto no líquido.
+    const baseVariavel = ehCLT ? 0 : (premio + horasExtras);
 
-    // Líquido = Remuneração + (EVA, se CLT | Prêmio + Horas Extras, se não) + Pagamento
-    //           Contab. + Pagamento Espécie + Vale Transporte + Outros
-    //           - Empréstimo - Adiantamentos (espécie + contabilidade)
+    // Líquido = Remuneração + (Prêmio + Horas Extras, se não-CLT) + Vale Transporte
+    //           + Outros - Empréstimo - Adiantamentos (espécie + contabilidade)
     //
     // Adiantamento é um valor já recebido antecipadamente pelo colaborador, então
     // desconta do bruto a receber no mês — e por consequência do líquido também.
-    // Pagamento Contab./Espécie servem só para lançar ajustes extras do mês (não são
-    // pré-preenchidos com o salário).
-    const liquido = remuneracao + baseVariavel + pagamentoContab + pagamentoEspecie
+    // Pagamento Contab./Espécie NÃO entram aqui — são só registro de como o pagamento
+    // é feito (ex.: recibo em espécie), não somam no líquido.
+    const liquido = remuneracao + baseVariavel
                     + valeTransporte + outros - emprestimo
                     - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
@@ -1626,8 +1626,10 @@ function imprimirRecibo(elementId) {
         <html>
         <head>
             <title>Recibo</title>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
-                body { font-family: 'Courier New', monospace; padding: 12px; font-size: 13px; }
+                body { font-family: 'Montserrat', sans-serif; padding: 12px; font-size: 13px; }
                 .text-center { text-align: center; }
                 p { margin: 6px 0; }
                 hr { border: 1px solid #000; margin: 12px 0; }

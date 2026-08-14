@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/css/app.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="min-h-screen bg-slate-50 font-sans text-slate-800 antialiased">
     <script>if(localStorage.getItem('sidebarCollapsed')==='1'){document.body.classList.add('sidebar-collapsed');}</script>
@@ -285,7 +285,7 @@
                 <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalRecibo')"><i class="fas fa-times"></i></button>
             </div>
             <div class="px-6 py-5">
-                <div id="reciboConteudo" style="border: 2px solid #000; padding: 18px; font-family: 'Courier New', monospace; font-size: 13px; max-width: 480px; margin: 0 auto;">
+                <div id="reciboConteudo" style="border: 2px solid #000; padding: 18px; font-family: 'Montserrat', sans-serif; font-size: 13px; max-width: 480px; margin: 0 auto;">
                     <img src="/static/img/logo-sepres.jpeg" class="recibo-logo" style="max-width: 160px; display: block; margin: 0 auto 12px;" onerror="this.remove()" alt="SEPRES">
                     <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO EM ESPÉCIE</h4></div>
                     <p><strong>Nome:</strong> <span id="reciboNome"></span></p>
@@ -317,7 +317,7 @@
                 <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalReciboEva')"><i class="fas fa-times"></i></button>
             </div>
             <div class="px-6 py-5">
-                <div id="reciboEvaConteudo" style="border: 2px solid #000; padding: 18px; font-family: 'Courier New', monospace; font-size: 13px; max-width: 480px; margin: 0 auto;"></div>
+                <div id="reciboEvaConteudo" style="border: 2px solid #000; padding: 18px; font-family: 'Montserrat', sans-serif; font-size: 13px; max-width: 480px; margin: 0 auto;"></div>
             </div>
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
                 <button type="button" class="btn-secondary" onclick="fecharModal('modalReciboEva')"><i class="fas fa-times"></i> Fechar</button>

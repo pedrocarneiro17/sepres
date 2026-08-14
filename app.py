@@ -79,6 +79,7 @@ class Colaborador(db.Model):
     empresa = db.Column(db.String(50)) # 'Engenharia' ou 'Gerenciadora'
     contratacao = db.Column(db.String(50))
     admissao = db.Column(db.String(10)) # Data YYYY-MM-DD
+    fimContrato = db.Column(db.String(10)) # Data YYYY-MM-DD, usado em Mensalista/Diarista
     remuneracao = db.Column(db.Float)
     premio = db.Column(db.Float)
     valorDiaria = db.Column(db.Float) # usado quando contratacao = 'Diarista'
@@ -113,6 +114,7 @@ class Colaborador(db.Model):
             "empresa": self.empresa,
             "contratacao": self.contratacao,
             "admissao": self.admissao,
+            "fimContrato": self.fimContrato,
             "remuneracao": self.remuneracao,
             "premio": self.premio,
             "valorDiaria": self.valorDiaria,
@@ -241,6 +243,8 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN empresa VARCHAR(50)'))
     if 'valorDiaria' not in colunas_colaborador:
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "valorDiaria" FLOAT'))
+    if 'fimContrato' not in colunas_colaborador:
+        db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "fimContrato" VARCHAR(10)'))
 
     # Corrige colunas antigas criadas pequenas demais (ex.: seguroVida guardava
     # "Ativo"/"Inativo" em VARCHAR(3)). SQLite não enforce isso e não suporta
@@ -428,6 +432,7 @@ def adicionar_colaborador():
                 empresa=data.get('empresa'),
                 contratacao=data.get('contratacao'),
                 admissao=data.get('admissao'),
+                fimContrato=data.get('fimContrato'),
                 remuneracao=data.get('remuneracao', 0),
                 premio=data.get('premio', 0),
                 valorDiaria=data.get('valorDiaria', 0),

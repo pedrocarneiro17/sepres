@@ -86,7 +86,7 @@
                             </div>
                             <div>
                                 <label class="label">Tipo de Contratação</label>
-                                <select class="input" id="colabContratacao" onchange="toggleDiaria(); toggleAdiantamento(); togglePremio();">
+                                <select class="input" id="colabContratacao" onchange="toggleDiaria(); toggleAdiantamento(); togglePremio(); toggleFimContrato();">
                                     <option value="CLT">CLT</option>
                                     <option value="Diarista">Diarista</option>
                                     <option value="Mensalista">Mensalista</option>
@@ -95,6 +95,11 @@
                             <div>
                                 <label class="label">Data de Admissão</label>
                                 <input type="date" class="input" id="colabAdmissao">
+                            </div>
+                            <!-- Fim de contrato: só para Mensalista e Diarista (contratos por prazo). -->
+                            <div id="divFimContrato" style="display: none;">
+                                <label class="label">Fim do Contrato</label>
+                                <input type="date" class="input" id="colabFimContrato">
                             </div>
                         </div>
 
@@ -267,12 +272,21 @@
             toggleDiaria();
             toggleAdiantamento();
             togglePremio();
+            toggleFimContrato();
         }
 
         // Mostra o campo "Valor da Diária" apenas para diaristas
         function toggleDiaria() {
             const diarista = document.getElementById('colabContratacao').value === 'Diarista';
             document.getElementById('divValorDiaria').style.display = diarista ? 'block' : 'none';
+        }
+
+        // Fim de contrato: só para Mensalista e Diarista (contratos por prazo).
+        function toggleFimContrato() {
+            const contratacao = document.getElementById('colabContratacao').value;
+            const mostrar = contratacao === 'Mensalista' || contratacao === 'Diarista';
+            document.getElementById('divFimContrato').style.display = mostrar ? 'block' : 'none';
+            if (!mostrar) document.getElementById('colabFimContrato').value = '';
         }
 
         // Prêmio existe para CLT e Mensalista — só Diarista não tem.
