@@ -744,6 +744,18 @@ function limparFormColaborador() {
     if (typeof toggleAdiantamento === 'function') toggleAdiantamento();
     if (typeof togglePremio === 'function') togglePremio();
     refrescarControlesCustom(document.getElementById('formColaborador'));
+
+    // A tela abre com foco na listagem — o formulário só aparece quando pedido.
+    const painel = document.getElementById('painelFormColaborador');
+    if (painel) painel.style.display = 'none';
+}
+
+// Mostra o formulário zerado para um novo colaborador.
+function abrirNovoColaborador() {
+    limparFormColaborador();
+    const painel = document.getElementById('painelFormColaborador');
+    if (painel) painel.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function renderizarColaboradores() {
@@ -775,6 +787,9 @@ function renderizarColaboradores() {
 function editarColaborador(id) {
     const c = colaboradores.find(colab => colab.id === id);
     if (!c) return;
+
+    const painel = document.getElementById('painelFormColaborador');
+    if (painel) painel.style.display = 'block';
 
     document.getElementById('colabEditId').value = c.id;
     document.getElementById('colabNome').value = c.nome;
@@ -1260,6 +1275,18 @@ function limparFormLancamento() {
 
     const btnCancelar = document.getElementById('btnCancelarLanc');
     if (btnCancelar) btnCancelar.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+
+    // A tela abre com foco na listagem — o formulário só aparece quando pedido.
+    const painel = document.getElementById('painelFormLancamento');
+    if (painel) painel.style.display = 'none';
+}
+
+// Mostra o formulário zerado para um novo lançamento.
+function abrirNovoLancamento() {
+    limparFormLancamento();
+    const painel = document.getElementById('painelFormLancamento');
+    if (painel) painel.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // Para diaristas: remuneração = valor da diária × dias trabalhados
@@ -1389,6 +1416,9 @@ function renderizarLancamentos() {
 function editarLancamento(id) {
     const l = lancamentos.find(lanc => lanc.id === id);
     if (!l) return;
+
+    const painel = document.getElementById('painelFormLancamento');
+    if (painel) painel.style.display = 'block';
 
     document.getElementById('lancEditId').value = l.id;
     document.getElementById('lancColaborador').value = l.colaboradorId;
