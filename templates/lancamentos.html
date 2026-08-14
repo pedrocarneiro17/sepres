@@ -255,6 +255,10 @@
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><i class="fas fa-search text-xs"></i></span>
                             <input type="text" class="input pl-9" id="filtroNomeLanc" placeholder="Buscar por nome...">
                         </div>
+                        <div class="relative w-full sm:w-44">
+                            <input type="month" class="input mes-ptbr" id="filtroPeriodoLanc" placeholder="Todos os períodos">
+                            <button type="button" onclick="limparFiltroPeriodoLanc()" title="Limpar período" class="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600"><i class="fas fa-xmark text-xs"></i></button>
+                        </div>
                         <div class="w-full sm:w-48"><input type="month" class="input mes-ptbr" id="filtroMesCSV"></div>
                         <button class="btn-success" onclick="exportarCSV()" title="Exportar CSV do mês selecionado"><i class="fas fa-file-csv"></i> Exportar CSV</button>
                     </div>

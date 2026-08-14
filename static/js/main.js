@@ -547,9 +547,11 @@ function configurarEventos() {
             field.addEventListener('input', calcularLiquidoTotal);
         });
 
-        // Busca por nome na lista de lançamentos
+        // Busca por nome e por período na lista de lançamentos
         const filtroNomeLanc = document.getElementById('filtroNomeLanc');
         if (filtroNomeLanc) filtroNomeLanc.addEventListener('input', renderizarLancamentos);
+        const filtroPeriodoLanc = document.getElementById('filtroPeriodoLanc');
+        if (filtroPeriodoLanc) filtroPeriodoLanc.addEventListener('change', renderizarLancamentos);
 
         // Pagamentos por empréstimo (linhas dinâmicas): soma no total ao editar
         const listaEmp = document.getElementById('emprestimosDetalheLista');
@@ -1321,6 +1323,13 @@ function calcularLiquidoTotal() {
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
 }
 
+function limparFiltroPeriodoLanc() {
+    const input = document.getElementById('filtroPeriodoLanc');
+    if (!input) return;
+    input.value = '';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 function renderizarLancamentos() {
     const tbody = document.getElementById('tabelaLancamentos');
     if (!tbody) return;
@@ -1330,17 +1339,20 @@ function renderizarLancamentos() {
         return;
     }
 
-    // Busca por nome do colaborador
+    // Busca por nome do colaborador e por período (mês/ano)
     const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim().toLowerCase();
-    const lista = termo
-        ? lancamentos.filter(l => {
+    const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
+    const lista = lancamentos.filter(l => {
+        if (periodo && l.mes !== periodo) return false;
+        if (termo) {
             const c = colaboradores.find(co => co.id === l.colaboradorId);
-            return c && c.nome.toLowerCase().includes(termo);
-        })
-        : lancamentos;
+            if (!c || !c.nome.toLowerCase().includes(termo)) return false;
+        }
+        return true;
+    });
 
     if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400"><i class="fas fa-magnifying-glass mb-2 block text-2xl"></i>Nenhum lançamento encontrado para "${termo}"</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400"><i class="fas fa-magnifying-glass mb-2 block text-2xl"></i>Nenhum lançamento encontrado para os filtros aplicados</td></tr>`;
         return;
     }
 
