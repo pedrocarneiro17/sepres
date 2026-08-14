@@ -1406,20 +1406,21 @@ function calcularLiquidoTotal() {
     const outros = lerMoeda(document.getElementById('lancOutros'));
     const adiantamentoEspecie = lerMoeda(document.getElementById('lancAdiantamentoEspecie'));
     const adiantamentoContab = lerMoeda(document.getElementById('lancAdiantamentoContab'));
+    const pagamentoEspecie = lerMoeda(document.getElementById('lancPagamentoEspecie'));
     const ehCLT = colaboradorLancamentoEhCLT();
 
     // CLT: Prêmio, Assiduidade e Horas Extras ficam só no EVA — não entram no líquido.
     // Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto no líquido.
     const baseVariavel = ehCLT ? 0 : (premio + horasExtras);
 
-    // Líquido = Remuneração + (Prêmio + Horas Extras, se não-CLT) + Vale Transporte
-    //           + Outros - Empréstimo - Adiantamentos (espécie + contabilidade)
+    // Líquido = Remuneração + (Prêmio + Horas Extras, se não-CLT) + Pagamento Espécie
+    //           + Vale Transporte + Outros - Empréstimo - Adiantamentos (espécie + contabilidade)
     //
     // Adiantamento é um valor já recebido antecipadamente pelo colaborador, então
     // desconta do bruto a receber no mês — e por consequência do líquido também.
-    // Pagamento Contab./Espécie NÃO entram aqui — são só registro de como o pagamento
-    // é feito (ex.: recibo em espécie), não somam no líquido.
-    const liquido = remuneracao + baseVariavel
+    // Pagamento Contab. NÃO entra aqui — é só registro de como o pagamento é feito,
+    // não soma no líquido. Pagamento Espécie entra, pois é dinheiro pago de fato.
+    const liquido = remuneracao + baseVariavel + pagamentoEspecie
                     + valeTransporte + outros - emprestimo
                     - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
@@ -1745,10 +1746,11 @@ function imprimirRecibo(elementId) {
         <html>
         <head>
             <title>Recibo</title>
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/metropolis@5.0.4/400.css">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/metropolis@5.0.4/600.css">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/metropolis@5.0.4/700.css">
             <style>
-                body { font-family: 'Montserrat', sans-serif; padding: 12px; font-size: 13px; }
+                body { font-family: 'Metropolis', sans-serif; padding: 12px; font-size: 13px; }
                 .text-center { text-align: center; }
                 p { margin: 6px 0; }
                 hr { border: 1px solid #000; margin: 12px 0; }
