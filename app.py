@@ -80,6 +80,7 @@ class Colaborador(db.Model):
     contratacao = db.Column(db.String(50))
     admissao = db.Column(db.String(10)) # Data YYYY-MM-DD
     fimContrato = db.Column(db.String(10)) # Data YYYY-MM-DD, usado em Mensalista/Diarista
+    desligado = db.Column(db.String(10)) # "Sim"/"Não" — só pode ser "Sim" se fimContrato estiver preenchido
     remuneracao = db.Column(db.Float)
     premio = db.Column(db.Float)
     valorDiaria = db.Column(db.Float) # usado quando contratacao = 'Diarista'
@@ -115,6 +116,7 @@ class Colaborador(db.Model):
             "contratacao": self.contratacao,
             "admissao": self.admissao,
             "fimContrato": self.fimContrato,
+            "desligado": self.desligado,
             "remuneracao": self.remuneracao,
             "premio": self.premio,
             "valorDiaria": self.valorDiaria,
@@ -245,6 +247,8 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "valorDiaria" FLOAT'))
     if 'fimContrato' not in colunas_colaborador:
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "fimContrato" VARCHAR(10)'))
+    if 'desligado' not in colunas_colaborador:
+        db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "desligado" VARCHAR(10)'))
 
     # Corrige colunas antigas criadas pequenas demais (ex.: seguroVida guardava
     # "Ativo"/"Inativo" em VARCHAR(3)). SQLite não enforce isso e não suporta
@@ -557,6 +561,31 @@ def excluir_lancamento(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': 'Erro interno ao excluir lançamento'}), 500
+
+@app.route('/api/colaboradores/<id>/desligar', methods=['PUT'])
+def desligar_colaborador(id):
+    """Desliga um colaborador — exige que o Fim de Contrato já esteja preenchido.
+    Mantém todo o histórico de lançamentos; a filtragem por mês é feita no front-end."""
+    colaborador = Colaborador.query.get(id)
+    if not colaborador:
+        return jsonify({'erro': 'Colaborador não encontrado'}), 404
+    if not colaborador.fimContrato:
+        return jsonify({'erro': 'Preencha a Data de Fim de Contrato antes de desligar.'}), 400
+
+    colaborador.desligado = 'Sim'
+    db.session.commit()
+    return jsonify({'mensagem': 'Colaborador desligado'}), 200
+
+@app.route('/api/colaboradores/<id>/reativar', methods=['PUT'])
+def reativar_colaborador(id):
+    """Reativa um colaborador desligado."""
+    colaborador = Colaborador.query.get(id)
+    if not colaborador:
+        return jsonify({'erro': 'Colaborador não encontrado'}), 404
+
+    colaborador.desligado = 'Não'
+    db.session.commit()
+    return jsonify({'mensagem': 'Colaborador reativado'}), 200
 
 @app.route('/api/lancamentos/<id>/finalizar', methods=['PUT'])
 def finalizar_lancamento(id):

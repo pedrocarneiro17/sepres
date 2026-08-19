@@ -520,6 +520,21 @@ function configurarEventos() {
             colaboradorField.addEventListener('change', atualizarBadgeContratoLancamento);
             colaboradorField.addEventListener('change', verificarLancamentoExistente);
             mesField.addEventListener('change', verificarLancamentoExistente);
+
+            // O mês escolhido também define quais colaboradores desligados ainda
+            // aparecem no select (só nos meses em que estavam ativos).
+            mesField.addEventListener('change', function () {
+                const selecionadoAntes = colaboradorField.value;
+                atualizarSelectColaboradores();
+                const aindaDisponivel = Array.from(colaboradorField.options).some(o => o.value === selecionadoAntes);
+                if (selecionadoAntes && !aindaDisponivel) {
+                    colaboradorField.value = '';
+                    atualizarBadgeContratoLancamento();
+                } else {
+                    colaboradorField.value = selecionadoAntes;
+                }
+                refrescarControlesCustom(document.getElementById('formLancamento'));
+            });
         }
 
         const feriasField = document.getElementById('lancFerias');
@@ -727,6 +742,10 @@ async function salvarColaborador(e) {
     }
 }
 
+// Estado do colaborador em edição (evita chamadas repetidas à API pra saber se já
+// está desligado). Só é relevante enquanto o formulário estiver aberto editando alguém.
+let colaboradorDesligadoAtual = false;
+
 function limparFormColaborador() {
     document.getElementById('formColaborador').reset();
     document.getElementById('colabEditId').value = '';
@@ -747,12 +766,88 @@ function limparFormColaborador() {
     if (typeof togglePremio === 'function') togglePremio();
     refrescarControlesCustom(document.getElementById('formColaborador'));
 
+    // Sem colaborador em edição: esconde badge e botão de desligar (só fazem
+    // sentido para um colaborador já existente).
+    colaboradorDesligadoAtual = false;
+    document.getElementById('badgeDesligadoColab').style.display = 'none';
+    document.getElementById('btnDesligarColab').style.display = 'none';
+
     // A tela abre com foco na listagem — formulário e lista são mutuamente exclusivos:
     // só um fica visível por vez.
     const painel = document.getElementById('painelFormColaborador');
     if (painel) painel.style.display = 'none';
     const painelLista = document.getElementById('painelListaColaboradores');
     if (painelLista) painelLista.style.display = 'block';
+}
+
+// Configura o botão "Desligar"/"Reativar" conforme o estado atual do colaborador
+// em edição: só existe se houver um colaborador salvo (colabEditId preenchido);
+// "Desligar" só fica habilitado com Fim de Contrato preenchido.
+function atualizarBotaoDesligar() {
+    const btn = document.getElementById('btnDesligarColab');
+    const badge = document.getElementById('badgeDesligadoColab');
+    const editId = document.getElementById('colabEditId').value;
+    if (!editId) {
+        btn.style.display = 'none';
+        badge.style.display = 'none';
+        return;
+    }
+
+    badge.style.display = colaboradorDesligadoAtual ? 'inline-flex' : 'none';
+    btn.style.display = 'inline-flex';
+
+    if (colaboradorDesligadoAtual) {
+        btn.disabled = false;
+        btn.className = 'btn-secondary mr-auto';
+        btn.innerHTML = '<i class="fas fa-user-check"></i> Reativar';
+        btn.onclick = reativarColaborador;
+    } else {
+        const temFimContrato = !!document.getElementById('colabFimContrato').value;
+        btn.disabled = !temFimContrato;
+        btn.title = temFimContrato ? '' : 'Preencha a Data de Fim de Contrato para poder desligar';
+        btn.className = 'btn-danger mr-auto';
+        btn.innerHTML = '<i class="fas fa-user-slash"></i> Desligar';
+        btn.onclick = desligarColaborador;
+    }
+}
+
+async function desligarColaborador() {
+    const id = document.getElementById('colabEditId').value;
+    if (!id) return;
+    if (!await confirmar('Desligar este colaborador? Ele deixa de aparecer em novos lançamentos a partir dos meses seguintes ao Fim de Contrato, mas todo o histórico é mantido.', { titulo: 'Desligar colaborador', perigo: true, confirmar: 'Desligar' })) return;
+    try {
+        const response = await fetch(`${API_URL}/colaboradores/${id}/desligar`, { method: 'PUT' });
+        if (response.ok) {
+            notificar('Colaborador desligado!', 'success');
+            await carregarDados();
+            editarColaborador(id);
+        } else {
+            const dados = await response.json().catch(() => ({}));
+            notificar(dados.erro || 'Erro ao desligar colaborador', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao desligar colaborador', 'error');
+    }
+}
+
+async function reativarColaborador() {
+    const id = document.getElementById('colabEditId').value;
+    if (!id) return;
+    if (!await confirmar('Reativar este colaborador?', { titulo: 'Reativar colaborador' })) return;
+    try {
+        const response = await fetch(`${API_URL}/colaboradores/${id}/reativar`, { method: 'PUT' });
+        if (response.ok) {
+            notificar('Colaborador reativado!', 'success');
+            await carregarDados();
+            editarColaborador(id);
+        } else {
+            notificar('Erro ao reativar colaborador', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao reativar colaborador', 'error');
+    }
 }
 
 // Há dados preenchidos no formulário de colaborador (editando ou já começando a
@@ -795,18 +890,29 @@ function voltarColaboradores() {
     }
 }
 
+// Colaboradores desligados somem da listagem por padrão — esta chave só existe
+// pra não deixá-los inacessíveis para sempre (ex.: reativar por engano).
+let mostrarColabDesligados = false;
+
+function toggleMostrarDesligados() {
+    mostrarColabDesligados = document.getElementById('checkMostrarDesligados').checked;
+    renderizarColaboradores();
+}
+
 function renderizarColaboradores() {
     const tbody = document.getElementById('tabelaColaboradores');
     if (!tbody) return;
 
-    if (colaboradores.length === 0) {
+    const lista = mostrarColabDesligados ? colaboradores : colaboradores.filter(c => c.desligado !== 'Sim');
+
+    if (lista.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400"><i class="fas fa-users-slash mb-2 block text-2xl"></i>Nenhum colaborador cadastrado</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = colaboradores.map(c => `
+    tbody.innerHTML = lista.map(c => `
         <tr class="border-b border-slate-100 transition hover:bg-slate-50" data-contratacao="${c.contratacao}">
-            <td class="px-4 py-3 font-medium text-slate-800">${c.nome}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${c.nome}${c.desligado === 'Sim' ? ' <span class="ml-1 inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20">Desligado</span>' : ''}</td>
             <td class="px-4 py-3 text-slate-600">${c.cpf}</td>
             <td class="px-4 py-3 text-slate-600">${c.funcao || '-'}</td>
             <td class="px-4 py-3">${badgeContratacao(c.contratacao)}</td>
@@ -849,6 +955,8 @@ function editarColaborador(id) {
     if (document.getElementById('colabFimContrato')) {
         document.getElementById('colabFimContrato').value = c.fimContrato || '';
     }
+    colaboradorDesligadoAtual = c.desligado === 'Sim';
+    atualizarBotaoDesligar();
     setMoeda(document.getElementById('colabRemuneracao'), c.remuneracao || 0);
     setMoeda(document.getElementById('colabPremio'), c.premio || 0);
     setMoeda(document.getElementById('colabValorDiaria'), c.valorDiaria || 0);
@@ -1717,7 +1825,17 @@ function atualizarSelectColaboradores() {
     const select = document.getElementById('lancColaborador');
     if (!select) return;
     const valorAtual = select.value;
-    const lista = colaboradores.filter(c => filtroContratoLancamento.has(c.contratacao));
+    const mes = document.getElementById('lancMes')?.value || '';
+
+    // Colaborador desligado some do select para meses posteriores ao Fim de
+    // Contrato — mas continua aparecendo (e podendo ser editado) nos meses em
+    // que ainda estava ativo, preservando o histórico.
+    const lista = colaboradores.filter(c => {
+        if (!filtroContratoLancamento.has(c.contratacao)) return false;
+        if (c.desligado === 'Sim' && c.fimContrato && mes && mes > c.fimContrato) return false;
+        return true;
+    });
+
     const options = lista.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
     select.innerHTML = '<option value="">Selecione</option>' + options;
     if (lista.some(c => c.id === valorAtual)) select.value = valorAtual;

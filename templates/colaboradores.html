@@ -54,6 +54,7 @@
             <div class="card mb-6 overflow-hidden" id="painelFormColaborador" style="display: none;">
                 <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 text-sm font-semibold text-slate-700">
                     <i class="fas fa-user-plus text-sepres-600"></i> <span id="formColabTitle">Cadastrar Colaborador</span>
+                    <span id="badgeDesligadoColab" style="display: none;" class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20"><i class="fas fa-user-slash"></i> Desligado</span>
                 </div>
                 <div class="p-6">
                     <form id="formColaborador">
@@ -198,7 +199,9 @@
                         <h5 class="section-title"><i class="fas fa-clipboard"></i> Observações</h5>
                         <textarea class="input" id="colabObservacoes" rows="3"></textarea>
 
-                        <div class="mt-6 flex justify-end gap-3">
+                        <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
+                            <!-- Só aparece editando um colaborador existente. Desligar exige Fim de Contrato preenchido. -->
+                            <button type="button" class="btn-danger mr-auto" id="btnDesligarColab" style="display: none;" onclick="desligarColaborador()"><i class="fas fa-user-slash"></i> Desligar</button>
                             <button type="button" class="btn-secondary" id="btnCancelarColab"><i class="fas fa-times"></i> Cancelar</button>
                             <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar Colaborador</button>
                         </div>
@@ -220,6 +223,9 @@
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><i class="fas fa-search text-xs"></i></span>
                             <input type="text" class="input pl-9" id="filtroNome" placeholder="Buscar por nome..." onkeyup="filtrarColaboradores()">
                         </div>
+                        <label class="flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-500">
+                            <input type="checkbox" id="checkMostrarDesligados" onchange="toggleMostrarDesligados()"> Mostrar desligados
+                        </label>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -266,6 +272,9 @@
         // no Líquido Total de cada lançamento mensal.
         document.getElementById('colabRemuneracao').addEventListener('input', calcularTotalColaborador);
         document.getElementById('colabPremio').addEventListener('input', calcularTotalColaborador);
+        document.getElementById('colabFimContrato').addEventListener('change', () => {
+            if (typeof atualizarBotaoDesligar === 'function') atualizarBotaoDesligar();
+        });
 
         function calcularTotalColaborador() {
             const rem = lerMoeda(document.getElementById('colabRemuneracao'));
