@@ -650,15 +650,18 @@ function badgeStatus(status) {
 }
 
 function botaoAcao(onclick, cor, icone, title) {
+    // Paleta contida: neutro por padrão, cor só reservada para ações críticas
+    // (excluir = risco, finalizar = confirmação positiva) — o resto usa o mesmo
+    // cinza discreto, na linha do visual mais sóbrio da marca.
     const cores = {
-        edit: 'text-amber-600 hover:bg-amber-50',
+        edit: 'text-slate-500 hover:bg-slate-100',
         delete: 'text-rose-600 hover:bg-rose-50',
         finalize: 'text-emerald-600 hover:bg-emerald-50',
-        view: 'text-sky-600 hover:bg-sky-50',
-        recibo: 'text-sepres-600 hover:bg-sepres-50',
+        view: 'text-slate-500 hover:bg-slate-100',
+        recibo: 'text-slate-500 hover:bg-slate-100',
         reabrir: 'text-slate-500 hover:bg-slate-100',
-        premio: 'text-amber-600 hover:bg-amber-50',
-        autonomo: 'text-teal-600 hover:bg-teal-50'
+        premio: 'text-slate-500 hover:bg-slate-100',
+        autonomo: 'text-slate-500 hover:bg-slate-100'
     };
     return `<button onclick="${onclick}" title="${title}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg transition ${cores[cor]}"><i class="fas ${icone}"></i></button>`;
 }
