@@ -47,7 +47,7 @@
             </div>
             <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-900">Lançamentos Mensais</h1>
+                    <h1 class="font-heading text-2xl font-bold tracking-tight text-slate-900">Lançamentos Mensais</h1>
                     <p class="mt-1 text-sm text-slate-500">Registro mês a mês de pagamentos, adiantamentos e empréstimos.</p>
                 </div>
                 <button type="button" class="btn-primary shrink-0" onclick="abrirNovoLancamento()"><i class="fas fa-plus"></i> Novo Lançamento</button>
@@ -55,7 +55,7 @@
 
             <!-- Formulário: escondido por padrão — a tela abre com foco na listagem. -->
             <div class="card mb-6 overflow-hidden" id="painelFormLancamento" style="display: none;">
-                <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 text-sm font-semibold text-slate-700">
+                <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 font-heading text-sm font-semibold text-slate-700">
                     <i class="fas fa-dollar-sign text-sepres-600"></i> <span id="formLancTitle">Novo Lançamento</span>
                 </div>
                 <div class="p-6">
@@ -258,7 +258,7 @@
             <!-- Lista: escondida enquanto o formulário está aberto (foco em uma coisa por vez). -->
             <div class="card overflow-hidden" id="painelListaLancamentos">
                 <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fas fa-table text-sepres-600"></i> Todos os Lançamentos</div>
+                    <div class="flex items-center gap-2 font-heading text-sm font-semibold text-slate-700"><i class="fas fa-table text-sepres-600"></i> Todos os Lançamentos</div>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div class="relative w-full sm:w-80">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><i class="fas fa-search text-xs"></i></span>

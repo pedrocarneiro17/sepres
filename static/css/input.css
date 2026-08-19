@@ -17,8 +17,8 @@
     body.sidebar-collapsed .side-link { @apply lg:justify-center lg:px-0; }
     body.sidebar-collapsed .side-hdr { @apply lg:justify-center lg:px-0; }
 
-    /* Cards */
-    .card { @apply rounded-2xl bg-white shadow-soft ring-1 ring-slate-200; }
+    /* Cards — visual mais contido (sem sombra pesada), na linha do site institucional */
+    .card { @apply rounded-xl bg-white ring-1 ring-slate-200; }
 
     /* Formulários */
     .label { @apply mb-1.5 block text-sm font-medium text-slate-600; }
@@ -40,7 +40,7 @@
     .btn-danger { @apply btn bg-rose-600 text-white shadow-sm hover:bg-rose-500; }
 
     /* Diversos */
-    .section-title { @apply mb-4 mt-6 flex items-center gap-2 border-b border-slate-100 pb-2 text-sm font-semibold uppercase tracking-wide text-slate-500; }
+    .section-title { @apply mb-4 mt-6 flex items-center gap-2 border-b border-slate-100 pb-2 font-heading text-sm font-semibold uppercase tracking-wide text-slate-500; }
     .money-prefix { @apply pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-sm text-slate-400; }
 
     /* Select customizado (dropdown arredondado) */
