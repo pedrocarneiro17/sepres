@@ -81,7 +81,9 @@
     .side-logo { @apply h-8 w-auto shrink-0 object-contain; max-width: 160px; }
     body.sidebar-collapsed .side-hdr .side-logo { @apply h-7; max-width: 40px; }
 
-    /* Variante compacta (usada na barra de filtros, para ocupar menos altura) */
-    .input.compact { @apply px-2.5 py-1.5 text-xs; }
-    .btn-secondary.compact { @apply px-3 py-1.5 text-xs; }
+    /* Variante compacta (usada na barra de filtros, para ocupar menos altura).
+       Altura fixa nos dois porque <select>/<input>/<button> têm alturas
+       intrínsecas diferentes mesmo com o mesmo padding. */
+    .input.compact { @apply h-9 px-2.5 py-1.5 text-xs; }
+    .btn-secondary.compact { @apply h-9 px-3 py-1.5 text-xs; }
 }
