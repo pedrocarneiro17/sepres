@@ -84,6 +84,6 @@
     /* Variante compacta (usada na barra de filtros, para ocupar menos altura).
        Altura fixa nos dois porque <select>/<input>/<button> têm alturas
        intrínsecas diferentes mesmo com o mesmo padding. */
-    .input.compact { @apply h-9 px-2.5 py-1.5 text-xs; }
-    .btn-secondary.compact { @apply h-9 px-3 py-1.5 text-xs; }
+    .input.compact { @apply h-10 px-2.5 py-1.5 text-xs; }
+    .btn-secondary.compact { @apply h-10 px-3 py-1.5 text-xs; }
 }
