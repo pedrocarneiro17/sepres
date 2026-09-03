@@ -47,6 +47,14 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, DB_FILE)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Evita erros de conexão "SSL SYSCALL error: EOF detected" quando o Postgres
+# do Railway derruba conexões ociosas do pool: pool_pre_ping testa a conexão
+# antes de usá-la (reconecta se estiver morta) e pool_recycle a recicla
+# periodicamente antes que o servidor a feche por timeout.
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 280,
+}
 db = SQLAlchemy(app)
 
 # --- Autenticação (Flask-Login) ---
