@@ -463,6 +463,32 @@ def redefinir_senha(token):
     return render_template('redefinir_senha.html')
 
 
+@app.route('/conta', methods=['GET', 'POST'])
+def conta():
+    """Cada usuário cadastra o próprio e-mail (usado na recuperação) e troca a senha."""
+    msg = erro = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        atual = request.form.get('senha_atual', '')
+        nova = request.form.get('nova_senha', '')
+        confirma = request.form.get('confirma', '')
+        if not current_user.confere_senha(atual):
+            erro = 'Senha atual incorreta.'
+        elif email and '@' not in email:
+            erro = 'E-mail inválido.'
+        elif nova and len(nova) < 6:
+            erro = 'A nova senha deve ter pelo menos 6 caracteres.'
+        elif nova and nova != confirma:
+            erro = 'As senhas não coincidem.'
+        else:
+            current_user.email = email or None
+            if nova:
+                current_user.definir_senha(nova)
+            db.session.commit()
+            msg = 'Dados atualizados.'
+    return render_template('conta.html', msg=msg, erro=erro), (400 if erro else 200)
+
+
 @app.route('/logout')
 def logout():
     logout_user()
