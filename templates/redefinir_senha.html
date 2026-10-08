@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova senha · Sistema DP</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="flex min-h-screen items-center justify-center bg-slate-50 px-4 font-sans text-slate-800 antialiased">
+    <div class="w-full max-w-sm">
+        <div class="mb-6 flex flex-col items-center gap-3 text-center">
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="h-16 w-auto object-contain">
+            <p class="text-sm text-slate-500">Defina uma nova senha</p>
+        </div>
+
+        <div class="card p-6">
+            {% if invalido %}
+            <div class="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">
+                <i class="fas fa-circle-exclamation mt-0.5"></i>
+                <span>Este link é inválido ou expirou. Solicite um novo.</span>
+            </div>
+            <div class="mt-4 text-center"><a href="/esqueci-senha" class="text-sm text-slate-500 hover:text-sepres-700">Solicitar novo link</a></div>
+            {% else %}
+            {% if erro %}
+            <div class="mb-4 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">
+                <i class="fas fa-circle-exclamation"></i> {{ erro }}
+            </div>
+            {% endif %}
+            <form method="post" class="space-y-4">
+                <div>
+                    <label class="label" for="password">Nova senha</label>
+                    <input class="input" type="password" id="password" name="password" autocomplete="new-password" minlength="6" required autofocus>
+                </div>
+                <div>
+                    <label class="label" for="confirm">Confirmar nova senha</label>
+                    <input class="input" type="password" id="confirm" name="confirm" autocomplete="new-password" minlength="6" required>
+                </div>
+                <button type="submit" class="btn-primary w-full">Salvar nova senha</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

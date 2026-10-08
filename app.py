@@ -6,7 +6,12 @@ from flask_login import (LoginManager, UserMixin, login_user, logout_user,
 import os
 import json
 import secrets
-from datetime import datetime
+import hashlib
+import smtplib
+import threading
+from email.message import EmailMessage
+from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Carrega variáveis de um arquivo .env (útil para rodar localmente).
 # Em produção (Railway) as variáveis vêm do próprio ambiente e isto é ignorado.
@@ -59,21 +64,42 @@ db = SQLAlchemy(app)
 
 # --- Autenticação (Flask-Login) ---
 # Credenciais vêm das variáveis de ambiente. Troque a senha padrão em produção!
+# Os usuários ficam na tabela "usuario" (senha com hash). As variáveis abaixo
+# só servem para criar o PRIMEIRO usuário quando a tabela ainda está vazia.
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# Atrás do proxy do Railway: respeita X-Forwarded-Proto/Host (links https corretos).
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-class Admin(UserMixin):
-    """Usuário administrador único (credenciais no ambiente)."""
-    id = 'admin'
+
+class Usuario(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), nullable=True)
+    senha_hash = db.Column(db.String(255), nullable=False)
+    # Redefinição de senha: guardamos só o hash do token e a validade.
+    reset_token_hash = db.Column(db.String(64), nullable=True)
+    reset_expira = db.Column(db.DateTime, nullable=True)
+
+    def definir_senha(self, senha):
+        self.senha_hash = generate_password_hash(senha)
+
+    def confere_senha(self, senha):
+        return check_password_hash(self.senha_hash, senha)
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    return Admin() if user_id == 'admin' else None
+    try:
+        return db.session.get(Usuario, int(user_id))
+    except (TypeError, ValueError):
+        return None
 
 # ==================== MODELOS (Estrutura do BD) ====================
 
@@ -271,6 +297,13 @@ with app.app_context():
 
     db.session.commit()
 
+    # Primeiro acesso: cria o usuário inicial a partir das variáveis de ambiente.
+    if Usuario.query.count() == 0:
+        primeiro = Usuario(username=ADMIN_USERNAME, email=ADMIN_EMAIL or None)
+        primeiro.definir_senha(ADMIN_PASSWORD)
+        db.session.add(primeiro)
+        db.session.commit()
+
 # ==================== FUNÇÕES UTILITÁRIAS ====================
 
 def update_or_create_emprestimos(colaborador_id, emprestimos_data):
@@ -314,7 +347,7 @@ def update_or_create_emprestimos(colaborador_id, emprestimos_data):
 @app.before_request
 def exigir_login():
     """Exige login para tudo, exceto a tela de login e os arquivos estáticos."""
-    if request.endpoint in ('login', 'static'):
+    if request.endpoint in ('login', 'static', 'esqueci_senha', 'redefinir_senha'):
         return
     if not current_user.is_authenticated:
         if request.path.startswith('/api/'):
@@ -337,14 +370,97 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '')
         password = request.form.get('password', '')
-        if (secrets.compare_digest(username, ADMIN_USERNAME) and
-                secrets.compare_digest(password, ADMIN_PASSWORD)):
-            login_user(Admin(), remember=True)
+        usuario = Usuario.query.filter_by(username=username.strip()).first()
+        if usuario and usuario.confere_senha(password):
+            login_user(usuario, remember=True)
             destino = _url_interna_segura(request.args.get('next')) or url_for('index')
             return redirect(destino)
         return render_template('login.html', erro='Usuário ou senha inválidos.'), 401
 
-    return render_template('login.html')
+    return render_template('login.html', sucesso=request.args.get('ok'))
+
+
+# ---------- Redefinição de senha por e-mail ----------
+
+RESET_VALIDADE_MIN = 30
+
+
+def _enviar_email(destino, assunto, corpo):
+    """Envia via SMTP (variáveis SMTP_*). Sem SMTP configurado, só registra no log."""
+    host = os.environ.get('SMTP_HOST')
+    if not host:
+        print(f'[email não configurado] Para: {destino} | {assunto}\n{corpo}', flush=True)
+        return
+    msg = EmailMessage()
+    msg['Subject'] = assunto
+    msg['From'] = os.environ.get('SMTP_FROM') or os.environ.get('SMTP_USER', '')
+    msg['To'] = destino
+    msg.set_content(corpo)
+    porta = int(os.environ.get('SMTP_PORT', '587'))
+    try:
+        if porta == 465:
+            servidor = smtplib.SMTP_SSL(host, porta, timeout=15)
+        else:
+            servidor = smtplib.SMTP(host, porta, timeout=15)
+            servidor.starttls()
+        with servidor:
+            if os.environ.get('SMTP_USER'):
+                servidor.login(os.environ['SMTP_USER'], os.environ.get('SMTP_PASSWORD', ''))
+            servidor.send_message(msg)
+    except Exception as e:
+        print(f'[erro ao enviar e-mail] {e}', flush=True)
+
+
+def _hash_token(token):
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+@app.route('/esqueci-senha', methods=['GET', 'POST'])
+def esqueci_senha():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        usuario = (Usuario.query.filter(db.func.lower(Usuario.email) == email).first()
+                   if email else None)
+        if usuario:
+            token = secrets.token_urlsafe(32)
+            usuario.reset_token_hash = _hash_token(token)
+            usuario.reset_expira = datetime.utcnow() + timedelta(minutes=RESET_VALIDADE_MIN)
+            db.session.commit()
+            base = os.environ.get('APP_URL', '').rstrip('/') or request.url_root.rstrip('/')
+            link = f'{base}/redefinir-senha/{token}'
+            corpo = (f'Olá, {usuario.username}.\n\n'
+                     f'Recebemos um pedido para redefinir sua senha no Sistema DP.\n'
+                     f'Acesse o link abaixo (válido por {RESET_VALIDADE_MIN} minutos):\n\n{link}\n\n'
+                     f'Se você não fez esse pedido, ignore este e-mail.')
+            # Envia em segundo plano para não atrasar (nem revelar pelo tempo) a resposta.
+            threading.Thread(target=_enviar_email,
+                             args=(usuario.email, 'Redefinição de senha · Sistema DP', corpo),
+                             daemon=True).start()
+        # Mesma resposta exista o e-mail ou não (não revela quais e-mails estão cadastrados).
+        return render_template('esqueci_senha.html', enviado=True)
+    return render_template('esqueci_senha.html')
+
+
+@app.route('/redefinir-senha/<token>', methods=['GET', 'POST'])
+def redefinir_senha(token):
+    usuario = Usuario.query.filter_by(reset_token_hash=_hash_token(token)).first()
+    valido = bool(usuario and usuario.reset_expira and usuario.reset_expira > datetime.utcnow())
+    if not valido:
+        return render_template('redefinir_senha.html', invalido=True), 400
+
+    if request.method == 'POST':
+        senha = request.form.get('password', '')
+        confirmacao = request.form.get('confirm', '')
+        if len(senha) < 6:
+            return render_template('redefinir_senha.html', erro='A senha deve ter pelo menos 6 caracteres.'), 400
+        if senha != confirmacao:
+            return render_template('redefinir_senha.html', erro='As senhas não coincidem.'), 400
+        usuario.definir_senha(senha)
+        usuario.reset_token_hash = None
+        usuario.reset_expira = None
+        db.session.commit()
+        return redirect(url_for('login', ok='Senha redefinida. Faça login com a nova senha.'))
+    return render_template('redefinir_senha.html')
 
 
 @app.route('/logout')
