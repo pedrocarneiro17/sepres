@@ -47,6 +47,11 @@ if database_url:
     # Railway/Heroku às vezes fornecem o esquema legado "postgres://"
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    # Força o driver instalado (psycopg2-binary), mesmo que a URL venha com outro
+    # driver explícito (ex.: "postgresql+psycopg://"), que não está no requirements.
+    if database_url.startswith(('postgresql://', 'postgresql+psycopg://')):
+        database_url = database_url.replace('postgresql+psycopg://', 'postgresql://', 1)
+        database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, DB_FILE)
