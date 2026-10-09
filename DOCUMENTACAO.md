@@ -301,10 +301,7 @@ descartado antes de chegar ao backend; foi corrigido).
 - `npm run build:css` / `npm run watch:css` — compila `static/css/input.css`
   (Tailwind) para `static/css/app.css`, que é o arquivo referenciado pelas
   páginas. Necessário rodar após qualquer alteração de classes/estilo.
-- `seed_demo.py` — popula o banco com dados de demonstração (colaboradores nas
-  duas empresas, nos três tipos de contrato, lançamentos de 6 meses, férias e um
-  empréstimo). Todos os registros ficam marcados internamente; `python
-  seed_demo.py --limpar` remove somente esses registros, nunca dados reais.
+- `criar_usuario.py` — cria/atualiza um usuário (`python criar_usuario.py <usuario> <email> <senha>`).
 - `.env.example` — modelo das variáveis de ambiente (`SECRET_KEY`,
   `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `DATABASE_URL`).
 
