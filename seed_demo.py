@@ -155,6 +155,11 @@ def semear():
                 # pago de fato.
                 liquido = (bruto + base_variavel + pagamento_especie
                            + vale_transporte + outros - parcela - adiantamento)
+                # CLT: o líquido é o valor informado pela contabilidade (Pagamento Contab.).
+                pagamento_contab = 0
+                if eh_clt:
+                    pagamento_contab = round(bruto * 0.85, 2)
+                    liquido = pagamento_contab
 
                 db.session.add(Lancamento(
                     id=f'{colab_id}{idx:02d}', colaboradorId=colab_id, mes=mes,
@@ -163,7 +168,7 @@ def semear():
                     adiantamentoEspecie=adiantamento, adiantamentoContab=0,
                     horasExtras=horas_extras, valeTransporte=vale_transporte,
                     emprestimo=parcela, outros=outros, liquidoTotal=liquido,
-                    pagamentoContab=0, pagamentoEspecie=pagamento_especie,
+                    pagamentoContab=pagamento_contab, pagamentoEspecie=pagamento_especie,
                     formaPagamento='Depósito + Espécie',
                     emprestimosPagos=json.dumps(pagos),
                     status='finalizado',

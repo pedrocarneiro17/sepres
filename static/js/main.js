@@ -1518,6 +1518,7 @@ function calcularLiquidoTotal() {
     const adiantamentoEspecie = lerMoeda(document.getElementById('lancAdiantamentoEspecie'));
     const adiantamentoContab = lerMoeda(document.getElementById('lancAdiantamentoContab'));
     const pagamentoEspecie = lerMoeda(document.getElementById('lancPagamentoEspecie'));
+    const pagamentoContab = lerMoeda(document.getElementById('lancPagamentoContab'));
     const ehCLT = colaboradorLancamentoEhCLT();
 
     // CLT: Prêmio, Assiduidade e Horas Extras ficam só no EVA — não entram no líquido.
@@ -1531,9 +1532,14 @@ function calcularLiquidoTotal() {
     // desconta do bruto a receber no mês — e por consequência do líquido também.
     // Pagamento Contab. NÃO entra aqui — é só registro de como o pagamento é feito,
     // não soma no líquido. Pagamento Espécie entra, pois é dinheiro pago de fato.
-    const liquido = remuneracao + baseVariavel + pagamentoEspecie
-                    + valeTransporte + outros - emprestimo
-                    - adiantamentoEspecie - adiantamentoContab;
+    //
+    // CLT: o líquido é simplesmente o valor informado pela contabilidade
+    // (Pagamento Contab.), sem somar Vale Transporte nem nenhum outro campo.
+    const liquido = ehCLT
+        ? pagamentoContab
+        : remuneracao + baseVariavel + pagamentoEspecie
+          + valeTransporte + outros - emprestimo
+          - adiantamentoEspecie - adiantamentoContab;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
 }
 
