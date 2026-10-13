@@ -521,8 +521,8 @@ function configurarEventos() {
             colaboradorField.addEventListener('change', verificarLancamentoExistente);
             mesField.addEventListener('change', verificarLancamentoExistente);
 
-            // O mês escolhido também define quais colaboradores desligados ainda
-            // aparecem no select (só nos meses em que estavam ativos).
+            // O mês escolhido também define quais colaboradores com contrato por prazo ainda
+            // aparecem no select (só nos meses em que tinham contrato).
             mesField.addEventListener('change', function () {
                 const selecionadoAntes = colaboradorField.value;
                 atualizarSelectColaboradores();
@@ -702,7 +702,7 @@ async function salvarColaborador(e) {
         empresa: document.getElementById('colabEmpresa').value,
         contratacao: document.getElementById('colabContratacao').value,
         admissao: document.getElementById('colabAdmissao')?.value || '',
-        fimContrato: document.getElementById('colabFimContrato')?.value || '',
+        contratos: lerPeriodosContrato(),
         remuneracao: lerMoeda(document.getElementById('colabRemuneracao')),
         premio: lerMoeda(document.getElementById('colabPremio')),
         valorDiaria: lerMoeda(document.getElementById('colabValorDiaria')),
@@ -745,10 +745,6 @@ async function salvarColaborador(e) {
     }
 }
 
-// Estado do colaborador em edição (evita chamadas repetidas à API pra saber se já
-// está desligado). Só é relevante enquanto o formulário estiver aberto editando alguém.
-let colaboradorDesligadoAtual = false;
-
 function limparFormColaborador() {
     document.getElementById('formColaborador').reset();
     document.getElementById('colabEditId').value = '';
@@ -769,11 +765,8 @@ function limparFormColaborador() {
     if (typeof togglePremio === 'function') togglePremio();
     refrescarControlesCustom(document.getElementById('formColaborador'));
 
-    // Sem colaborador em edição: esconde badge e botão de desligar (só fazem
-    // sentido para um colaborador já existente).
-    colaboradorDesligadoAtual = false;
-    document.getElementById('badgeDesligadoColab').style.display = 'none';
-    document.getElementById('btnDesligarColab').style.display = 'none';
+    document.getElementById('periodosContratoContainer').innerHTML = '';
+    if (typeof togglePeriodosContrato === 'function') togglePeriodosContrato();
 
     // A tela abre com foco na listagem — formulário e lista são mutuamente exclusivos:
     // só um fica visível por vez.
@@ -783,74 +776,55 @@ function limparFormColaborador() {
     if (painelLista) painelLista.style.display = 'block';
 }
 
-// Configura o botão "Desligar"/"Reativar" conforme o estado atual do colaborador
-// em edição: só existe se houver um colaborador salvo (colabEditId preenchido);
-// "Desligar" só fica habilitado com Fim de Contrato preenchido.
-function atualizarBotaoDesligar() {
-    const btn = document.getElementById('btnDesligarColab');
-    const badge = document.getElementById('badgeDesligadoColab');
-    const editId = document.getElementById('colabEditId').value;
-    if (!editId) {
-        btn.style.display = 'none';
-        badge.style.display = 'none';
-        return;
-    }
+// ---------- Períodos de contrato (Mensalista/Diarista) ----------
 
-    badge.style.display = colaboradorDesligadoAtual ? 'inline-flex' : 'none';
-    btn.style.display = 'inline-flex';
-
-    if (colaboradorDesligadoAtual) {
-        btn.disabled = false;
-        btn.className = 'btn-secondary mr-auto';
-        btn.innerHTML = '<i class="fas fa-user-check"></i> Reativar';
-        btn.onclick = reativarColaborador;
-    } else {
-        const temFimContrato = !!document.getElementById('colabFimContrato').value;
-        btn.disabled = !temFimContrato;
-        btn.title = temFimContrato ? '' : 'Preencha a Data de Fim de Contrato para poder desligar';
-        btn.className = 'btn-danger mr-auto';
-        btn.innerHTML = '<i class="fas fa-user-slash"></i> Desligar';
-        btn.onclick = desligarColaborador;
-    }
+function adicionarPeriodoContrato(inicio = '', fim = '') {
+    const container = document.getElementById('periodosContratoContainer');
+    const linha = document.createElement('div');
+    linha.className = 'flex flex-wrap items-center gap-2';
+    linha.innerHTML = `
+        <span class="text-xs text-slate-500">De</span>
+        <input type="date" class="input w-44 periodo-inicio" value="${inicio}">
+        <span class="text-xs text-slate-500">até</span>
+        <input type="date" class="input w-44 periodo-fim" value="${fim}">
+        <button type="button" class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Remover período"><i class="fas fa-trash"></i></button>`;
+    linha.querySelector('button').onclick = () => linha.remove();
+    container.appendChild(linha);
 }
 
-async function desligarColaborador() {
-    const id = document.getElementById('colabEditId').value;
-    if (!id) return;
-    if (!await confirmar('Desligar este colaborador? Ele deixa de aparecer em novos lançamentos a partir dos meses seguintes ao Fim de Contrato, mas todo o histórico é mantido.', { titulo: 'Desligar colaborador', perigo: true, confirmar: 'Desligar' })) return;
-    try {
-        const response = await fetch(`${API_URL}/colaboradores/${id}/desligar`, { method: 'PUT' });
-        if (response.ok) {
-            notificar('Colaborador desligado!', 'success');
-            await carregarDados();
-            editarColaborador(id);
-        } else {
-            const dados = await response.json().catch(() => ({}));
-            notificar(dados.erro || 'Erro ao desligar colaborador', 'error');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        notificar('Erro ao desligar colaborador', 'error');
-    }
+function lerPeriodosContrato() {
+    return Array.from(document.querySelectorAll('#periodosContratoContainer > div'))
+        .map(l => ({ inicio: l.querySelector('.periodo-inicio').value, fim: l.querySelector('.periodo-fim').value }))
+        .filter(p => p.inicio || p.fim);
 }
 
-async function reativarColaborador() {
-    const id = document.getElementById('colabEditId').value;
-    if (!id) return;
-    if (!await confirmar('Reativar este colaborador?', { titulo: 'Reativar colaborador' })) return;
-    try {
-        const response = await fetch(`${API_URL}/colaboradores/${id}/reativar`, { method: 'PUT' });
-        if (response.ok) {
-            notificar('Colaborador reativado!', 'success');
-            await carregarDados();
-            editarColaborador(id);
-        } else {
-            notificar('Erro ao reativar colaborador', 'error');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        notificar('Erro ao reativar colaborador', 'error');
-    }
+function carregarPeriodosContrato(contratos) {
+    const container = document.getElementById('periodosContratoContainer');
+    container.innerHTML = '';
+    (contratos || []).forEach(p => adicionarPeriodoContrato(p.inicio, p.fim));
+    // Mensalista/Diarista sem nenhum período: mostra uma linha em branco para preencher.
+    if (typeof togglePeriodosContrato === 'function') togglePeriodosContrato();
+}
+
+// Um período cobre o mês (YYYY-MM) se começa até o fim do mês e termina a partir do
+// início dele. Início vazio = desde sempre; fim vazio = em aberto.
+function periodoCobreMes(p, mes) {
+    return (!p.inicio || p.inicio.substring(0, 7) <= mes) && (!p.fim || mes <= p.fim.substring(0, 7));
+}
+
+// CLT e quem não tem períodos cadastrados não têm controle de vigência (sempre disponíveis).
+function colaboradorAtivoNoMes(c, mes) {
+    if (c.contratacao === 'CLT' || !c.contratos || c.contratos.length === 0 || !mes) return true;
+    return c.contratos.some(p => periodoCobreMes(p, mes));
+}
+
+// Situação hoje: 'vigente' | 'intervalo' (fora do contrato, mas há período futuro)
+// | 'encerrado' (todos os períodos já terminaram) | null (sem controle).
+function situacaoContrato(c) {
+    if (c.contratacao === 'CLT' || !c.contratos || c.contratos.length === 0) return null;
+    const hoje = new Date().toISOString().substring(0, 10);
+    if (c.contratos.some(p => (!p.inicio || p.inicio <= hoje) && (!p.fim || hoje <= p.fim))) return 'vigente';
+    return c.contratos.some(p => p.inicio && p.inicio > hoje) ? 'intervalo' : 'encerrado';
 }
 
 // Há dados preenchidos no formulário de colaborador (editando ou já começando a
@@ -893,20 +867,27 @@ function voltarColaboradores() {
     }
 }
 
-// Colaboradores desligados somem da listagem por padrão — esta chave só existe
-// pra não deixá-los inacessíveis para sempre (ex.: reativar por engano).
-let mostrarColabDesligados = false;
+// Colaboradores com contrato encerrado somem da listagem por padrão — esta chave
+// existe para consultá-los (e renovar o contrato adicionando um novo período).
+let mostrarColabEncerrados = false;
 
-function toggleMostrarDesligados() {
-    mostrarColabDesligados = document.getElementById('checkMostrarDesligados').checked;
+function toggleMostrarEncerrados() {
+    mostrarColabEncerrados = document.getElementById('checkMostrarEncerrados').checked;
     renderizarColaboradores();
+}
+
+function badgeSituacaoContrato(c) {
+    const situacao = situacaoContrato(c);
+    if (situacao === 'encerrado') return ' <span class="ml-1 inline-flex rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20">Contrato encerrado</span>';
+    if (situacao === 'intervalo') return ' <span class="ml-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">Fora do contrato</span>';
+    return '';
 }
 
 function renderizarColaboradores() {
     const tbody = document.getElementById('tabelaColaboradores');
     if (!tbody) return;
 
-    const lista = mostrarColabDesligados ? colaboradores : colaboradores.filter(c => c.desligado !== 'Sim');
+    const lista = mostrarColabEncerrados ? colaboradores : colaboradores.filter(c => situacaoContrato(c) !== 'encerrado');
 
     if (lista.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400"><i class="fas fa-users-slash mb-2 block text-2xl"></i>Nenhum colaborador cadastrado</td></tr>`;
@@ -915,7 +896,7 @@ function renderizarColaboradores() {
 
     tbody.innerHTML = lista.map(c => `
         <tr class="border-b border-slate-100 transition hover:bg-slate-50" data-contratacao="${c.contratacao}">
-            <td class="px-4 py-3 font-medium text-slate-800">${c.nome}${c.desligado === 'Sim' ? ' <span class="ml-1 inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20">Desligado</span>' : ''}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${c.nome}${badgeSituacaoContrato(c)}</td>
             <td class="px-4 py-3 text-slate-600">${c.cpf}</td>
             <td class="px-4 py-3 text-slate-600">${c.funcao || '-'}</td>
             <td class="px-4 py-3">${badgeContratacao(c.contratacao)}</td>
@@ -951,15 +932,11 @@ function editarColaborador(id) {
     }
     document.getElementById('colabContratacao').value = c.contratacao;
     if (typeof toggleDiaria === 'function') toggleDiaria();
-    if (typeof toggleFimContrato === 'function') toggleFimContrato();
+    if (typeof togglePeriodosContrato === 'function') togglePeriodosContrato();
     if (document.getElementById('colabAdmissao')) {
         document.getElementById('colabAdmissao').value = c.admissao || '';
     }
-    if (document.getElementById('colabFimContrato')) {
-        document.getElementById('colabFimContrato').value = c.fimContrato || '';
-    }
-    colaboradorDesligadoAtual = c.desligado === 'Sim';
-    atualizarBotaoDesligar();
+    carregarPeriodosContrato(c.contratos);
     setMoeda(document.getElementById('colabRemuneracao'), c.remuneracao || 0);
     setMoeda(document.getElementById('colabPremio'), c.premio || 0);
     setMoeda(document.getElementById('colabValorDiaria'), c.valorDiaria || 0);
@@ -1836,14 +1813,11 @@ function atualizarSelectColaboradores() {
     const valorAtual = select.value;
     const mes = document.getElementById('lancMes')?.value || '';
 
-    // Colaborador desligado some do select para meses posteriores ao Fim de
-    // Contrato — mas continua aparecendo (e podendo ser editado) nos meses em
-    // que ainda estava ativo, preservando o histórico.
-    const lista = colaboradores.filter(c => {
-        if (!filtroContratoLancamento.has(c.contratacao)) return false;
-        if (c.desligado === 'Sim' && c.fimContrato && mes && mes > c.fimContrato) return false;
-        return true;
-    });
+    // Só aparece no select quem tem um período de contrato cobrindo o mês escolhido
+    // (CLT e quem não tem períodos cadastrados sempre aparecem). Meses passados em que
+    // ele estava contratado continuam disponíveis, preservando o histórico.
+    const lista = colaboradores.filter(c =>
+        filtroContratoLancamento.has(c.contratacao) && colaboradorAtivoNoMes(c, mes));
 
     const options = lista.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
     select.innerHTML = '<option value="">Selecione</option>' + options;
@@ -2003,9 +1977,14 @@ function fatiaDashboard() {
     const empresa = document.getElementById('filtroEmpresa').value;
     const comp = getCompetencia();
 
+    // Em uma competência específica, só contam colaboradores com contrato vigente naquele
+    // mês (ou que já tenham lançamento nele, para não esconder histórico).
+    const comLancamentoNoMes = new Set(comp === 'todos' ? [] :
+        lancamentos.filter(l => l.mes === comp).map(l => l.colaboradorId));
     const colabs = colaboradores.filter(c =>
         (!contrato || c.contratacao === contrato) &&
-        (!empresa || c.empresa === empresa));
+        (!empresa || c.empresa === empresa) &&
+        (comp === 'todos' || colaboradorAtivoNoMes(c, comp) || comLancamentoNoMes.has(c.id)));
 
     const ids = new Set(colabs.map(c => c.id));
     const lancsTodosMeses = lancamentos.filter(l => ids.has(l.colaboradorId));

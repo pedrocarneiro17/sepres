@@ -116,8 +116,11 @@ class Colaborador(db.Model):
     empresa = db.Column(db.String(50)) # 'Engenharia' ou 'Gerenciadora'
     contratacao = db.Column(db.String(50))
     admissao = db.Column(db.String(10)) # Data YYYY-MM-DD
-    fimContrato = db.Column(db.String(10)) # Data YYYY-MM-DD, usado em Mensalista/Diarista
-    desligado = db.Column(db.String(10)) # "Sim"/"Não" — só pode ser "Sim" se fimContrato estiver preenchido
+    fimContrato = db.Column(db.String(10)) # LEGADO: substituído por contratosJson (só usado na migração)
+    desligado = db.Column(db.String(10)) # LEGADO: substituído por contratosJson (só usado na migração)
+    # Períodos de contrato (Mensalista/Diarista): JSON [{"inicio": "YYYY-MM-DD", "fim": "YYYY-MM-DD"|""}].
+    # Lista vazia = sem controle de vigência (sempre disponível para lançamentos).
+    contratosJson = db.Column(db.Text)
     remuneracao = db.Column(db.Float)
     premio = db.Column(db.Float)
     valorDiaria = db.Column(db.Float) # usado quando contratacao = 'Diarista'
@@ -152,8 +155,7 @@ class Colaborador(db.Model):
             "empresa": self.empresa,
             "contratacao": self.contratacao,
             "admissao": self.admissao,
-            "fimContrato": self.fimContrato,
-            "desligado": self.desligado,
+            "contratos": json.loads(self.contratosJson) if self.contratosJson else [],
             "remuneracao": self.remuneracao,
             "premio": self.premio,
             "valorDiaria": self.valorDiaria,
@@ -286,6 +288,13 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "fimContrato" VARCHAR(10)'))
     if 'desligado' not in colunas_colaborador:
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "desligado" VARCHAR(10)'))
+    if 'contratosJson' not in colunas_colaborador:
+        db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "contratosJson" TEXT'))
+        db.session.commit()
+        # Converte o antigo "Fim do Contrato" em um período (admissão -> fim).
+        for c in Colaborador.query.filter(Colaborador.fimContrato.isnot(None),
+                                          Colaborador.fimContrato != '').all():
+            c.contratosJson = json.dumps([{'inicio': c.admissao or '', 'fim': c.fimContrato}])
 
     # Corrige colunas antigas criadas pequenas demais (ex.: seguroVida guardava
     # "Ativo"/"Inativo" em VARCHAR(3)). SQLite não enforce isso e não suporta
@@ -564,6 +573,10 @@ def adicionar_colaborador():
         if cpf_existente:
             return jsonify({'erro': 'CPF já cadastrado!'}), 400
         
+        contratos_json, erro_contratos = _normalizar_contratos(data.get('contratos'))
+        if erro_contratos:
+            return jsonify({'erro': erro_contratos}), 400
+
         # 2. Lógica de Edição
         if data.get('id'):
             colaborador = Colaborador.query.get(data['id'])
@@ -572,8 +585,12 @@ def adicionar_colaborador():
             
             # Atualiza campos do colaborador
             for key, value in data.items():
-                if hasattr(colaborador, key) and key != 'emprestimos':
+                if (hasattr(colaborador, key)
+                        and key not in ('emprestimos', 'contratos', 'contratosJson',
+                                        'fimContrato', 'desligado')):
                     setattr(colaborador, key, value)
+            if 'contratos' in data:
+                colaborador.contratosJson = contratos_json
             
             # Atualiza empréstimos relacionados
             update_or_create_emprestimos(colaborador.id, data.get('emprestimos', []))
@@ -590,7 +607,7 @@ def adicionar_colaborador():
                 empresa=data.get('empresa'),
                 contratacao=data.get('contratacao'),
                 admissao=data.get('admissao'),
-                fimContrato=data.get('fimContrato'),
+                contratosJson=contratos_json,
                 remuneracao=data.get('remuneracao', 0),
                 premio=data.get('premio', 0),
                 valorDiaria=data.get('valorDiaria', 0),
@@ -618,6 +635,29 @@ def adicionar_colaborador():
         db.session.rollback()
         print(f"ERRO AO SALVAR COLABORADOR: {e}")
         return jsonify({'erro': 'Erro interno ao salvar colaborador'}), 500
+
+def _normalizar_contratos(lista):
+    """Valida os períodos de contrato. Retorna (json_str, erro). Cada período precisa de
+    início; fim vazio = em aberto. Períodos não podem se sobrepor."""
+    periodos = []
+    for p in (lista or []):
+        inicio = (p.get('inicio') or '').strip()
+        fim = (p.get('fim') or '').strip()
+        if not inicio and not fim:
+            continue
+        if not _data_iso(inicio):
+            return None, 'Informe a data de início de cada período de contrato.'
+        if fim and not _data_iso(fim):
+            return None, 'Data de fim de contrato inválida.'
+        if fim and fim < inicio:
+            return None, 'O fim do contrato não pode ser anterior ao início.'
+        periodos.append({'inicio': inicio, 'fim': fim})
+    periodos.sort(key=lambda p: p['inicio'])
+    for anterior, atual in zip(periodos, periodos[1:]):
+        if not anterior['fim'] or atual['inicio'] <= anterior['fim']:
+            return None, 'Os períodos de contrato não podem se sobrepor.'
+    return (json.dumps(periodos) if periodos else None), None
+
 
 @app.route('/api/colaboradores/<id>', methods=['DELETE'])
 def excluir_colaborador(id):
@@ -808,31 +848,6 @@ def excluir_lancamento(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'erro': 'Erro interno ao excluir lançamento'}), 500
-
-@app.route('/api/colaboradores/<id>/desligar', methods=['PUT'])
-def desligar_colaborador(id):
-    """Desliga um colaborador — exige que o Fim de Contrato já esteja preenchido.
-    Mantém todo o histórico de lançamentos; a filtragem por mês é feita no front-end."""
-    colaborador = Colaborador.query.get(id)
-    if not colaborador:
-        return jsonify({'erro': 'Colaborador não encontrado'}), 404
-    if not colaborador.fimContrato:
-        return jsonify({'erro': 'Preencha a Data de Fim de Contrato antes de desligar.'}), 400
-
-    colaborador.desligado = 'Sim'
-    db.session.commit()
-    return jsonify({'mensagem': 'Colaborador desligado'}), 200
-
-@app.route('/api/colaboradores/<id>/reativar', methods=['PUT'])
-def reativar_colaborador(id):
-    """Reativa um colaborador desligado."""
-    colaborador = Colaborador.query.get(id)
-    if not colaborador:
-        return jsonify({'erro': 'Colaborador não encontrado'}), 404
-
-    colaborador.desligado = 'Não'
-    db.session.commit()
-    return jsonify({'mensagem': 'Colaborador reativado'}), 200
 
 @app.route('/api/lancamentos/<id>/finalizar', methods=['PUT'])
 def finalizar_lancamento(id):

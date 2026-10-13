@@ -57,7 +57,6 @@
             <div class="card mb-6 overflow-hidden" id="painelFormColaborador" style="display: none;">
                 <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 font-heading text-sm font-semibold text-slate-700">
                     <i class="fas fa-user-plus text-sepres-600"></i> <span id="formColabTitle">Cadastrar Colaborador</span>
-                    <span id="badgeDesligadoColab" style="display: none;" class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20"><i class="fas fa-user-slash"></i> Desligado</span>
                 </div>
                 <div class="p-6">
                     <form id="formColaborador">
@@ -96,7 +95,7 @@
                             </div>
                             <div>
                                 <label class="label">Tipo de Contratação</label>
-                                <select class="input" id="colabContratacao" onchange="toggleDiaria(); toggleAdiantamento(); togglePremio(); toggleFimContrato();">
+                                <select class="input" id="colabContratacao" onchange="toggleDiaria(); toggleAdiantamento(); togglePremio(); togglePeriodosContrato();">
                                     <option value="CLT">CLT</option>
                                     <option value="Diarista">Diarista</option>
                                     <option value="Mensalista">Mensalista</option>
@@ -106,11 +105,15 @@
                                 <label class="label">Data de Admissão</label>
                                 <input type="date" class="input" id="colabAdmissao">
                             </div>
-                            <!-- Fim de contrato: só para Mensalista e Diarista (contratos por prazo). -->
-                            <div id="divFimContrato" style="display: none;">
-                                <label class="label">Fim do Contrato</label>
-                                <input type="date" class="input" id="colabFimContrato">
-                            </div>
+                        </div>
+
+                        <!-- Períodos de contrato: só para Mensalista e Diarista. Vários períodos
+                             (ex.: 3 meses, intervalo, mais 3 meses); fora deles o colaborador não
+                             aparece nos lançamentos. Fim vazio = contrato em aberto. -->
+                        <div id="divPeriodosContrato" style="display: none;" class="mt-4">
+                            <label class="label">Períodos de contrato</label>
+                            <div id="periodosContratoContainer" class="space-y-2"></div>
+                            <button type="button" class="btn-secondary mt-2 text-xs" onclick="adicionarPeriodoContrato()"><i class="fas fa-plus"></i> Adicionar período</button>
                         </div>
 
                         <!-- Remuneração -->
@@ -204,7 +207,6 @@
 
                         <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
                             <!-- Só aparece editando um colaborador existente. Desligar exige Fim de Contrato preenchido. -->
-                            <button type="button" class="btn-danger mr-auto" id="btnDesligarColab" style="display: none;" onclick="desligarColaborador()"><i class="fas fa-user-slash"></i> Desligar</button>
                             <button type="button" class="btn-secondary" id="btnCancelarColab"><i class="fas fa-times"></i> Cancelar</button>
                             <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar Colaborador</button>
                         </div>
@@ -227,7 +229,7 @@
                             <input type="text" class="input pl-9" id="filtroNome" placeholder="Buscar por nome..." onkeyup="filtrarColaboradores()">
                         </div>
                         <label class="flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-500">
-                            <input type="checkbox" id="checkMostrarDesligados" onchange="toggleMostrarDesligados()"> Mostrar desligados
+                            <input type="checkbox" id="checkMostrarEncerrados" onchange="toggleMostrarEncerrados()"> Mostrar encerrados
                         </label>
                     </div>
                 </div>
@@ -275,9 +277,6 @@
         // no Líquido Total de cada lançamento mensal.
         document.getElementById('colabRemuneracao').addEventListener('input', calcularTotalColaborador);
         document.getElementById('colabPremio').addEventListener('input', calcularTotalColaborador);
-        document.getElementById('colabFimContrato').addEventListener('change', () => {
-            if (typeof atualizarBotaoDesligar === 'function') atualizarBotaoDesligar();
-        });
 
         function calcularTotalColaborador() {
             const rem = lerMoeda(document.getElementById('colabRemuneracao'));
@@ -297,7 +296,7 @@
             toggleDiaria();
             toggleAdiantamento();
             togglePremio();
-            toggleFimContrato();
+            togglePeriodosContrato();
         }
 
         // Mostra o campo "Valor da Diária" apenas para diaristas
@@ -306,12 +305,14 @@
             document.getElementById('divValorDiaria').style.display = diarista ? 'block' : 'none';
         }
 
-        // Fim de contrato: só para Mensalista e Diarista (contratos por prazo).
-        function toggleFimContrato() {
+        // Períodos de contrato: só para Mensalista e Diarista (contratos por prazo).
+        function togglePeriodosContrato() {
             const contratacao = document.getElementById('colabContratacao').value;
             const mostrar = contratacao === 'Mensalista' || contratacao === 'Diarista';
-            document.getElementById('divFimContrato').style.display = mostrar ? 'block' : 'none';
-            if (!mostrar) document.getElementById('colabFimContrato').value = '';
+            document.getElementById('divPeriodosContrato').style.display = mostrar ? 'block' : 'none';
+            const container = document.getElementById('periodosContratoContainer');
+            if (!mostrar) container.innerHTML = '';
+            else if (!container.children.length) adicionarPeriodoContrato(document.getElementById('colabAdmissao').value || '', '');
         }
 
         // Prêmio existe para CLT e Mensalista — só Diarista não tem.
