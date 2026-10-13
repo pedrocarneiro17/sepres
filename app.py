@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          current_user)
 import os
+import sys
 import json
 import secrets
 import hashlib
@@ -394,7 +395,7 @@ def _enviar_email(destino, assunto, corpo):
     """Envia via SMTP (variáveis SMTP_*). Sem SMTP configurado, só registra no log."""
     host = os.environ.get('SMTP_HOST')
     if not host:
-        print(f'[email não configurado] Para: {destino} | {assunto}\n{corpo}', flush=True)
+        print(f'[email não configurado] Para: {destino} | {assunto}\n{corpo}', file=sys.stderr, flush=True)
         return
     msg = EmailMessage()
     msg['Subject'] = assunto
@@ -412,9 +413,9 @@ def _enviar_email(destino, assunto, corpo):
             if os.environ.get('SMTP_USER'):
                 servidor.login(os.environ['SMTP_USER'], os.environ.get('SMTP_PASSWORD', ''))
             servidor.send_message(msg)
-        print(f'[email enviado] Para: {destino}', flush=True)
+        print(f'[email enviado] Para: {destino}', file=sys.stderr, flush=True)
     except Exception as e:
-        print(f'[erro ao enviar e-mail] {e}', flush=True)
+        print(f'[erro ao enviar e-mail] {e}', file=sys.stderr, flush=True)
 
 
 def _hash_token(token):
@@ -428,7 +429,7 @@ def esqueci_senha():
         usuario = (Usuario.query.filter(db.func.lower(Usuario.email) == email).first()
                    if email else None)
         print(f'[reset senha] pedido para "{email}": '
-              f'{"usuario encontrado" if usuario else "NENHUM usuario com esse e-mail"}', flush=True)
+              f'{"usuario encontrado" if usuario else "NENHUM usuario com esse e-mail"}', file=sys.stderr, flush=True)
         if usuario:
             token = secrets.token_urlsafe(32)
             usuario.reset_token_hash = _hash_token(token)
