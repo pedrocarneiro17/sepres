@@ -5,13 +5,30 @@ Uso:
 
 Para o banco de produção (Railway), rode com a DATABASE_URL de lá, por ex.:
     railway run python criar_usuario.py maria maria@empresa.com SenhaForte123
+Para apagar todos os usuários:
+    python criar_usuario.py --zerar
+
 Se o usuário já existir, e-mail e senha são atualizados.
 """
 import sys
 from app import app, db, Usuario
 
 
+def zerar():
+    with app.app_context():
+        total = Usuario.query.count()
+        print(f'ATENÇÃO: isto apaga TODOS os {total} usuários do banco {db.engine.url.host or "local"}.')
+        if input('Digite APAGAR para confirmar: ').strip() != 'APAGAR':
+            print('Cancelado. Nada foi alterado.')
+            sys.exit(1)
+        Usuario.query.delete()
+        db.session.commit()
+        print('Usuários apagados. Crie os novos com criar_usuario.py.')
+
+
 def main():
+    if sys.argv[1:] == ['--zerar']:
+        return zerar()
     if len(sys.argv) != 4:
         print(__doc__)
         sys.exit(1)

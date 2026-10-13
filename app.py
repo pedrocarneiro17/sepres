@@ -70,11 +70,8 @@ db = SQLAlchemy(app)
 
 # --- Autenticação (Flask-Login) ---
 # Credenciais vêm das variáveis de ambiente. Troque a senha padrão em produção!
-# Os usuários ficam na tabela "usuario" (senha com hash). As variáveis abaixo
-# só servem para criar o PRIMEIRO usuário quando a tabela ainda está vazia.
-ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
+# Os usuários ficam na tabela "usuario" (senha com hash). Não há usuário padrão:
+# crie-os com `python criar_usuario.py <usuario> <email> <senha>`.
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -303,12 +300,6 @@ with app.app_context():
 
     db.session.commit()
 
-    # Primeiro acesso: cria o usuário inicial a partir das variáveis de ambiente.
-    if Usuario.query.count() == 0:
-        primeiro = Usuario(username=ADMIN_USERNAME, email=ADMIN_EMAIL or None)
-        primeiro.definir_senha(ADMIN_PASSWORD)
-        db.session.add(primeiro)
-        db.session.commit()
 
 # ==================== FUNÇÕES UTILITÁRIAS ====================
 
