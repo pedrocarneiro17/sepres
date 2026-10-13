@@ -702,7 +702,6 @@ async function salvarColaborador(e) {
         empresa: document.getElementById('colabEmpresa').value,
         contratacao: document.getElementById('colabContratacao').value,
         admissao: document.getElementById('colabAdmissao')?.value || '',
-        inicioContrato: document.getElementById('colabInicioContrato')?.value || '',
         fimContrato: document.getElementById('colabFimContrato')?.value || '',
         remuneracao: lerMoeda(document.getElementById('colabRemuneracao')),
         premio: lerMoeda(document.getElementById('colabPremio')),
@@ -955,9 +954,6 @@ function editarColaborador(id) {
     if (typeof toggleFimContrato === 'function') toggleFimContrato();
     if (document.getElementById('colabAdmissao')) {
         document.getElementById('colabAdmissao').value = c.admissao || '';
-    }
-    if (document.getElementById('colabInicioContrato')) {
-        document.getElementById('colabInicioContrato').value = c.inicioContrato || '';
     }
     if (document.getElementById('colabFimContrato')) {
         document.getElementById('colabFimContrato').value = c.fimContrato || '';

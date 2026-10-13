@@ -106,11 +106,7 @@
                                 <label class="label">Data de Admissão</label>
                                 <input type="date" class="input" id="colabAdmissao">
                             </div>
-                            <!-- Início/Fim de contrato: só para Mensalista e Diarista (contratos por prazo). -->
-                            <div id="divInicioContrato" style="display: none;">
-                                <label class="label">Início do Contrato</label>
-                                <input type="date" class="input" id="colabInicioContrato">
-                            </div>
+                            <!-- Fim de contrato: só para Mensalista e Diarista (contratos por prazo). -->
                             <div id="divFimContrato" style="display: none;">
                                 <label class="label">Fim do Contrato</label>
                                 <input type="date" class="input" id="colabFimContrato">
@@ -314,12 +310,8 @@
         function toggleFimContrato() {
             const contratacao = document.getElementById('colabContratacao').value;
             const mostrar = contratacao === 'Mensalista' || contratacao === 'Diarista';
-            document.getElementById('divInicioContrato').style.display = mostrar ? 'block' : 'none';
             document.getElementById('divFimContrato').style.display = mostrar ? 'block' : 'none';
-            if (!mostrar) {
-                document.getElementById('colabInicioContrato').value = '';
-                document.getElementById('colabFimContrato').value = '';
-            }
+            if (!mostrar) document.getElementById('colabFimContrato').value = '';
         }
 
         // Prêmio existe para CLT e Mensalista — só Diarista não tem.

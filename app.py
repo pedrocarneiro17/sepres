@@ -116,7 +116,6 @@ class Colaborador(db.Model):
     empresa = db.Column(db.String(50)) # 'Engenharia' ou 'Gerenciadora'
     contratacao = db.Column(db.String(50))
     admissao = db.Column(db.String(10)) # Data YYYY-MM-DD
-    inicioContrato = db.Column(db.String(10)) # Data YYYY-MM-DD, usado em Mensalista/Diarista
     fimContrato = db.Column(db.String(10)) # Data YYYY-MM-DD, usado em Mensalista/Diarista
     desligado = db.Column(db.String(10)) # "Sim"/"Não" — só pode ser "Sim" se fimContrato estiver preenchido
     remuneracao = db.Column(db.Float)
@@ -153,7 +152,6 @@ class Colaborador(db.Model):
             "empresa": self.empresa,
             "contratacao": self.contratacao,
             "admissao": self.admissao,
-            "inicioContrato": self.inicioContrato,
             "fimContrato": self.fimContrato,
             "desligado": self.desligado,
             "remuneracao": self.remuneracao,
@@ -284,8 +282,6 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN empresa VARCHAR(50)'))
     if 'valorDiaria' not in colunas_colaborador:
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "valorDiaria" FLOAT'))
-    if 'inicioContrato' not in colunas_colaborador:
-        db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "inicioContrato" VARCHAR(10)'))
     if 'fimContrato' not in colunas_colaborador:
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "fimContrato" VARCHAR(10)'))
     if 'desligado' not in colunas_colaborador:
@@ -594,7 +590,6 @@ def adicionar_colaborador():
                 empresa=data.get('empresa'),
                 contratacao=data.get('contratacao'),
                 admissao=data.get('admissao'),
-                inicioContrato=data.get('inicioContrato'),
                 fimContrato=data.get('fimContrato'),
                 remuneracao=data.get('remuneracao', 0),
                 premio=data.get('premio', 0),
@@ -679,7 +674,7 @@ def exportar_planilha():
             'bonus_dinheiro': lanc.pagamentoEspecie or 0,
             'cargo': (colab.funcao or '').strip(),
             'admissao': _data_iso(colab.admissao),
-            'inicio_contrato': _data_iso(colab.inicioContrato),
+            'inicio_contrato': None,
         }
 
     # (título, chave, é moeda, é data, largura) na ordem exata de cada modelo
