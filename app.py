@@ -674,7 +674,8 @@ def exportar_planilha():
             'bonus_dinheiro': lanc.pagamentoEspecie or 0,
             'cargo': (colab.funcao or '').strip(),
             'admissao': _data_iso(colab.admissao),
-            'inicio_contrato': None,
+            # Início de contrato = admissão, só para quem tem contrato por prazo (não-CLT).
+            'inicio_contrato': _data_iso(colab.admissao) if colab.contratacao != 'CLT' else None,
         }
 
     # (título, chave, é moeda, é data, largura) na ordem exata de cada modelo
