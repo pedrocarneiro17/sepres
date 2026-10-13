@@ -719,6 +719,22 @@ async function salvarColaborador(e) {
         observacoes: document.getElementById('colabObservacoes').value
     };
 
+    // Remover/encurtar um período não apaga lançamentos, mas deixa meses já lançados
+    // fora de qualquer contrato (o colaborador some do select desses meses). Avisa antes.
+    if (editId && dados.contratacao !== 'CLT' && dados.contratos.length > 0) {
+        const mesesFora = [...new Set(lancamentos
+            .filter(l => l.colaboradorId === editId && !dados.contratos.some(p => periodoCobreMes(p, l.mes)))
+            .map(l => l.mes))].sort();
+        if (mesesFora.length > 0) {
+            const lista = mesesFora.map(formatarMesAno).join(', ');
+            const ok = await confirmar(
+                `Estes meses já têm lançamento, mas ficarão fora dos períodos de contrato: ${lista}. Os lançamentos NÃO são apagados, porém o colaborador não aparecerá mais no select desses meses (não dá para editar nem lançar de novo). Salvar mesmo assim?`,
+                { titulo: 'Meses com lançamento fora do contrato', confirmar: 'Salvar mesmo assim', perigo: true }
+            );
+            if (!ok) return;
+        }
+    }
+
     try {
         const response = await fetch(`${API_URL}/colaboradores`, {
             method: 'POST',
