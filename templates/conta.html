@@ -20,8 +20,8 @@
             {% if msg %}<div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700">{{ msg }}</div>{% endif %}
             <form method="post" class="space-y-4">
                 <div>
-                    <label class="label" for="email">E-mail (para recuperar a senha)</label>
-                    <input class="input" type="email" id="email" name="email" value="{{ current_user.email or '' }}" autocomplete="email">
+                    <label class="label" for="email">E-mail (usado para entrar e recuperar a senha)</label>
+                    <input class="input" type="email" id="email" name="email" value="{{ current_user.email or '' }}" autocomplete="email" required>
                 </div>
                 <div>
                     <label class="label" for="nova_senha">Nova senha <span class="text-slate-400">(opcional)</span></label>

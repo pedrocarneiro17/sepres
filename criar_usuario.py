@@ -16,6 +16,9 @@ def main():
         print(__doc__)
         sys.exit(1)
     username, email, senha = sys.argv[1:]
+    if '@' not in email:
+        print('Informe um e-mail válido: o login é feito pelo e-mail.')
+        sys.exit(1)
     with app.app_context():
         usuario = Usuario.query.filter_by(username=username).first()
         if email:

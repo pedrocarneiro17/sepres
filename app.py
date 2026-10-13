@@ -374,14 +374,15 @@ def login():
         return redirect(url_for('index'))
 
     if request.method == 'POST':
-        username = request.form.get('username', '')
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-        usuario = Usuario.query.filter_by(username=username.strip()).first()
+        usuario = (Usuario.query.filter(db.func.lower(Usuario.email) == email).first()
+                   if email else None)
         if usuario and usuario.confere_senha(password):
             login_user(usuario, remember=True)
             destino = _url_interna_segura(request.args.get('next')) or url_for('index')
             return redirect(destino)
-        return render_template('login.html', erro='Usuário ou senha inválidos.'), 401
+        return render_template('login.html', erro='E-mail ou senha inválidos.'), 401
 
     return render_template('login.html', sucesso=request.args.get('ok'))
 
@@ -483,7 +484,7 @@ def conta():
         confirma = request.form.get('confirma', '')
         if not current_user.confere_senha(atual):
             erro = 'Senha atual incorreta.'
-        elif email and '@' not in email:
+        elif not email or '@' not in email:
             erro = 'E-mail inválido.'
         elif nova and len(nova) < 6:
             erro = 'A nova senha deve ter pelo menos 6 caracteres.'
