@@ -489,6 +489,9 @@ def conta():
             erro = 'A nova senha deve ter pelo menos 6 caracteres.'
         elif nova and nova != confirma:
             erro = 'As senhas não coincidem.'
+        elif email and Usuario.query.filter(db.func.lower(Usuario.email) == email,
+                                            Usuario.id != current_user.id).first():
+            erro = 'Este e-mail já está em uso por outro usuário.'
         else:
             current_user.email = email or None
             if nova:

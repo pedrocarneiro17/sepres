@@ -18,6 +18,12 @@ def main():
     username, email, senha = sys.argv[1:]
     with app.app_context():
         usuario = Usuario.query.filter_by(username=username).first()
+        if email:
+            outro = Usuario.query.filter(db.func.lower(Usuario.email) == email.lower(),
+                                         Usuario.username != username).first()
+            if outro:
+                print(f'E-mail já usado pelo usuário "{outro.username}". Nada foi alterado.')
+                sys.exit(1)
         criado = usuario is None
         if criado:
             usuario = Usuario(username=username)
