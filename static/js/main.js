@@ -781,13 +781,12 @@ function limparFormColaborador() {
 function adicionarPeriodoContrato(inicio = '', fim = '') {
     const container = document.getElementById('periodosContratoContainer');
     const linha = document.createElement('div');
-    linha.className = 'flex flex-wrap items-center gap-2';
+    linha.className = 'flex max-w-md items-center gap-2';
     linha.innerHTML = `
-        <span class="text-xs text-slate-500">De</span>
-        <input type="date" class="input w-44 periodo-inicio" value="${inicio}">
-        <span class="text-xs text-slate-500">até</span>
-        <input type="date" class="input w-44 periodo-fim" value="${fim}">
-        <button type="button" class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Remover período"><i class="fas fa-trash"></i></button>`;
+        <input type="date" class="input compact min-w-0 flex-1 periodo-inicio" title="Início do período" value="${inicio}">
+        <span class="shrink-0 text-xs text-slate-500">até</span>
+        <input type="date" class="input compact min-w-0 flex-1 periodo-fim" title="Fim do período (vazio = em aberto)" value="${fim}">
+        <button type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Remover período"><i class="fas fa-trash"></i></button>`;
     linha.querySelector('button').onclick = () => linha.remove();
     container.appendChild(linha);
 }
