@@ -803,7 +803,13 @@ function adicionarPeriodoContrato(inicio = '', fim = '') {
         <span class="shrink-0 text-xs text-slate-500">até</span>
         <input type="date" class="input compact min-w-0 flex-1 periodo-fim" title="Fim do período (vazio = em aberto)" value="${fim}">
         <button type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Remover período"><i class="fas fa-trash"></i></button>`;
-    linha.querySelector('button').onclick = () => linha.remove();
+    linha.querySelector('button').onclick = async () => {
+        // Linha em branco some direto; com datas preenchidas, pede confirmação.
+        const temDatas = linha.querySelector('.periodo-inicio').value || linha.querySelector('.periodo-fim').value;
+        if (temDatas && !await confirmar('Remover este período de contrato? A remoção só vale depois de salvar o colaborador.',
+            { titulo: 'Remover período', confirmar: 'Remover', perigo: true })) return;
+        linha.remove();
+    };
     container.appendChild(linha);
 }
 
