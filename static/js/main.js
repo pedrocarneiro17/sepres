@@ -1531,10 +1531,10 @@ function calcularLiquidoTotal() {
     // Pagamento Contab. NÃO entra aqui — é só registro de como o pagamento é feito,
     // não soma no líquido. Pagamento Espécie entra, pois é dinheiro pago de fato.
     //
-    // CLT: o líquido é simplesmente o valor informado pela contabilidade
-    // (Pagamento Contab.), sem somar Vale Transporte nem nenhum outro campo.
+    // CLT: o líquido é o valor da contabilidade (Pagamento Contab.) mais o que foi
+    // pago em espécie (Pagamento Espécie), sem somar Vale Transporte nem outros campos.
     const liquido = ehCLT
-        ? pagamentoContab
+        ? pagamentoContab + pagamentoEspecie
         : remuneracao + baseVariavel + pagamentoEspecie
           + valeTransporte + outros - emprestimo
           - adiantamentoEspecie - adiantamentoContab;
