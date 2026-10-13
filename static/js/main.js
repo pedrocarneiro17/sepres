@@ -594,6 +594,8 @@ function configurarEventos() {
     }
 }
 
+let periodoLancInicializado = false;
+
 function renderizar() {
     const pathname = window.location.pathname;
     if (pathname.includes('index') || pathname.endsWith('/')) {
@@ -609,9 +611,12 @@ function renderizar() {
     } else if (pathname.includes('lancamentos')) {
         // Carrega sempre o mês vigente por padrão — evita renderizar a listagem
         // inteira de uma vez. O usuário troca ou limpa o período se quiser ver outro.
+        // Só na primeira abertura da tela: depois de salvar/editar um lançamento os dados
+        // são recarregados e o filtro escolhido pelo usuário (inclusive "todos") se mantém.
         const filtroPeriodoLanc = document.getElementById('filtroPeriodoLanc');
-        if (filtroPeriodoLanc && !filtroPeriodoLanc.value) {
-            filtroPeriodoLanc.value = new Date().toISOString().substring(0, 7);
+        if (filtroPeriodoLanc && !periodoLancInicializado) {
+            periodoLancInicializado = true;
+            if (!filtroPeriodoLanc.value) filtroPeriodoLanc.value = new Date().toISOString().substring(0, 7);
         }
 
         renderizarLancamentos();
