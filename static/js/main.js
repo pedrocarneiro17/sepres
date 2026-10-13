@@ -2292,7 +2292,7 @@ function limparFiltros() {
     aplicarFiltrosDashboard();
 }
 
-// ==================== EXPORTAÇÃO CSV ====================
+// ==================== EXPORTAÇÃO DE PLANILHA ====================
 
 // Abre o modal pedindo o mês só na hora de exportar (evita um segundo filtro de
 // data sempre visível na tela, competindo com o filtro de período da listagem).
@@ -2303,46 +2303,6 @@ function abrirExportarCSV() {
         mesInput.dispatchEvent(new Event('change', { bubbles: true }));
     }
     abrirModal('modalExportarCSV');
-}
-
-function exportarCSV() {
-    const mesFiltro = document.getElementById('exportarCSVMes').value;
-    if (!mesFiltro) {
-        notificar('Selecione um mês para exportar.', 'info');
-        return;
-    }
-    fecharModal('modalExportarCSV');
-
-    const lancamentosMes = lancamentos.filter(l => l.mes === mesFiltro);
-    if (lancamentosMes.length === 0) {
-        notificar('Não há lançamentos para o mês selecionado.', 'info');
-        return;
-    }
-
-    let csv = 'Nome;Adiantamento Contabilidade;Adiantamento Espécie;Pagamento Contabilidade;Pagamento Espécie\n';
-    lancamentosMes.forEach(l => {
-        const colaborador = colaboradores.find(c => c.id === l.colaboradorId);
-        const nome = colaborador ? colaborador.nome : 'Desconhecido';
-        const adiantamentoContab = (l.adiantamentoContab || 0).toFixed(2).replace('.', ',');
-        const adiantamentoEspecie = (l.adiantamentoEspecie || 0).toFixed(2).replace('.', ',');
-        const pagamentoContab = (l.pagamentoContab || 0).toFixed(2).replace('.', ',');
-        const pagamentoEspecie = (l.pagamentoEspecie || 0).toFixed(2).replace('.', ',');
-        csv += `${nome};${adiantamentoContab};${adiantamentoEspecie};${pagamentoContab};${pagamentoEspecie}\n`;
-    });
-
-    const BOM = '﻿';
-    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    const mesFormatado = formatarMesAno(mesFiltro).replace('/', '-');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `lancamentos_${mesFormatado}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    notificar(`CSV exportado! ${lancamentosMes.length} lançamento(s) de ${formatarMesAno(mesFiltro)}.`, 'success');
 }
 
 // Planilha .xlsx no padrão da contabilidade (gerada no servidor, uma aba por empresa).
