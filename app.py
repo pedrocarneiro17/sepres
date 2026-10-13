@@ -412,6 +412,7 @@ def _enviar_email(destino, assunto, corpo):
             if os.environ.get('SMTP_USER'):
                 servidor.login(os.environ['SMTP_USER'], os.environ.get('SMTP_PASSWORD', ''))
             servidor.send_message(msg)
+        print(f'[email enviado] Para: {destino}', flush=True)
     except Exception as e:
         print(f'[erro ao enviar e-mail] {e}', flush=True)
 
@@ -426,6 +427,8 @@ def esqueci_senha():
         email = request.form.get('email', '').strip().lower()
         usuario = (Usuario.query.filter(db.func.lower(Usuario.email) == email).first()
                    if email else None)
+        print(f'[reset senha] pedido para "{email}": '
+              f'{"usuario encontrado" if usuario else "NENHUM usuario com esse e-mail"}', flush=True)
         if usuario:
             token = secrets.token_urlsafe(32)
             usuario.reset_token_hash = _hash_token(token)
