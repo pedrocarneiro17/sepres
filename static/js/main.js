@@ -1670,20 +1670,9 @@ function editarLancamento(id) {
             setMoeda(document.getElementById('lancRemuneracao'), colabDoLanc.remuneracao || 0);
         }
 
-        // Adiantamento: se o lançamento já tem valor salvo (digitado ou vindo do cadastro),
-        // ele é mantido e exibido. Só quando não há nada salvo é que se usa o cadastro atual.
-        const temAdiantamentoSalvo = (l.adiantamentoEspecie || 0) > 0 || (l.adiantamentoContab || 0) > 0;
-        if (!temAdiantamentoSalvo && colabDoLanc.temAdiantamento === 'Sim' && colabDoLanc.valorAdiantamento > 0) {
-            if (colabDoLanc.contratacao === 'CLT') {
-                if (colabDoLanc.tipoAdiantamento === 'Espécie') {
-                    setMoeda(document.getElementById('lancAdiantamentoEspecie'), colabDoLanc.valorAdiantamento);
-                } else {
-                    setMoeda(document.getElementById('lancAdiantamentoContab'), colabDoLanc.valorAdiantamento);
-                }
-            } else {
-                setMoeda(document.getElementById('lancAdiantamentoEspecie'), colabDoLanc.valorAdiantamento);
-            }
-        }
+        // Adiantamento: lançamento salvo sempre mostra o valor que foi salvo. O valor do
+        // cadastro só vem como padrão ao CRIAR o lançamento (ao escolher o colaborador);
+        // depois disso o usuário pode alterar só naquele lançamento e a mudança se mantém.
 
         calcularTotalRecebido();
     }
