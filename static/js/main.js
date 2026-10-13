@@ -1670,11 +1670,10 @@ function editarLancamento(id) {
             setMoeda(document.getElementById('lancRemuneracao'), colabDoLanc.remuneracao || 0);
         }
 
-        // Mesma lógica: adiantamento também deve refletir o cadastro atual, não o
-        // valor salvo na época em que o lançamento foi criado.
-        setMoeda(document.getElementById('lancAdiantamentoEspecie'), 0);
-        setMoeda(document.getElementById('lancAdiantamentoContab'), 0);
-        if (colabDoLanc.temAdiantamento === 'Sim' && colabDoLanc.valorAdiantamento > 0) {
+        // Adiantamento: se o lançamento já tem valor salvo (digitado ou vindo do cadastro),
+        // ele é mantido e exibido. Só quando não há nada salvo é que se usa o cadastro atual.
+        const temAdiantamentoSalvo = (l.adiantamentoEspecie || 0) > 0 || (l.adiantamentoContab || 0) > 0;
+        if (!temAdiantamentoSalvo && colabDoLanc.temAdiantamento === 'Sim' && colabDoLanc.valorAdiantamento > 0) {
             if (colabDoLanc.contratacao === 'CLT') {
                 if (colabDoLanc.tipoAdiantamento === 'Espécie') {
                     setMoeda(document.getElementById('lancAdiantamentoEspecie'), colabDoLanc.valorAdiantamento);
