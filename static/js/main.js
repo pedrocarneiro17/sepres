@@ -2345,6 +2345,36 @@ function exportarCSV() {
     notificar(`CSV exportado! ${lancamentosMes.length} lançamento(s) de ${formatarMesAno(mesFiltro)}.`, 'success');
 }
 
+// Planilha .xlsx no padrão da contabilidade (gerada no servidor, uma aba por empresa).
+async function exportarPlanilha() {
+    const mesFiltro = document.getElementById('exportarCSVMes').value;
+    if (!mesFiltro) {
+        notificar('Selecione um mês para exportar.', 'info');
+        return;
+    }
+    try {
+        const resp = await fetch('/api/exportar-planilha?mes=' + encodeURIComponent(mesFiltro));
+        if (!resp.ok) {
+            const erro = await resp.json().catch(() => ({}));
+            notificar(erro.erro || 'Erro ao gerar a planilha.', 'info');
+            return;
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `planilha_${formatarMesAno(mesFiltro).replace('/', '-')}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        fecharModal('modalExportarCSV');
+        notificar(`Planilha de ${formatarMesAno(mesFiltro)} exportada!`, 'success');
+    } catch (e) {
+        notificar('Erro ao gerar a planilha.', 'info');
+    }
+}
+
 // ==================== UTILITÁRIOS ====================
 
 function formatarMoeda(valor) {

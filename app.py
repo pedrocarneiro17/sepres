@@ -635,6 +635,98 @@ def excluir_colaborador(id):
         print(f"ERRO AO EXCLUIR COLABORADOR: {e}")
         return jsonify({'erro': 'Erro interno ao excluir colaborador'}), 500
 
+# ==================== EXPORTAÇÃO DE PLANILHA (XLSX) ====================
+
+def _data_iso(valor):
+    """'YYYY-MM-DD' -> datetime (ou None se vazio/inválido)."""
+    try:
+        return datetime.strptime(valor, '%Y-%m-%d') if valor else None
+    except (TypeError, ValueError):
+        return None
+
+
+@app.route('/api/exportar-planilha', methods=['GET'])
+def exportar_planilha():
+    """Planilha do mês no padrão da contabilidade: uma aba por empresa,
+    cada uma com as colunas na ordem do modelo."""
+    from io import BytesIO
+    from flask import send_file
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+
+    mes = request.args.get('mes', '')
+    if len(mes) != 7:
+        return jsonify({'erro': 'Informe o mês (YYYY-MM).'}), 400
+
+    linhas = (db.session.query(Lancamento, Colaborador)
+              .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
+              .filter(Lancamento.mes == mes).all())
+    if not linhas:
+        return jsonify({'erro': 'Não há lançamentos para o mês selecionado.'}), 404
+
+    def dados(lanc, colab):
+        return {
+            'tipo': 'CLT' if colab.contratacao == 'CLT' else 'CONTRATO',
+            'cpf': colab.cpf, 'nome': (colab.nome or '').strip(),
+            'salario': lanc.remuneracao or 0,
+            'bonificacao': lanc.bonificacao or 0,
+            'bonus_dinheiro': lanc.pagamentoEspecie or 0,
+            'cargo': (colab.funcao or '').strip(),
+            'admissao': _data_iso(colab.admissao),
+            'inicio_contrato': None,
+        }
+
+    # (título, chave, é moeda, é data, largura) na ordem exata de cada modelo
+    layouts = {
+        'Gerenciadora': [
+            ('', 'tipo', 0, 0, 12), ('CPF', 'cpf', 0, 0, 16), ('Nome completo', 'nome', 0, 0, 38),
+            ('Salário', 'salario', 1, 0, 14), ('Bonificação', 'bonificacao', 1, 0, 14),
+            ('Bonus em Dinheiro', 'bonus_dinheiro', 1, 0, 18), ('Cargo', 'cargo', 0, 0, 36),
+            ('Admissão', 'admissao', 0, 1, 14)],
+        'Engenharia': [
+            ('Nome', 'nome', 0, 0, 38), ('Salário', 'salario', 1, 0, 14),
+            ('Bonus', 'bonificacao', 1, 0, 14), ('Bonus em Dinheiro', 'bonus_dinheiro', 1, 0, 18),
+            ('', 'tipo', 0, 0, 12), ('ADMISSÃO', 'admissao', 0, 1, 14),
+            ('Inicio de contrato', 'inicio_contrato', 0, 1, 18), ('CPF', 'cpf', 0, 0, 16)],
+    }
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    cabecalho_fill = PatternFill('solid', fgColor='A89826')
+    por_empresa = {}
+    for lanc, colab in linhas:
+        aba = colab.empresa if colab.empresa in layouts else 'Gerenciadora'
+        por_empresa.setdefault(aba, []).append(dados(lanc, colab))
+
+    for aba in ('Gerenciadora', 'Engenharia'):
+        registros = sorted(por_empresa.get(aba, []), key=lambda r: r['nome'].lower())
+        ws = wb.create_sheet(aba)
+        colunas = layouts[aba]
+        for i, (titulo, chave, moeda, data, largura) in enumerate(colunas, start=1):
+            c = ws.cell(row=1, column=i, value=titulo or None)
+            c.font = Font(bold=True, color='FFFFFF')
+            c.fill = cabecalho_fill
+            c.alignment = Alignment(vertical='center')
+            ws.column_dimensions[get_column_letter(i)].width = largura
+        for r, reg in enumerate(registros, start=2):
+            for i, (_, chave, moeda, data, _) in enumerate(colunas, start=1):
+                c = ws.cell(row=r, column=i, value=reg[chave])
+                if moeda:
+                    c.number_format = '"R$" #,##0.00'
+                elif data:
+                    c.number_format = 'dd/mm/yyyy'
+        ws.freeze_panes = 'A2'
+        ws.auto_filter.ref = f'A1:{get_column_letter(len(colunas))}{max(1, len(registros) + 1)}'
+
+    saida = BytesIO()
+    wb.save(saida)
+    saida.seek(0)
+    return send_file(saida, as_attachment=True,
+                     download_name=f'planilha_{mes[5:]}-{mes[:4]}.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 @app.route('/api/lancamentos', methods=['GET'])
 def obter_lancamentos():
     """Retorna todos os lançamentos"""
