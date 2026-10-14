@@ -1527,8 +1527,6 @@ function calcularLiquidoTotal() {
     const valeTransporte = lerMoeda(document.getElementById('lancValeTransporte'));
     const emprestimo = lerMoeda(document.getElementById('lancEmprestimo'));
     const outros = lerMoeda(document.getElementById('lancOutros'));
-    const adiantamentoEspecie = lerMoeda(document.getElementById('lancAdiantamentoEspecie'));
-    const adiantamentoContab = lerMoeda(document.getElementById('lancAdiantamentoContab'));
     const pagamentoEspecie = lerMoeda(document.getElementById('lancPagamentoEspecie'));
     const pagamentoContab = lerMoeda(document.getElementById('lancPagamentoContab'));
     const ehCLT = colaboradorLancamentoEhCLT();
@@ -1537,21 +1535,19 @@ function calcularLiquidoTotal() {
     // Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto no líquido.
     const baseVariavel = ehCLT ? 0 : (premio + horasExtras);
 
-    // Líquido = Remuneração + (Prêmio + Horas Extras, se não-CLT) + Pagamento Espécie
-    //           + Vale Transporte + Outros - Empréstimo - Adiantamentos (espécie + contabilidade)
-    //
-    // Adiantamento é um valor já recebido antecipadamente pelo colaborador, então
-    // desconta do bruto a receber no mês — e por consequência do líquido também.
-    // Pagamento Contab. NÃO entra aqui — é só registro de como o pagamento é feito,
-    // não soma no líquido. Pagamento Espécie entra, pois é dinheiro pago de fato.
+    // Não-CLT (Mensalista/Diarista):
+    //   Líquido = Remuneração + (Prêmio + Horas Extras) + Pagamento Espécie
+    //             + Vale Transporte + Outros - Empréstimo
+    // Adiantamento é só registrado (igual ao CLT): NÃO desconta do líquido.
+    // Pagamento Contab. não existe para esses tipos.
     //
     // CLT: o líquido é o valor da contabilidade (Pagamento Contab.) mais o que foi
-    // pago em espécie (Pagamento Espécie), sem somar Vale Transporte nem outros campos.
+    // pago em espécie (Pagamento Espécie), sem somar Vale Transporte nem outros campos
+    // e sem descontar adiantamento.
     const liquido = ehCLT
         ? pagamentoContab + pagamentoEspecie
         : remuneracao + baseVariavel + pagamentoEspecie
-          + valeTransporte + outros - emprestimo
-          - adiantamentoEspecie - adiantamentoContab;
+          + valeTransporte + outros - emprestimo;
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
 }
 
