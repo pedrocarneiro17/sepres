@@ -1129,6 +1129,15 @@ function atualizarBadgeContratoLancamento() {
         }
     }
 
+    // Pagamento por contabilidade só existe para CLT (Mensalista/Diarista não têm).
+    const divPagamentoContab = document.getElementById('divPagamentoContab');
+    if (divPagamentoContab) {
+        divPagamentoContab.style.display = ehCLT ? 'block' : 'none';
+        if (!ehCLT) {
+            setMoeda(document.getElementById('lancPagamentoContab'), 0);
+        }
+    }
+
     // Adiantamento do cadastro: preenche assim que o colaborador é selecionado,
     // sem depender de o mês já estar escolhido (editarLancamento sobrescreve
     // esses campos em seguida, quando um lançamento salvo estiver sendo aberto).
