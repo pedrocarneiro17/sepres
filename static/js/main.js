@@ -1972,7 +1972,7 @@ function gerarReciboAutonomo(id) {
         <p>Eu, <strong>${c.nome}</strong>, inscrito no CPF: ${c.cpf}, declaro ter recebido nesta data, da
         ${EMPRESA_RECIBO.nome}, inscrita no CNPJ ${EMPRESA_RECIBO.cnpj} com sede na Rua Anibal Cotta, n°25,
         Bairro Jardim Itacolomi, Ouro Preto, Minas Gerais, a importância líquida de R$ ${valor} (REAIS)
-        referente ao pagamento dos serviços contratados para serviços.</p>
+        referente ao pagamento de serviços prestados.</p>
         <br>
         <p>Ouro Preto, ${dataExtenso}.</p>
         <br><br>
