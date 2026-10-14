@@ -1529,25 +1529,36 @@ function calcularLiquidoTotal() {
     const outros = lerMoeda(document.getElementById('lancOutros'));
     const pagamentoEspecie = lerMoeda(document.getElementById('lancPagamentoEspecie'));
     const pagamentoContab = lerMoeda(document.getElementById('lancPagamentoContab'));
-    const ehCLT = colaboradorLancamentoEhCLT();
+    const adiantamentoEspecie = lerMoeda(document.getElementById('lancAdiantamentoEspecie'));
+    const colaboradorSel = colaboradores.find(c => c.id === document.getElementById('lancColaborador')?.value);
+    const ehCLT = !!colaboradorSel && colaboradorSel.contratacao === 'CLT';
+    const ehDiarista = !!colaboradorSel && colaboradorSel.contratacao === 'Diarista';
 
     // CLT: Prêmio, Assiduidade e Horas Extras ficam só no EVA — não entram no líquido.
     // Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto no líquido.
     const baseVariavel = ehCLT ? 0 : (premio + horasExtras);
 
-    // Não-CLT (Mensalista/Diarista):
-    //   Líquido = Remuneração + (Prêmio + Horas Extras) + Pagamento Espécie
-    //             + Vale Transporte + Outros - Empréstimo
-    // Adiantamento é só registrado (igual ao CLT): NÃO desconta do líquido.
-    // Pagamento Contab. não existe para esses tipos.
+    // CLT: Líquido = Pagamento Contab. + Pagamento Espécie (nada mais entra na conta;
+    //      adiantamento só é registrado).
     //
-    // CLT: o líquido é o valor da contabilidade (Pagamento Contab.) mais o que foi
-    // pago em espécie (Pagamento Espécie), sem somar Vale Transporte nem outros campos
-    // e sem descontar adiantamento.
-    const liquido = ehCLT
-        ? pagamentoContab + pagamentoEspecie
-        : remuneracao + baseVariavel + pagamentoEspecie
-          + valeTransporte + outros - emprestimo;
+    // Mensalista: o Salário Bruto NÃO entra. O líquido mostra o que é pago:
+    //      Adiantamento Espécie + Pagamento Espécie + Prêmio + Horas Extras
+    //      + Vale Transporte + Outros - Empréstimo
+    //
+    // Diarista: Remuneração (diária x dias) + Horas Extras + Pagamento Espécie
+    //      + Vale Transporte + Outros - Empréstimo + Adiantamento Espécie
+    //
+    // Pagamento Contab. só existe para CLT.
+    let liquido;
+    if (ehCLT) {
+        liquido = pagamentoContab + pagamentoEspecie;
+    } else if (ehDiarista) {
+        liquido = remuneracao + baseVariavel + pagamentoEspecie
+                  + valeTransporte + outros - emprestimo + adiantamentoEspecie;
+    } else {
+        liquido = adiantamentoEspecie + pagamentoEspecie + baseVariavel
+                  + valeTransporte + outros - emprestimo;
+    }
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
 }
 
