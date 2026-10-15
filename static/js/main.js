@@ -20,6 +20,13 @@ let colabIdToDelete = null;
 // ==================== HELPERS DE MÁSCARA / MOEDA ====================
 
 // Formata um número para o padrão brasileiro "1.234,56"
+// Escapa texto vindo de dados (nome, cargo, observações...) antes de colocá-lo em innerHTML
+// ou em atributos HTML — evita que alguém injete código pelo cadastro (XSS).
+function esc(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, ch => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
 function numeroBR(n) {
     return (parseFloat(n) || 0).toLocaleString('pt-BR', {
         minimumFractionDigits: 2,
@@ -405,7 +412,8 @@ function notificar(mensagem, tipo = 'success') {
     const e = estilos[tipo] || estilos.success;
     const t = document.createElement('div');
     t.className = `flex max-w-sm items-start gap-3 rounded-xl border ${e.box} px-4 py-3 text-sm shadow-lg transition-all duration-300 translate-x-4 opacity-0`;
-    t.innerHTML = `<i class="fas ${e.icon} ${e.ic} mt-0.5"></i><span class="flex-1">${mensagem}</span>`;
+    t.innerHTML = `<i class="fas ${e.icon} ${e.ic} mt-0.5"></i><span class="flex-1"></span>`;
+    t.querySelector('span').textContent = mensagem;
     cont.appendChild(t);
     requestAnimationFrame(() => t.classList.remove('translate-x-4', 'opacity-0'));
     setTimeout(() => {
@@ -804,9 +812,9 @@ function adicionarPeriodoContrato(inicio = '', fim = '') {
     const linha = document.createElement('div');
     linha.className = 'flex max-w-md items-center gap-2';
     linha.innerHTML = `
-        <input type="date" class="input compact min-w-0 flex-1 periodo-inicio" title="Início do período" value="${inicio}">
+        <input type="date" class="input compact min-w-0 flex-1 periodo-inicio" title="Início do período" value="${esc(inicio)}">
         <span class="shrink-0 text-xs text-slate-500">até</span>
-        <input type="date" class="input compact min-w-0 flex-1 periodo-fim" title="Fim do período (vazio = em aberto)" value="${fim}">
+        <input type="date" class="input compact min-w-0 flex-1 periodo-fim" title="Fim do período (vazio = em aberto)" value="${esc(fim)}">
         <button type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Remover período"><i class="fas fa-trash"></i></button>`;
     linha.querySelector('button').onclick = async () => {
         // Linha em branco some direto; com datas preenchidas, pede confirmação.
@@ -921,10 +929,10 @@ function renderizarColaboradores() {
     }
 
     tbody.innerHTML = lista.map(c => `
-        <tr class="border-b border-slate-100 transition hover:bg-slate-50" data-contratacao="${c.contratacao}">
-            <td class="px-4 py-3 font-medium text-slate-800">${c.nome}${badgeSituacaoContrato(c)}</td>
-            <td class="px-4 py-3 text-slate-600">${c.cpf}</td>
-            <td class="px-4 py-3 text-slate-600">${c.funcao || '-'}</td>
+        <tr class="border-b border-slate-100 transition hover:bg-slate-50" data-contratacao="${esc(c.contratacao)}">
+            <td class="px-4 py-3 font-medium text-slate-800">${esc(c.nome)}${badgeSituacaoContrato(c)}</td>
+            <td class="px-4 py-3 text-slate-600">${esc(c.cpf)}</td>
+            <td class="px-4 py-3 text-slate-600">${esc(c.funcao || '-')}</td>
             <td class="px-4 py-3">${badgeContratacao(c.contratacao)}</td>
             <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(c.total || c.remuneracao || 0)}</td>
             <td class="px-4 py-3">
@@ -1235,9 +1243,9 @@ function renderizarEmprestimosLanc(rows, readonly) {
     }
 
     lista.innerHTML = rows.map(r => `
-        <div class="emp-row flex items-center justify-between gap-3" data-emp-id="${r.id}">
+        <div class="emp-row flex items-center justify-between gap-3" data-emp-id="${esc(r.id)}">
             <div class="min-w-0 flex-1 text-sm">
-                <span class="font-medium text-slate-700">${r.descricao || 'Empréstimo'}</span>
+                <span class="font-medium text-slate-700">${esc(r.descricao || 'Empréstimo')}</span>
                 <span class="block text-xs text-slate-400">Parcela ${formatarMoeda(r.parcela)}${r.restante != null ? ' · saldo ' + formatarMoeda(r.restante) : ''}</span>
             </div>
             <div class="relative w-36 shrink-0">
@@ -1648,7 +1656,7 @@ function renderizarLancamentos() {
 
         return `
         <tr class="border-b border-slate-100 transition hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}${marcaAdiantamento}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${esc(c ? c.nome : 'Desconhecido')}${marcaAdiantamento}</td>
             <td class="px-4 py-3 text-slate-600">${formatarMesAno(l.mes)}</td>
             <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(l.liquidoTotal || 0)}</td>
             <td class="px-4 py-3">${badgeStatus(l.status)}</td>
@@ -1874,7 +1882,7 @@ function atualizarSelectColaboradores() {
     const lista = colaboradores.filter(c =>
         filtroContratoLancamento.has(c.contratacao) && colaboradorAtivoNoMes(c, mes));
 
-    const options = lista.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+    const options = lista.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
     select.innerHTML = '<option value="">Selecione</option>' + options;
     if (lista.some(c => c.id === valorAtual)) select.value = valorAtual;
 }
@@ -1963,7 +1971,7 @@ function gerarReciboPremio(id) {
     document.getElementById('reciboEvaConteudo').innerHTML = `
         ${logoReciboHtml()}
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PRÊMIO</h4></div>
-        <p>Eu, <strong>${c.nome}</strong>, declaro que recebi nesta data, como forma de prêmio a quantia de
+        <p>Eu, <strong>${esc(c.nome)}</strong>, declaro que recebi nesta data, como forma de prêmio a quantia de
         R$ ${valor} (reais) da empresa denominada ${EMPRESA_RECIBO.nome}, inscrita no CNPJ ${EMPRESA_RECIBO.cnpj},
         com sede na Rua Anibal Cota, n°25, Sala 06, Edifício Jardins, Jardim Itacolomi, Ouro Preto/MG,
         não ficando nenhum valor pendente. Totalizando o valor de R$ ${valor} (reais).</p>
@@ -1972,7 +1980,7 @@ function gerarReciboPremio(id) {
         <br><br>
         <div class="text-center">
             <p>______________________________________________________</p>
-            <p>${c.nome.toUpperCase()}</p>
+            <p>${esc(c.nome.toUpperCase())}</p>
         </div>
     `;
 
@@ -1994,7 +2002,7 @@ function gerarReciboAutonomo(id) {
     document.getElementById('reciboEvaConteudo').innerHTML = `
         ${logoReciboHtml()}
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO DE AUTÔNOMO</h4></div>
-        <p>Eu, <strong>${c.nome}</strong>, inscrito no CPF: ${c.cpf}, declaro ter recebido nesta data, da
+        <p>Eu, <strong>${esc(c.nome)}</strong>, inscrito no CPF: ${esc(c.cpf)}, declaro ter recebido nesta data, da
         ${EMPRESA_RECIBO.nome}, inscrita no CNPJ ${EMPRESA_RECIBO.cnpj} com sede na Rua Anibal Cotta, n°25,
         Bairro Jardim Itacolomi, Ouro Preto, Minas Gerais, a importância líquida de R$ ${valor} (REAIS)
         referente ao pagamento de serviços prestados.</p>
@@ -2003,7 +2011,7 @@ function gerarReciboAutonomo(id) {
         <br><br>
         <div class="text-center">
             <p>__________________________________________</p>
-            <p>${c.nome.toUpperCase()}</p>
+            <p>${esc(c.nome.toUpperCase())}</p>
         </div>
     `;
 
@@ -2246,7 +2254,7 @@ function renderizarGraficos(fatia) {
         return { nome: c.nome || 'Desconhecido', empresa: c.empresa || 'Não informado', valor };
     }).sort((a, b) => a.empresa.localeCompare(b.empresa) || b.valor - a.valor);
     montarLegendaLista('legendaEmpresa', itensEmpresa, i =>
-        `<div class="legenda-linha"><span class="text-slate-600">${i.nome}</span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
+        `<div class="legenda-linha"><span class="text-slate-600">${esc(i.nome)}</span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
 
     // 2. Evolução mensal — sempre todos os meses; o mês filtrado fica destacado
     const porMes = agrupar(lancsTodosMeses, l => l.mes, l => l.liquidoTotal);
@@ -2266,7 +2274,7 @@ function renderizarGraficos(fatia) {
         return { nome: c.nome || 'Desconhecido', contratacao: c.contratacao || 'Não informado', valor };
     }).sort((a, b) => a.contratacao.localeCompare(b.contratacao) || b.valor - a.valor);
     montarLegendaLista('legendaContrato', itensContrato, i =>
-        `<div class="legenda-linha"><span class="text-slate-600">${i.nome}</span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
+        `<div class="legenda-linha"><span class="text-slate-600">${esc(i.nome)}</span><span class="font-medium text-slate-800">${formatarMoeda(i.valor)}</span></div>`);
 
     // 4. Colaboradores por tipo de contrato (quantidade)
     const headcount = {};
@@ -2288,7 +2296,7 @@ function renderizarGraficos(fatia) {
         return { nome: c.nome || 'Desconhecido', mes: formatarMesAno(l.mes), dias: l.diasFerias || 30 };
     }).sort((a, b) => a.nome.localeCompare(b.nome));
     montarLegendaLista('legendaFerias', itensFerias, i =>
-        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.mes}</span></span><span class="font-medium text-slate-800">${i.dias} dia(s)</span></div>`);
+        `<div class="legenda-linha"><span class="text-slate-600">${esc(i.nome)} <span class="text-slate-400">· ${esc(i.mes)}</span></span><span class="font-medium text-slate-800">${i.dias} dia(s)</span></div>`);
 
     // 6. Faltas por mês (mesmo padrão: todos os meses, mês filtrado destacado)
     const faltasPorMes = {};
@@ -2302,7 +2310,7 @@ function renderizarGraficos(fatia) {
         return { nome: c.nome || 'Desconhecido', data: formatarData(f.data), obs: f.obs || '-' };
     }).sort((a, b) => a.nome.localeCompare(b.nome));
     montarLegendaLista('legendaFaltas', itensFaltas, i =>
-        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.data}</span></span><span class="max-w-[50%] truncate font-medium text-slate-800" title="${i.obs}">${i.obs}</span></div>`);
+        `<div class="legenda-linha"><span class="text-slate-600">${esc(i.nome)} <span class="text-slate-400">· ${esc(i.data)}</span></span><span class="max-w-[50%] truncate font-medium text-slate-800" title="${esc(i.obs)}">${esc(i.obs)}</span></div>`);
 
     // 7. Atestados por mês (contagem de atestados, não soma de dias)
     const atestadosPorMes = {};
@@ -2316,7 +2324,7 @@ function renderizarGraficos(fatia) {
         return { nome: c.nome || 'Desconhecido', data: formatarData(a.data), dias: a.dias || 1 };
     }).sort((a, b) => a.nome.localeCompare(b.nome));
     montarLegendaLista('legendaAtestados', itensAtestados, i =>
-        `<div class="legenda-linha"><span class="text-slate-600">${i.nome} <span class="text-slate-400">· ${i.data}</span></span><span class="font-medium text-slate-800">${i.dias} dia(s)</span></div>`);
+        `<div class="legenda-linha"><span class="text-slate-600">${esc(i.nome)} <span class="text-slate-400">· ${esc(i.data)}</span></span><span class="font-medium text-slate-800">${esc(i.dias)} dia(s)</span></div>`);
 }
 
 function limparFiltros() {

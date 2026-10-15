@@ -1,5 +1,4 @@
 from flask import Flask, jsonify, request, render_template, redirect, url_for
-from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          current_user)
@@ -10,6 +9,7 @@ import secrets
 import hashlib
 import smtplib
 import threading
+import time
 from email.message import EmailMessage
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -30,14 +30,23 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__,
             static_folder='static',
             template_folder='templates')
-CORS(app)
+# Sem CORS: o front-end é servido pelo próprio app (mesma origem), então nenhuma
+# origem externa precisa chamar a API.
 
 # --- Segurança / Sessão ---
 # Em produção, defina SECRET_KEY nas variáveis de ambiente do Railway.
 app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+# Em produção (Railway, com DATABASE_URL) os cookies só trafegam por HTTPS.
+EM_PRODUCAO = bool(os.environ.get('DATABASE_URL'))
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=EM_PRODUCAO,
+    # "Lembrar de mim": 7 dias (o padrão do Flask-Login é 365).
+    REMEMBER_COOKIE_DURATION=timedelta(days=7),
+    REMEMBER_COOKIE_HTTPONLY=True,
+    REMEMBER_COOKIE_SAMESITE='Lax',
+    REMEMBER_COOKIE_SECURE=EM_PRODUCAO,
 )
 
 # --- Banco de dados ---
@@ -78,7 +87,7 @@ login_manager.login_view = 'login'
 
 # Atrás do proxy do Railway: respeita X-Forwarded-Proto/Host (links https corretos).
 from werkzeug.middleware.proxy_fix import ProxyFix
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 
 class Usuario(UserMixin, db.Model):
@@ -348,6 +357,79 @@ def update_or_create_emprestimos(colaborador_id, emprestimos_data):
             )
             db.session.add(novo_emprestimo)
 
+# ==================== CABEÇALHOS DE SEGURANÇA ====================
+
+CSP = ("default-src 'self'; "
+       # O front-end usa <script> e handlers inline, por isso 'unsafe-inline' em scripts.
+       "script-src 'self' 'unsafe-inline'; "
+       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
+       "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+       "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com "
+       "https://cdn.jsdelivr.net; "
+       "img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; "
+       "base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+
+
+@app.after_request
+def cabecalhos_seguranca(resp):
+    resp.headers['Content-Security-Policy'] = CSP
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['X-Frame-Options'] = 'DENY'
+    resp.headers['Referrer-Policy'] = 'same-origin'
+    resp.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    if request.is_secure:
+        resp.headers['Strict-Transport-Security'] = 'max-age=31536000'
+    # Dados de folha/CPF: nada de cache de páginas e da API (arquivos estáticos podem).
+    if request.endpoint != 'static':
+        resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
+# ==================== LIMITE DE TENTATIVAS ====================
+# Em memória (por processo): suficiente para o app rodando com um worker. Protege
+# contra tentativa de senha em massa e contra uso do "esqueci a senha" para spam.
+
+_tentativas = {}
+_tentativas_lock = threading.Lock()
+
+
+def _recentes(chave, janela_s):
+    agora = time.time()
+    lista = [t for t in _tentativas.get(chave, []) if agora - t < janela_s]
+    if lista:
+        _tentativas[chave] = lista
+    else:
+        _tentativas.pop(chave, None)
+    return lista
+
+
+def limite_excedido(chave, maximo, janela_s):
+    with _tentativas_lock:
+        return len(_recentes(chave, janela_s)) >= maximo
+
+
+def registrar_tentativa(chave, janela_s):
+    with _tentativas_lock:
+        _recentes(chave, janela_s)
+        _tentativas.setdefault(chave, []).append(time.time())
+        if len(_tentativas) > 5000:  # evita crescer sem limite
+            for k in list(_tentativas):
+                _recentes(k, janela_s)
+
+
+def limpar_tentativas(chave):
+    with _tentativas_lock:
+        _tentativas.pop(chave, None)
+
+
+JANELA_LOGIN = 15 * 60          # 15 min
+MAX_LOGIN_EMAIL = 5             # falhas por e-mail
+MAX_LOGIN_IP = 20               # falhas por IP
+JANELA_RESET = 60 * 60          # 1 h
+MAX_RESET_EMAIL = 3             # pedidos por e-mail
+MAX_RESET_IP = 10               # pedidos por IP
+
+
 # ==================== AUTENTICAÇÃO ====================
 
 @app.before_request
@@ -376,12 +458,21 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
+        ip = request.remote_addr or '?'
+        chave_ip, chave_email = f'login-ip:{ip}', f'login-email:{email}'
+        if (limite_excedido(chave_ip, MAX_LOGIN_IP, JANELA_LOGIN)
+                or limite_excedido(chave_email, MAX_LOGIN_EMAIL, JANELA_LOGIN)):
+            return render_template('login.html',
+                                   erro='Muitas tentativas. Aguarde alguns minutos e tente novamente.'), 429
         usuario = (Usuario.query.filter(db.func.lower(Usuario.email) == email).first()
                    if email else None)
         if usuario and usuario.confere_senha(password):
+            limpar_tentativas(chave_email)
             login_user(usuario, remember=True)
             destino = _url_interna_segura(request.args.get('next')) or url_for('index')
             return redirect(destino)
+        registrar_tentativa(chave_ip, JANELA_LOGIN)
+        registrar_tentativa(chave_email, JANELA_LOGIN)
         return render_template('login.html', erro='E-mail ou senha inválidos.'), 401
 
     return render_template('login.html', sucesso=request.args.get('ok'))
@@ -427,9 +518,16 @@ def _hash_token(token):
 def esqueci_senha():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
+        ip = request.remote_addr or '?'
+        chave_ip, chave_email = f'reset-ip:{ip}', f'reset-email:{email}'
+        bloqueado = (limite_excedido(chave_ip, MAX_RESET_IP, JANELA_RESET)
+                     or limite_excedido(chave_email, MAX_RESET_EMAIL, JANELA_RESET))
+        registrar_tentativa(chave_ip, JANELA_RESET)
+        registrar_tentativa(chave_email, JANELA_RESET)
+        # Acima do limite: mesma resposta da tela, mas sem enviar nada (não revela o bloqueio).
         usuario = (Usuario.query.filter(db.func.lower(Usuario.email) == email).first()
-                   if email else None)
-        print(f'[reset senha] pedido para "{email}": '
+                   if email and not bloqueado else None)
+        print(f'[reset senha] pedido para "{email}"{" (limite excedido)" if bloqueado else ""}: '
               f'{"usuario encontrado" if usuario else "NENHUM usuario com esse e-mail"}', file=sys.stderr, flush=True)
         if usuario:
             token = secrets.token_urlsafe(32)

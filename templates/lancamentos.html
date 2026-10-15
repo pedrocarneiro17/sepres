@@ -394,11 +394,11 @@
                 <div class="grid grid-cols-1 gap-2 pr-8 md:grid-cols-2">
                     <div>
                         <label class="label text-xs">Data</label>
-                        <input type="date" class="input falta-data" value="${dados ? dados.data : ''}">
+                        <input type="date" class="input falta-data" value="${dados ? esc(dados.data) : ''}">
                     </div>
                     <div>
                         <label class="label text-xs">Observação</label>
-                        <input type="text" class="input falta-obs" placeholder="Ex: sem justificativa" value="${dados ? (dados.obs || '') : ''}">
+                        <input type="text" class="input falta-obs" placeholder="Ex: sem justificativa" value="${dados ? esc(dados.obs || '') : ''}">
                     </div>
                 </div>
             `;
@@ -431,15 +431,15 @@
                 <div class="grid grid-cols-1 gap-2 pr-8 md:grid-cols-3">
                     <div>
                         <label class="label text-xs">Data</label>
-                        <input type="date" class="input atestado-data" value="${dados ? dados.data : ''}">
+                        <input type="date" class="input atestado-data" value="${dados ? esc(dados.data) : ''}">
                     </div>
                     <div>
                         <label class="label text-xs">Qtd. Dias</label>
-                        <input type="number" min="1" class="input atestado-dias" value="${dados ? dados.dias : 1}">
+                        <input type="number" min="1" class="input atestado-dias" value="${dados ? esc(dados.dias) : 1}">
                     </div>
                     <div>
                         <label class="label text-xs">Observação</label>
-                        <input type="text" class="input atestado-obs" placeholder="Ex: consulta médica" value="${dados ? (dados.obs || '') : ''}">
+                        <input type="text" class="input atestado-obs" placeholder="Ex: consulta médica" value="${dados ? esc(dados.obs || '') : ''}">
                     </div>
                 </div>
             `;
