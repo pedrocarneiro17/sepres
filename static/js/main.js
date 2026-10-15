@@ -1381,6 +1381,18 @@ async function salvarLancamento(e) {
             notificar(ferias === 'Férias' ? 'Lançamento de férias salvo com sucesso!' : 'Lançamento salvo com sucesso!', 'success');
             limparFormLancamento();
             await carregarDados();
+
+            // Lançamento NOVO: continua na tela de cadastro, já limpa e no mesmo mês, pronta
+            // para registrar o próximo colaborador (o filtro da lista também não muda).
+            // Edição de lançamento existente volta para a listagem.
+            if (!editId) {
+                await abrirNovoLancamento();
+                const campoMes = document.getElementById('lancMes');
+                if (campoMes && dados.mes) {
+                    campoMes.value = dados.mes;
+                    campoMes.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
         } else {
             notificar('Erro ao salvar lançamento', 'error');
         }
