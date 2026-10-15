@@ -1603,18 +1603,20 @@ function lancamentosFiltrados() {
     });
 }
 
-// Finaliza todos os lançamentos EM ABERTO que aparecem na listagem (respeita os filtros).
+// Finaliza todos os lançamentos EM ABERTO do mês escolhido no filtro de período
+// (a busca por nome não interfere). Exige um mês selecionado.
 async function finalizarTodosLancamentos() {
-    const abertos = lancamentosFiltrados().filter(l => l.status === 'aberto');
-    if (abertos.length === 0) {
-        notificar('Não há lançamentos em aberto na listagem.', 'info');
+    const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
+    if (!periodo) {
+        notificar('Selecione um mês no filtro de período para finalizar todos.', 'info');
         return;
     }
-    const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
-    const escopo = periodo ? formatarMesAno(periodo) : 'todos os períodos';
-    const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim();
-    const extra = termo ? ` (busca: "${termo}")` : '';
-    if (!await confirmar(`Finalizar ${abertos.length} lançamento(s) em aberto de ${escopo}${extra}? Depois de finalizados, só dá para editar reabrindo cada um.`,
+    const abertos = lancamentos.filter(l => l.mes === periodo && l.status === 'aberto');
+    if (abertos.length === 0) {
+        notificar(`Não há lançamentos em aberto em ${formatarMesAno(periodo)}.`, 'info');
+        return;
+    }
+    if (!await confirmar(`Finalizar ${abertos.length} lançamento(s) em aberto de ${formatarMesAno(periodo)}? Depois de finalizados, só dá para editar reabrindo cada um.`,
         { titulo: 'Finalizar todos', confirmar: `Finalizar ${abertos.length}` })) return;
     try {
         const response = await fetch(`${API_URL}/lancamentos/finalizar-todos`, {
