@@ -1589,6 +1589,53 @@ function limparFiltroPeriodoLanc() {
     input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+// Lançamentos que passam pelos filtros da listagem (busca por nome e período).
+function lancamentosFiltrados() {
+    const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim().toLowerCase();
+    const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
+    return lancamentos.filter(l => {
+        if (periodo && l.mes !== periodo) return false;
+        if (termo) {
+            const c = colaboradores.find(co => co.id === l.colaboradorId);
+            if (!c || !c.nome.toLowerCase().includes(termo)) return false;
+        }
+        return true;
+    });
+}
+
+// Finaliza todos os lançamentos EM ABERTO que aparecem na listagem (respeita os filtros).
+async function finalizarTodosLancamentos() {
+    const abertos = lancamentosFiltrados().filter(l => l.status === 'aberto');
+    if (abertos.length === 0) {
+        notificar('Não há lançamentos em aberto na listagem.', 'info');
+        return;
+    }
+    const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
+    const escopo = periodo ? formatarMesAno(periodo) : 'todos os períodos';
+    const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim();
+    const extra = termo ? ` (busca: "${termo}")` : '';
+    if (!await confirmar(`Finalizar ${abertos.length} lançamento(s) em aberto de ${escopo}${extra}? Depois de finalizados, só dá para editar reabrindo cada um.`,
+        { titulo: 'Finalizar todos', confirmar: `Finalizar ${abertos.length}` })) return;
+    try {
+        const response = await fetch(`${API_URL}/lancamentos/finalizar-todos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: abertos.map(l => l.id) })
+        });
+        if (response.ok) {
+            const dados = await response.json();
+            notificar(`${dados.finalizados} lançamento(s) finalizado(s)!`, 'success');
+            await carregarDados();
+        } else {
+            const dados = await response.json().catch(() => ({}));
+            notificar(dados.erro || 'Erro ao finalizar lançamentos', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao finalizar lançamentos', 'error');
+    }
+}
+
 function renderizarLancamentos() {
     const tbody = document.getElementById('tabelaLancamentos');
     if (!tbody) return;
@@ -1598,17 +1645,7 @@ function renderizarLancamentos() {
         return;
     }
 
-    // Busca por nome do colaborador e por período (mês/ano)
-    const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim().toLowerCase();
-    const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
-    const lista = lancamentos.filter(l => {
-        if (periodo && l.mes !== periodo) return false;
-        if (termo) {
-            const c = colaboradores.find(co => co.id === l.colaboradorId);
-            if (!c || !c.nome.toLowerCase().includes(termo)) return false;
-        }
-        return true;
-    });
+    const lista = lancamentosFiltrados();
 
     // Ordena por nome do colaborador (A-Z) e, dentro do mesmo colaborador, por mês —
     // assim os lançamentos da mesma pessoa ficam sempre agrupados e em ordem cronológica.

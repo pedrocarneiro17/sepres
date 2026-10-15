@@ -958,6 +958,19 @@ def finalizar_lancamento(id):
     db.session.commit()
     return jsonify({'mensagem': 'Lançamento finalizado'}), 200
 
+@app.route('/api/lancamentos/finalizar-todos', methods=['POST'])
+def finalizar_todos_lancamentos():
+    """Finaliza em lote os lançamentos em aberto cujos ids foram enviados."""
+    ids = (request.get_json(silent=True) or {}).get('ids')
+    if not isinstance(ids, list) or not ids:
+        return jsonify({'erro': 'Nenhum lançamento informado.'}), 400
+    ids = [str(i) for i in ids]
+    abertos = Lancamento.query.filter(Lancamento.id.in_(ids), Lancamento.status == 'aberto').all()
+    for l in abertos:
+        l.status = 'finalizado'
+    db.session.commit()
+    return jsonify({'mensagem': 'Lançamentos finalizados', 'finalizados': len(abertos)}), 200
+
 @app.route('/api/lancamentos/<id>/reabrir', methods=['PUT'])
 def reabrir_lancamento(id):
     """Reabre um lançamento"""
