@@ -1651,7 +1651,7 @@ function renderizarLancamentos() {
         // Controle: marca lançamentos que têm adiantamento registrado (espécie e/ou contab.).
         const adiantamento = (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0);
         const marcaAdiantamento = adiantamento > 0
-            ? ` <span class="ml-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20" title="Adiantamento lançado: ${formatarMoeda(adiantamento)}"><i class="fas fa-hand-holding-dollar"></i> Adiantamento ${formatarMoeda(adiantamento)}</span>`
+            ? ` <span class="ml-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20" title="Adiantamento lançado: ${formatarMoeda(adiantamento)}">Adiantamento ${formatarMoeda(adiantamento)}</span>`
             : '';
 
         return `
