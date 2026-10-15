@@ -1974,6 +1974,18 @@ function imprimirRecibo(elementId) {
         </html>
     `);
     janela.document.close();
+
+    // Quando a janela de impressão se fecha (depois de imprimir ou cancelar), fecha
+    // também o modal do recibo no sistema.
+    const modal = document.getElementById(elementId || 'reciboConteudo')?.closest('[id^="modal"]');
+    if (modal && janela) {
+        const vigia = setInterval(() => {
+            if (janela.closed) {
+                clearInterval(vigia);
+                fecharModal(modal.id);
+            }
+        }, 400);
+    }
 }
 
 // ==================== RECIBOS DE PRÊMIO E ASSIDUIDADE (EVA) ====================
