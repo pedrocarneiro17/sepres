@@ -1620,25 +1620,35 @@ function renderizarLancamentos() {
     tbody.innerHTML = lista.map(l => {
         const c = colaboradores.find(co => co.id === l.colaboradorId);
         const ehCLT = c && c.contratacao === 'CLT';
+        // Recibos ficam disponíveis em qualquer status: não é preciso finalizar o mês.
+        let recibos = botaoAcao(`gerarRecibo('${l.id}')`, 'recibo', 'fa-file-lines', 'Gerar recibo de pagamento');
+        if (ehCLT) {
+            recibos += botaoAcao(`gerarReciboPremio('${l.id}')`, 'premio', 'fa-award', 'Gerar recibo de prêmio');
+        } else {
+            recibos += botaoAcao(`gerarReciboAutonomo('${l.id}')`, 'autonomo', 'fa-file-contract', 'Gerar recibo de pagamento de autônomo');
+        }
+
         let acoes;
         if (l.status === 'aberto') {
             acoes = botaoAcao(`editarLancamento('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento') +
+                    recibos +
                     botaoAcao(`finalizarLancamento('${l.id}')`, 'finalize', 'fa-check', 'Finalizar lançamento') +
                     botaoAcao(`excluirLancamento('${l.id}')`, 'delete', 'fa-trash', 'Excluir lançamento');
         } else {
             acoes = botaoAcao(`visualizarLancamento('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)') +
-                    botaoAcao(`gerarRecibo('${l.id}')`, 'recibo', 'fa-file-lines', 'Gerar recibo de pagamento');
-            if (ehCLT) {
-                acoes += botaoAcao(`gerarReciboPremio('${l.id}')`, 'premio', 'fa-award', 'Gerar recibo de prêmio');
-            } else {
-                acoes += botaoAcao(`gerarReciboAutonomo('${l.id}')`, 'autonomo', 'fa-file-contract', 'Gerar recibo de pagamento de autônomo');
-            }
-            acoes += botaoAcao(`reabrirLancamento('${l.id}')`, 'reabrir', 'fa-rotate-left', 'Reabrir para edição');
+                    recibos +
+                    botaoAcao(`reabrirLancamento('${l.id}')`, 'reabrir', 'fa-rotate-left', 'Reabrir para edição');
         }
+
+        // Controle: marca lançamentos que têm adiantamento registrado (espécie e/ou contab.).
+        const adiantamento = (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0);
+        const marcaAdiantamento = adiantamento > 0
+            ? ` <span class="ml-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20" title="Adiantamento lançado: ${formatarMoeda(adiantamento)}"><i class="fas fa-hand-holding-dollar"></i> Adiantamento ${formatarMoeda(adiantamento)}</span>`
+            : '';
 
         return `
         <tr class="border-b border-slate-100 transition hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${c ? c.nome : 'Desconhecido'}${marcaAdiantamento}</td>
             <td class="px-4 py-3 text-slate-600">${formatarMesAno(l.mes)}</td>
             <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(l.liquidoTotal || 0)}</td>
             <td class="px-4 py-3">${badgeStatus(l.status)}</td>
