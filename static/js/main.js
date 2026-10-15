@@ -1793,6 +1793,9 @@ async function reabrirLancamento(id) {
             await carregarDados();
             editarLancamento(id);
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            const dados = await response.json().catch(() => ({}));
+            notificar(dados.erro || `Erro ao reabrir lançamento (${response.status})`, 'error');
         }
     } catch (error) {
         console.error('Erro:', error);
