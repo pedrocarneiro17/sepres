@@ -1556,9 +1556,10 @@ function calcularLiquidoTotal() {
     // CLT: Líquido = Pagamento Contab. + Pagamento Espécie (nada mais entra na conta;
     //      adiantamento só é registrado).
     //
-    // Mensalista: o Salário Bruto NÃO entra. O líquido mostra o que é pago:
-    //      Adiantamento Espécie + Pagamento Espécie + Pagamento em conta + Prêmio
-    //      + Horas Extras + Vale Transporte + Outros - Empréstimo
+    // Mensalista: o Salário Bruto NÃO entra. O líquido mostra o que é pago e o adiantamento
+    //      desconta (fica negativo enquanto só o adiantamento foi lançado):
+    //      Pagamento Espécie + Pagamento em conta + Prêmio + Horas Extras
+    //      + Vale Transporte + Outros - Empréstimo - Adiantamento Espécie
     //
     // Diarista: Remuneração (diária x dias) + Horas Extras + Pagamento Espécie
     //      + Pagamento em conta + Vale Transporte + Outros - Empréstimo - Adiantamento Espécie
@@ -1571,8 +1572,8 @@ function calcularLiquidoTotal() {
         liquido = remuneracao + baseVariavel + pagamentoEspecie + pagamentoContab
                   + valeTransporte + outros - emprestimo - adiantamentoEspecie;
     } else {
-        liquido = adiantamentoEspecie + pagamentoEspecie + pagamentoContab + baseVariavel
-                  + valeTransporte + outros - emprestimo;
+        liquido = pagamentoEspecie + pagamentoContab + baseVariavel
+                  + valeTransporte + outros - emprestimo - adiantamentoEspecie;
     }
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
 }
@@ -1929,7 +1930,9 @@ function gerarRecibo(id) {
 
     document.getElementById('reciboNome').textContent = c.nome;
     document.getElementById('reciboCPF').textContent = c.cpf;
-    document.getElementById('reciboValor').textContent = numeroBR(l.liquidoTotal || 0);
+    // Recibo em módulo: o líquido pode ficar negativo na tela (adiantamento já lançado),
+    // mas o recibo mostra o valor positivo que foi efetivamente pago.
+    document.getElementById('reciboValor').textContent = numeroBR(Math.abs(l.liquidoTotal || 0));
     document.getElementById('reciboData').textContent = new Date().toLocaleDateString('pt-BR');
     document.getElementById('reciboMes').textContent = formatarMesAno(l.mes);
 
@@ -2041,7 +2044,7 @@ function gerarReciboAutonomo(id) {
 
     // Diarista/Mensalista: o valor do recibo é o líquido do lançamento (para o
     // diarista já é a soma dos dias trabalhados no mês).
-    const valor = numeroBR(l.liquidoTotal || 0);
+    const valor = numeroBR(Math.abs(l.liquidoTotal || 0)); // em módulo (ver gerarRecibo)
     const dataExtenso = formatarDataExtenso(new Date());
 
     document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Pagamento de Autônomo';

@@ -203,8 +203,8 @@ fora. Se Contab. e Espécie estiverem em zero, o líquido é R$ 0,00.
 
 **Mensalista** (o salário bruto **não** entra)
 ```
-Líquido = Adiantamento Espécie + Pagamento Espécie + Pagamento em conta + Prêmio
-          + Horas Extras + Vale Transporte + Outros − Empréstimo
+Líquido = Pagamento Espécie + Pagamento em conta + Prêmio + Horas Extras
+          + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
 ```
 
 **Diarista**
@@ -212,8 +212,9 @@ Líquido = Adiantamento Espécie + Pagamento Espécie + Pagamento em conta + Pr�
 Líquido = (diária × dias trabalhados) + Horas Extras + Pagamento Espécie
           + Pagamento em conta + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
 ```
-No Diarista o adiantamento **subtrai** do líquido (pode deixar o líquido negativo se for
-maior que o restante). O Diarista não tem prêmio.
+No Mensalista e no Diarista o adiantamento **subtrai** do líquido, e ele pode ficar
+**negativo** (por exemplo, quando só o adiantamento foi lançado e o pagamento do fim do mês
+ainda não entrou). O Diarista não tem prêmio.
 
 Lançamentos antigos só passam a usar a regra nova quando abertos e salvos de novo.
 O recibo e o Dashboard usam o líquido salvo.
@@ -227,7 +228,7 @@ O recibo e o Dashboard usam o líquido salvo.
 - **Alterável só no lançamento**: o usuário pode mudar o valor (inclusive zerar). Ao
   reabrir um lançamento salvo, aparece o valor **salvo**, nunca o do cadastro; mudar o
   cadastro depois não altera lançamentos existentes.
-- **Efeito no líquido**: CLT — só registro; **Mensalista — soma**; **Diarista — subtrai** (ver 5.3).
+- **Efeito no líquido**: CLT — só registro; **Mensalista e Diarista — subtrai** (ver 5.3).
 - **Controle na lista**: o lançamento com adiantamento ganha uma etiqueta amarela ao lado
   do nome, "Adiantamento R$ X".
 - O card **Adiantamentos** do Dashboard soma os adiantamentos registrados.
@@ -283,7 +284,9 @@ CLT. A planilha não exporta o líquido nem o adiantamento.
   preciso fechar o mês).
 - CLT: **recibo de pagamento** e **recibo de prêmio**. Mensalista/Diarista: **recibo de
   pagamento** e **recibo de pagamento de autônomo**. O valor do recibo é o líquido salvo
-  no momento — se o lançamento for editado, gere o recibo de novo.
+  no momento **em módulo**: se o líquido estiver negativo (adiantamento já lançado), o
+  recibo mostra o valor positivo que foi pago. Se o lançamento for editado, gere o recibo
+  de novo.
 - Ao imprimir, abre a janela de impressão do navegador; quando ela fecha (imprimindo ou
   cancelando), o modal do recibo no sistema também fecha.
 
