@@ -131,7 +131,7 @@ Pagamento mensal de um colaborador (um por colaborador/mês).
 | `assiduidade`, `cartaoAlimentacao`, `horasExtras` | Valores do mês. Assiduidade e Horas Extras compõem o EVA do CLT. |
 | `adiantamentoEspecie`, `adiantamentoContab` | Adiantamento do mês (Contab. só CLT). Ver 5.4. |
 | `valeTransporte`, `outros`, `emprestimo`, `emprestimosPagos` | VT, outros e empréstimo (ver 5.6). |
-| `pagamentoContab` | Valor pago pela contabilidade — **só existe para CLT**. |
+| `pagamentoContab` | Valor pago pela contabilidade (CLT: **"Pagamento Contab."**) ou **pago em conta** (Mensalista/Diarista: **"Pagamento em conta"**). Mesmo campo, só o rótulo muda. |
 | `pagamentoEspecie` | Valor pago em espécie. |
 | `liquidoTotal` | Calculado na tela conforme o tipo (ver 5.3). |
 | `faltas`, `atestados` | Listas (JSON) de datas, observações e dias. |
@@ -203,14 +203,14 @@ fora. Se Contab. e Espécie estiverem em zero, o líquido é R$ 0,00.
 
 **Mensalista** (o salário bruto **não** entra)
 ```
-Líquido = Adiantamento Espécie + Pagamento Espécie + Prêmio + Horas Extras
-          + Vale Transporte + Outros − Empréstimo
+Líquido = Adiantamento Espécie + Pagamento Espécie + Pagamento em conta + Prêmio
+          + Horas Extras + Vale Transporte + Outros − Empréstimo
 ```
 
 **Diarista**
 ```
 Líquido = (diária × dias trabalhados) + Horas Extras + Pagamento Espécie
-          + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
+          + Pagamento em conta + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
 ```
 No Diarista o adiantamento **subtrai** do líquido (pode deixar o líquido negativo se for
 maior que o restante). O Diarista não tem prêmio.
@@ -332,8 +332,10 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   tipo de contratação.
 - Em cada linha: Editar/Visualizar, recibos, Finalizar/Reabrir e Excluir; etiqueta de
   adiantamento (5.4). Se reabrir falhar, a tela mostra o motivo do erro.
-- O formulário mostra só os campos do tipo: **Pagamento Contab.** e **Adiantamento
-  Contab.** aparecem apenas para CLT; EVA só para CLT; bloco de Diária só para Diarista.
+- O formulário mostra só os campos do tipo: **Adiantamento Contab.** aparece apenas para
+  CLT; EVA só para CLT; bloco de Diária só para Diarista. O campo ao lado de **Pagamento
+  Espécie** chama-se **Pagamento Contab.** (CLT) ou **Pagamento em conta** (Mensalista e
+  Diarista) e soma no líquido nos três tipos.
 
 ## 7. Frontend — componentes reaproveitáveis
 

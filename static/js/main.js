@@ -1137,14 +1137,9 @@ function atualizarBadgeContratoLancamento() {
         }
     }
 
-    // Pagamento por contabilidade só existe para CLT (Mensalista/Diarista não têm).
-    const divPagamentoContab = document.getElementById('divPagamentoContab');
-    if (divPagamentoContab) {
-        divPagamentoContab.style.display = ehCLT ? 'block' : 'none';
-        if (!ehCLT) {
-            setMoeda(document.getElementById('lancPagamentoContab'), 0);
-        }
-    }
+    // Mesmo campo para todos: CLT = "Pagamento Contab."; Mensalista/Diarista = "Pagamento em conta".
+    const lblPagamentoContab = document.getElementById('lblPagamentoContab');
+    if (lblPagamentoContab) lblPagamentoContab.textContent = ehCLT ? 'Pagamento Contab.' : 'Pagamento em conta';
 
     // Adiantamento do cadastro: preenche assim que o colaborador é selecionado,
     // sem depender de o mês já estar escolhido (editarLancamento sobrescreve
@@ -1562,21 +1557,21 @@ function calcularLiquidoTotal() {
     //      adiantamento só é registrado).
     //
     // Mensalista: o Salário Bruto NÃO entra. O líquido mostra o que é pago:
-    //      Adiantamento Espécie + Pagamento Espécie + Prêmio + Horas Extras
-    //      + Vale Transporte + Outros - Empréstimo
+    //      Adiantamento Espécie + Pagamento Espécie + Pagamento em conta + Prêmio
+    //      + Horas Extras + Vale Transporte + Outros - Empréstimo
     //
     // Diarista: Remuneração (diária x dias) + Horas Extras + Pagamento Espécie
-    //      + Vale Transporte + Outros - Empréstimo - Adiantamento Espécie
+    //      + Pagamento em conta + Vale Transporte + Outros - Empréstimo - Adiantamento Espécie
     //
-    // Pagamento Contab. só existe para CLT.
+    // "Pagamento em conta" (Mensalista/Diarista) usa o mesmo campo de Pagamento Contab. do CLT.
     let liquido;
     if (ehCLT) {
         liquido = pagamentoContab + pagamentoEspecie;
     } else if (ehDiarista) {
-        liquido = remuneracao + baseVariavel + pagamentoEspecie
+        liquido = remuneracao + baseVariavel + pagamentoEspecie + pagamentoContab
                   + valeTransporte + outros - emprestimo - adiantamentoEspecie;
     } else {
-        liquido = adiantamentoEspecie + pagamentoEspecie + baseVariavel
+        liquido = adiantamentoEspecie + pagamentoEspecie + pagamentoContab + baseVariavel
                   + valeTransporte + outros - emprestimo;
     }
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
