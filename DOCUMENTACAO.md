@@ -210,9 +210,10 @@ Líquido = Adiantamento Espécie + Pagamento Espécie + Prêmio + Horas Extras
 **Diarista**
 ```
 Líquido = (diária × dias trabalhados) + Horas Extras + Pagamento Espécie
-          + Vale Transporte + Outros − Empréstimo
+          + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
 ```
-O adiantamento do Diarista é só registrado, não soma. O Diarista não tem prêmio.
+No Diarista o adiantamento **subtrai** do líquido (pode deixar o líquido negativo se for
+maior que o restante). O Diarista não tem prêmio.
 
 Lançamentos antigos só passam a usar a regra nova quando abertos e salvos de novo.
 O recibo e o Dashboard usam o líquido salvo.
@@ -226,7 +227,7 @@ O recibo e o Dashboard usam o líquido salvo.
 - **Alterável só no lançamento**: o usuário pode mudar o valor (inclusive zerar). Ao
   reabrir um lançamento salvo, aparece o valor **salvo**, nunca o do cadastro; mudar o
   cadastro depois não altera lançamentos existentes.
-- **Efeito no líquido**: CLT e Diarista — só registro; **Mensalista — soma** (ver 5.3).
+- **Efeito no líquido**: CLT — só registro; **Mensalista — soma**; **Diarista — subtrai** (ver 5.3).
 - **Controle na lista**: o lançamento com adiantamento ganha uma etiqueta amarela ao lado
   do nome, "Adiantamento R$ X".
 - O card **Adiantamentos** do Dashboard soma os adiantamentos registrados.
