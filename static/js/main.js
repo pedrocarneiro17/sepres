@@ -575,6 +575,7 @@ function configurarEventos() {
         if (filtroNomeLanc) filtroNomeLanc.addEventListener('input', renderizarLancamentos);
         const filtroPeriodoLanc = document.getElementById('filtroPeriodoLanc');
         if (filtroPeriodoLanc) filtroPeriodoLanc.addEventListener('change', renderizarLancamentos);
+        configurarFiltrosListaLancamentos();
 
         // Pagamentos por empréstimo (linhas dinâmicas): soma no total ao editar
         const listaEmp = document.getElementById('emprestimosDetalheLista');
@@ -1591,16 +1592,46 @@ function limparFiltroPeriodoLanc() {
     input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-// Lançamentos que passam pelos filtros da listagem (busca por nome e período).
+// Filtros da listagem de lançamentos: tipo de contrato (vários) e status (um).
+let filtroListaTipos = new Set(['CLT', 'Diarista', 'Mensalista']);
+let filtroListaStatus = 'todos';
+
+function configurarFiltrosListaLancamentos() {
+    const tipos = document.getElementById('filtroTipoListaLanc');
+    const status = document.getElementById('filtroStatusListaLanc');
+    if (tipos) {
+        tipos.querySelectorAll('.filtro-chip').forEach(chip => {
+            chip.classList.toggle('ativo', filtroListaTipos.has(chip.dataset.tipo));
+            chip.addEventListener('click', () => {
+                const tipo = chip.dataset.tipo;
+                if (filtroListaTipos.has(tipo)) filtroListaTipos.delete(tipo); else filtroListaTipos.add(tipo);
+                chip.classList.toggle('ativo', filtroListaTipos.has(tipo));
+                renderizarLancamentos();
+            });
+        });
+    }
+    if (status) {
+        status.querySelectorAll('.filtro-chip').forEach(chip => {
+            chip.classList.toggle('ativo', chip.dataset.status === filtroListaStatus);
+            chip.addEventListener('click', () => {
+                filtroListaStatus = chip.dataset.status;
+                status.querySelectorAll('.filtro-chip').forEach(c => c.classList.toggle('ativo', c === chip));
+                renderizarLancamentos();
+            });
+        });
+    }
+}
+
+// Lançamentos que passam pelos filtros da listagem (busca por nome, período, contrato e status).
 function lancamentosFiltrados() {
     const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim().toLowerCase();
     const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
     return lancamentos.filter(l => {
         if (periodo && l.mes !== periodo) return false;
-        if (termo) {
-            const c = colaboradores.find(co => co.id === l.colaboradorId);
-            if (!c || !c.nome.toLowerCase().includes(termo)) return false;
-        }
+        if (filtroListaStatus !== 'todos' && l.status !== filtroListaStatus) return false;
+        const c = colaboradores.find(co => co.id === l.colaboradorId);
+        if (c && !filtroListaTipos.has(c.contratacao)) return false;
+        if (termo && (!c || !c.nome.toLowerCase().includes(termo))) return false;
         return true;
     });
 }
@@ -1692,7 +1723,7 @@ function renderizarLancamentos() {
         // Controle: marca lançamentos que têm adiantamento registrado (espécie e/ou contab.).
         const adiantamento = (l.adiantamentoEspecie || 0) + (l.adiantamentoContab || 0);
         const marcaAdiantamento = adiantamento > 0
-            ? ` <span class="ml-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20" title="Adiantamento lançado: ${formatarMoeda(adiantamento)}">Adiantamento ${formatarMoeda(adiantamento)}</span>`
+            ? ` <span class="ml-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20" title="Adiantamento lançado">Adiantamento</span>`
             : '';
 
         return `

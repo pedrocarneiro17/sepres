@@ -237,7 +237,7 @@ O recibo e o Dashboard usam o líquido salvo.
 - **Efeito no líquido**: CLT — só registro; **Mensalista — subtrai até o pagamento ser
   lançado**; **Diarista — subtrai** (ver 5.3).
 - **Controle na lista**: o lançamento com adiantamento ganha uma etiqueta amarela ao lado
-  do nome, "Adiantamento R$ X".
+  do nome, escrita só **"Adiantamento"** (sem o valor, que fica no formulário).
 - O card **Adiantamentos** do Dashboard soma os adiantamentos registrados.
 
 ### 5.5 Diarista: diária × dias
@@ -333,8 +333,10 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
 
 - Também abre na **listagem**, com **"+ Novo Lançamento"**, confirmação ao descartar e
   um único **Voltar**.
-- **Filtro de período** (abre no mês atual só na primeira abertura; **se mantém** depois
-  de salvar/editar), busca por nome e botões **Finalizar todos** e **Exportar**.
+- **Filtros da lista**: período (abre no mês atual só na primeira abertura; **se mantém**
+  depois de salvar/editar), busca por nome, **Contrato** (chips CLT/Diarista/Mensalista,
+  combináveis) e **Status** (Todos / Em aberto / Finalizado). Botões **Finalizar todos** (só
+  pelo mês do filtro) e **Exportar**.
 - **Após salvar um lançamento novo**, a tela continua no formulário, limpo e **no mesmo
   mês**, pronta para o próximo colaborador (o filtro da lista não muda). Salvar uma
   **edição** volta para a lista.

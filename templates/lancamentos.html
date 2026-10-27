@@ -259,19 +259,38 @@
 
             <!-- Lista: escondida enquanto o formulário está aberto (foco em uma coisa por vez). -->
             <div class="card overflow-hidden" id="painelListaLancamentos">
-                <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex items-center gap-2 font-heading text-sm font-semibold text-slate-700"><i class="fas fa-table text-sepres-600"></i> Todos os Lançamentos</div>
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <div class="relative w-full sm:w-80">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
+                    <div class="flex shrink-0 items-center gap-2 whitespace-nowrap font-heading text-sm font-semibold text-slate-700"><i class="fas fa-table text-sepres-600"></i> Todos os Lançamentos</div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="relative w-full sm:w-64">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><i class="fas fa-search text-xs"></i></span>
                             <input type="text" class="input pl-9" id="filtroNomeLanc" placeholder="Buscar por nome...">
                         </div>
-                        <div class="relative w-full sm:w-36">
+                        <div class="relative w-full sm:w-52">
                             <input type="month" class="input mes-ptbr" id="filtroPeriodoLanc" placeholder="Todos os períodos">
-                            <button type="button" onclick="limparFiltroPeriodoLanc()" title="Limpar período" class="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600"><i class="fas fa-xmark text-xs"></i></button>
+                            <button type="button" onclick="limparFiltroPeriodoLanc()" title="Limpar período" class="absolute inset-y-0 right-9 z-10 flex items-center px-1 text-slate-400 hover:text-slate-600"><i class="fas fa-xmark text-xs"></i></button>
                         </div>
                         <button class="btn-secondary shrink-0" onclick="finalizarTodosLancamentos()" title="Finaliza todos os lançamentos em aberto do mês escolhido no filtro">Finalizar todos</button>
                         <button class="btn-success shrink-0" onclick="abrirExportarCSV()" title="Exportar um mês"><i class="fas fa-file-export"></i> Exportar</button>
+                    </div>
+                </div>
+                <!-- Filtros da lista: tipo de contrato (vários) e status (um) -->
+                <div class="flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-slate-100 px-6 py-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-medium text-slate-400">Contrato</span>
+                        <div class="flex flex-wrap gap-2" id="filtroTipoListaLanc">
+                            <button type="button" class="filtro-chip ativo" data-tipo="CLT">CLT</button>
+                            <button type="button" class="filtro-chip ativo" data-tipo="Diarista">Diarista</button>
+                            <button type="button" class="filtro-chip ativo" data-tipo="Mensalista">Mensalista</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-medium text-slate-400">Status</span>
+                        <div class="flex flex-wrap gap-2" id="filtroStatusListaLanc">
+                            <button type="button" class="filtro-chip ativo" data-status="todos">Todos</button>
+                            <button type="button" class="filtro-chip" data-status="aberto">Em aberto</button>
+                            <button type="button" class="filtro-chip" data-status="finalizado">Finalizado</button>
+                        </div>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
