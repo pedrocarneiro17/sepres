@@ -435,10 +435,10 @@ function confirmar(mensagem, opcoes = {}) {
                     <div class="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
                         <span class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600"><i class="fas fa-circle-question"></i></span>
                         <h3 class="text-lg font-semibold text-slate-900" id="confTitulo">Confirmar</h3>
+                        <button type="button" class="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" title="Fechar" id="confFechar"><i class="fas fa-times"></i></button>
                     </div>
                     <div class="px-6 py-5 text-sm text-slate-600" id="confMsg"></div>
                     <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
-                        <button type="button" class="btn-secondary" id="confCancelar">Cancelar</button>
                         <button type="button" class="btn-primary" id="confOk">Confirmar</button>
                     </div>
                 </div>`;
@@ -447,13 +447,13 @@ function confirmar(mensagem, opcoes = {}) {
         modal.querySelector('#confTitulo').textContent = opcoes.titulo || 'Confirmar';
         modal.querySelector('#confMsg').textContent = mensagem;
         const btnOk = modal.querySelector('#confOk');
-        const btnCancelar = modal.querySelector('#confCancelar');
+        const btnFechar = modal.querySelector('#confFechar');
         btnOk.className = opcoes.perigo ? 'btn-danger' : 'btn-primary';
         btnOk.textContent = opcoes.confirmar || 'Confirmar';
 
         const fechar = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
         btnOk.onclick = () => { fechar(); resolve(true); };
-        btnCancelar.onclick = () => { fechar(); resolve(false); };
+        btnFechar.onclick = () => { fechar(); resolve(false); };
         modal.classList.remove('hidden');
         modal.classList.add('flex');
     });

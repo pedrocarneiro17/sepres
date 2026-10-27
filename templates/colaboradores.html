@@ -258,13 +258,13 @@
             <div class="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
                 <span class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600"><i class="fas fa-triangle-exclamation"></i></span>
                 <h3 class="text-lg font-semibold text-slate-900">Confirmar Exclusão</h3>
+                <button type="button" class="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" title="Fechar" onclick="fecharModal('modalExcluirColab')"><i class="fas fa-times"></i></button>
             </div>
             <div class="px-6 py-5 text-sm text-slate-600">
                 <p class="font-medium text-slate-800">Esta ação não pode ser desfeita.</p>
                 <p class="mt-1">Todos os lançamentos e empréstimos deste colaborador também serão excluídos permanentemente.</p>
             </div>
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
-                <button type="button" class="btn-secondary" onclick="fecharModal('modalExcluirColab')">Cancelar</button>
                 <button type="button" class="btn-danger" id="confirmarExclusaoColab"><i class="fas fa-trash"></i> Sim, Excluir</button>
             </div>
         </div>
