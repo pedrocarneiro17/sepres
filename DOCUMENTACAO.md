@@ -333,10 +333,11 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
 
 - Também abre na **listagem**, com **"+ Novo Lançamento"**, confirmação ao descartar e
   um único **Voltar**.
-- **Filtros da lista**: período (abre no mês atual só na primeira abertura; **se mantém**
-  depois de salvar/editar), busca por nome, **Contrato** (chips CLT/Diarista/Mensalista,
-  combináveis) e **Status** (Todos / Em aberto / Finalizado). Botões **Finalizar todos** (só
-  pelo mês do filtro) e **Exportar**.
+- **Filtros da lista** (todos no mesmo estilo de campo): busca por nome, **mês** (abre no mês
+  atual só na primeira abertura, **se mantém** depois de salvar/editar, e não tem botão de
+  limpar — sempre há um mês), **Contrato** (Todos / CLT / Diarista / Mensalista) e **Status**
+  (Todos / Em aberto / Finalizado), que se combinam. Botões **Finalizar todos** (só pelo mês
+  do filtro) e **Exportar**.
 - **Após salvar um lançamento novo**, a tela continua no formulário, limpo e **no mesmo
   mês**, pronta para o próximo colaborador (o filtro da lista não muda). Salvar uma
   **edição** volta para a lista.

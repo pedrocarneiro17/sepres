@@ -659,8 +659,8 @@ function badgeContratacao(tipo) {
 
 function badgeStatus(status) {
     return status === 'finalizado'
-        ? '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20"><i class="fas fa-check-circle"></i> Finalizado</span>'
-        : '<span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20"><i class="fas fa-clock"></i> Em Aberto</span>';
+        ? '<span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20"><i class="fas fa-check-circle"></i> Finalizado</span>'
+        : '<span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20"><i class="fas fa-clock"></i> Em Aberto</span>';
 }
 
 function botaoAcao(onclick, cor, icone, title) {
@@ -1585,52 +1585,25 @@ function calcularLiquidoTotal() {
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
 }
 
-function limparFiltroPeriodoLanc() {
-    const input = document.getElementById('filtroPeriodoLanc');
-    if (!input) return;
-    input.value = '';
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-}
-
-// Filtros da listagem de lançamentos: tipo de contrato (vários) e status (um).
-let filtroListaTipos = new Set(['CLT', 'Diarista', 'Mensalista']);
-let filtroListaStatus = 'todos';
-
+// Filtros da listagem de lançamentos: contrato e status (seletores) além de busca e mês.
 function configurarFiltrosListaLancamentos() {
-    const tipos = document.getElementById('filtroTipoListaLanc');
-    const status = document.getElementById('filtroStatusListaLanc');
-    if (tipos) {
-        tipos.querySelectorAll('.filtro-chip').forEach(chip => {
-            chip.classList.toggle('ativo', filtroListaTipos.has(chip.dataset.tipo));
-            chip.addEventListener('click', () => {
-                const tipo = chip.dataset.tipo;
-                if (filtroListaTipos.has(tipo)) filtroListaTipos.delete(tipo); else filtroListaTipos.add(tipo);
-                chip.classList.toggle('ativo', filtroListaTipos.has(tipo));
-                renderizarLancamentos();
-            });
-        });
-    }
-    if (status) {
-        status.querySelectorAll('.filtro-chip').forEach(chip => {
-            chip.classList.toggle('ativo', chip.dataset.status === filtroListaStatus);
-            chip.addEventListener('click', () => {
-                filtroListaStatus = chip.dataset.status;
-                status.querySelectorAll('.filtro-chip').forEach(c => c.classList.toggle('ativo', c === chip));
-                renderizarLancamentos();
-            });
-        });
-    }
+    ['filtroTipoLanc', 'filtroStatusLanc'].forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) campo.addEventListener('change', renderizarLancamentos);
+    });
 }
 
 // Lançamentos que passam pelos filtros da listagem (busca por nome, período, contrato e status).
 function lancamentosFiltrados() {
     const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim().toLowerCase();
     const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
+    const tipo = document.getElementById('filtroTipoLanc')?.value || 'todos';
+    const status = document.getElementById('filtroStatusLanc')?.value || 'todos';
     return lancamentos.filter(l => {
         if (periodo && l.mes !== periodo) return false;
-        if (filtroListaStatus !== 'todos' && l.status !== filtroListaStatus) return false;
+        if (status !== 'todos' && l.status !== status) return false;
         const c = colaboradores.find(co => co.id === l.colaboradorId);
-        if (c && !filtroListaTipos.has(c.contratacao)) return false;
+        if (tipo !== 'todos' && (!c || c.contratacao !== tipo)) return false;
         if (termo && (!c || !c.nome.toLowerCase().includes(termo))) return false;
         return true;
     });
