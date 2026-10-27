@@ -796,12 +796,21 @@ def exportar_planilha():
     mes = request.args.get('mes', '')
     if len(mes) != 7:
         return jsonify({'erro': 'Informe o mês (YYYY-MM).'}), 400
+    # Categoria: todos | clt | contrato (Mensalista + Diarista)
+    tipo = request.args.get('tipo', 'todos')
+    if tipo not in ('todos', 'clt', 'contrato'):
+        return jsonify({'erro': 'Tipo inválido.'}), 400
 
-    linhas = (db.session.query(Lancamento, Colaborador)
-              .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
-              .filter(Lancamento.mes == mes).all())
+    consulta = (db.session.query(Lancamento, Colaborador)
+                .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
+                .filter(Lancamento.mes == mes))
+    if tipo == 'clt':
+        consulta = consulta.filter(Colaborador.contratacao == 'CLT')
+    elif tipo == 'contrato':
+        consulta = consulta.filter(Colaborador.contratacao != 'CLT')
+    linhas = consulta.all()
     if not linhas:
-        return jsonify({'erro': 'Não há lançamentos para o mês selecionado.'}), 404
+        return jsonify({'erro': 'Não há lançamentos para o mês e a categoria selecionados.'}), 404
 
     def dados(lanc, colab):
         return {
@@ -862,7 +871,7 @@ def exportar_planilha():
     wb.save(saida)
     saida.seek(0)
     return send_file(saida, as_attachment=True,
-                     download_name=f'planilha_{mes[5:]}-{mes[:4]}.xlsx',
+                     download_name=f'planilha_{mes[5:]}-{mes[:4]}{"" if tipo == "todos" else "_" + tipo}.xlsx',
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 

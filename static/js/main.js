@@ -2406,7 +2406,8 @@ async function exportarPlanilha() {
         return;
     }
     try {
-        const resp = await fetch('/api/exportar-planilha?mes=' + encodeURIComponent(mesFiltro));
+        const tipo = document.getElementById('exportarTipo')?.value || 'todos';
+        const resp = await fetch('/api/exportar-planilha?mes=' + encodeURIComponent(mesFiltro) + '&tipo=' + encodeURIComponent(tipo));
         if (!resp.ok) {
             const erro = await resp.json().catch(() => ({}));
             notificar(erro.erro || 'Erro ao gerar a planilha.', 'info');
@@ -2416,7 +2417,7 @@ async function exportarPlanilha() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `planilha_${formatarMesAno(mesFiltro).replace('/', '-')}.xlsx`;
+        link.download = `planilha_${formatarMesAno(mesFiltro).replace('/', '-')}${tipo === 'todos' ? '' : '_' + tipo}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

@@ -258,8 +258,10 @@ se **aberto**, carrega para edição. Essa validação existe só na tela, não 
 
 ### 5.9 Exportação para planilha Excel
 
-Em **Lançamentos → Exportar**, escolhe-se o mês e baixa-se `planilha_MM-AAAA.xlsx`
-(não existe mais exportação CSV). Uma aba por empresa, com as colunas na ordem do modelo
+Em **Lançamentos → Exportar**, escolhe-se o mês e a **categoria** — *Todos*, *Somente CLT*
+ou *Somente Contrato* (Mensalista + Diarista) — e baixa-se `planilha_MM-AAAA.xlsx`
+(com sufixo `_clt` ou `_contrato` quando filtrada; rota `?mes=YYYY-MM&tipo=todos|clt|contrato`).
+Não existe mais exportação CSV. Uma aba por empresa, com as colunas na ordem do modelo
 da contabilidade; só entram colaboradores com lançamento no mês, em ordem alfabética.
 Sem empresa cadastrada, o colaborador cai na aba Gerenciadora.
 

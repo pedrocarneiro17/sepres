@@ -351,6 +351,12 @@
             <div class="px-6 py-5">
                 <label class="label">Mês/Ano</label>
                 <input type="month" class="input mes-ptbr" id="exportarCSVMes">
+                <label class="label mt-4">Categoria</label>
+                <select class="input" id="exportarTipo">
+                    <option value="todos">Todos (CLT e Contrato)</option>
+                    <option value="clt">Somente CLT</option>
+                    <option value="contrato">Somente Contrato (Mensalista e Diarista)</option>
+                </select>
             </div>
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
                 <button type="button" class="btn-secondary" onclick="fecharModal('modalExportarCSV')"><i class="fas fa-times"></i> Cancelar</button>
