@@ -1566,7 +1566,7 @@ function calcularLiquidoTotal() {
     //      + Vale Transporte + Outros - Empréstimo
     //
     // Diarista: Remuneração (diária x dias) + Horas Extras + Pagamento Espécie
-    //      + Vale Transporte + Outros - Empréstimo + Adiantamento Espécie
+    //      + Vale Transporte + Outros - Empréstimo (adiantamento só é registrado)
     //
     // Pagamento Contab. só existe para CLT.
     let liquido;
@@ -1574,7 +1574,7 @@ function calcularLiquidoTotal() {
         liquido = pagamentoContab + pagamentoEspecie;
     } else if (ehDiarista) {
         liquido = remuneracao + baseVariavel + pagamentoEspecie
-                  + valeTransporte + outros - emprestimo + adiantamentoEspecie;
+                  + valeTransporte + outros - emprestimo;
     } else {
         liquido = adiantamentoEspecie + pagamentoEspecie + baseVariavel
                   + valeTransporte + outros - emprestimo;
