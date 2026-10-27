@@ -204,17 +204,23 @@ fora. Se Contab. e Espécie estiverem em zero, o líquido é R$ 0,00.
 **Mensalista** (o salário bruto **não** entra)
 ```
 Líquido = Pagamento Espécie + Pagamento em conta + Prêmio + Horas Extras
-          + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
+          + Vale Transporte + Outros − Empréstimo
+          − Adiantamento Espécie   (somente enquanto NÃO houver Pagamento Espécie/em conta)
 ```
+O adiantamento do Mensalista só **desconta enquanto o pagamento não foi lançado**: com só o
+adiantamento, o líquido fica **negativo** (ex.: −R$ 2.200); ao lançar o Pagamento Espécie ou
+em conta do fim do mês — que já vem líquido do adiantamento (ex.: salário 5.500 −
+adiantamento 2.200 = 3.300) — o adiantamento deixa de descontar e o líquido mostra o valor
+pago (R$ 3.300). O adiantamento continua registrado e marcado na lista.
 
 **Diarista**
 ```
 Líquido = (diária × dias trabalhados) + Horas Extras + Pagamento Espécie
           + Pagamento em conta + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
 ```
-No Mensalista e no Diarista o adiantamento **subtrai** do líquido, e ele pode ficar
-**negativo** (por exemplo, quando só o adiantamento foi lançado e o pagamento do fim do mês
-ainda não entrou). O Diarista não tem prêmio.
+No Diarista o adiantamento **subtrai** do líquido sempre, e ele pode ficar **negativo** (por
+exemplo, quando só o adiantamento foi lançado e os dias trabalhados ainda não entraram). O
+Diarista não tem prêmio.
 
 Lançamentos antigos só passam a usar a regra nova quando abertos e salvos de novo.
 O recibo e o Dashboard usam o líquido salvo.
@@ -228,7 +234,8 @@ O recibo e o Dashboard usam o líquido salvo.
 - **Alterável só no lançamento**: o usuário pode mudar o valor (inclusive zerar). Ao
   reabrir um lançamento salvo, aparece o valor **salvo**, nunca o do cadastro; mudar o
   cadastro depois não altera lançamentos existentes.
-- **Efeito no líquido**: CLT — só registro; **Mensalista e Diarista — subtrai** (ver 5.3).
+- **Efeito no líquido**: CLT — só registro; **Mensalista — subtrai até o pagamento ser
+  lançado**; **Diarista — subtrai** (ver 5.3).
 - **Controle na lista**: o lançamento com adiantamento ganha uma etiqueta amarela ao lado
   do nome, "Adiantamento R$ X".
 - O card **Adiantamentos** do Dashboard soma os adiantamentos registrados.
