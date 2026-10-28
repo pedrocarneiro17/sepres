@@ -299,8 +299,9 @@ CLT, Somente Contrato = Mensalista + Diarista). Sem nenhum pagamento no mês/cat
 sistema avisa e não baixa arquivo. "Pagamento em Conta" é o campo Pagamento Contab. (CLT) /
 Pagamento em conta (Mensalista e Diarista).
 
-**c) Planilha do EVA do mês (somente CLT)** — botão **Planilha EVA** no modal de
-**Lançamentos → Exportar** (`/api/exportar-eva?mes=YYYY-MM`, arquivo `eva_MM-AAAA.xlsx`).
+**c) Planilha do EVA do mês (somente CLT)** — no modal de **Lançamentos → Exportar**, basta
+escolher a categoria **"EVA (somente CLT)"** (`/api/exportar-eva?mes=YYYY-MM`, arquivo
+`eva_MM-AAAA.xlsx`).
 Uma aba **EVA** com **Nome, Empresa, Prêmio, Assiduidade, Horas Extras e EVA (total)**
 (prêmio + assiduidade + horas extras; o cartão alimentação não entra). Só entra CLT com
 algum valor de EVA lançado no mês.
@@ -309,8 +310,10 @@ algum valor de EVA lançado no mês.
 
 - Disponíveis **a qualquer momento**, com o lançamento em aberto ou finalizado (não é
   preciso fechar o mês).
-- CLT: **recibo de pagamento** e **recibo de prêmio (EVA)**, este com o total de prêmio +
-  assiduidade + horas extras e o detalhamento dos três valores. Mensalista/Diarista: **recibo de
+- CLT: **recibo de pagamento** e **recibo de prêmio (EVA)**, no modelo do cliente: "declaro
+  que recebi nesta data a quantia de R$ X referente a **assiduidade**, R$ Y referente a
+  **prestação de serviços** (= horas extras), R$ Z referente a **prêmios**…", com o total e a
+  linha de assinatura. O cartão alimentação não entra. Mensalista/Diarista: **recibo de
   pagamento** e **recibo de pagamento de autônomo**. O valor do recibo é o líquido salvo
   no momento **em módulo**: se o líquido estiver negativo (adiantamento já lançado), o
   recibo mostra o valor positivo que foi pago. Se o lançamento for editado, gere o recibo

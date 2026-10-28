@@ -381,19 +381,19 @@
                 <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalExportarCSV')"><i class="fas fa-times"></i></button>
             </div>
             <div class="px-6 py-5">
-                <p class="mb-4 text-sm text-slate-500">Exporta quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado no mês (Nome, Empresa e os dois valores).</p>
+                <p class="mb-4 text-sm text-slate-500" id="exportarDescricao">Exporta quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado no mês (Nome, Empresa e os dois valores).</p>
                 <label class="label">Mês/Ano</label>
                 <input type="month" class="input mes-ptbr" id="exportarCSVMes">
                 <label class="label mt-4">Categoria</label>
-                <select class="input" id="exportarTipo">
+                <select class="input" id="exportarTipo" onchange="atualizarDescricaoExportar()">
                     <option value="todos">Todos (CLT e Contrato)</option>
                     <option value="clt">Somente CLT</option>
                     <option value="contrato">Somente Contrato (Mensalista e Diarista)</option>
+                    <option value="eva">EVA (somente CLT)</option>
                 </select>
             </div>
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
-                <button type="button" class="btn-secondary" onclick="exportarEva()" title="Planilha do EVA do mês (só CLT): Prêmio + Assiduidade + Horas Extras"><i class="fas fa-file-excel"></i> Planilha EVA</button>
-                <button type="button" class="btn-success" onclick="exportarPlanilha()"><i class="fas fa-file-excel"></i> Pagamentos</button>
+                <button type="button" class="btn-success" onclick="exportarPlanilha()"><i class="fas fa-file-excel"></i> Exportar</button>
             </div>
         </div>
     </div>

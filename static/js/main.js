@@ -1817,7 +1817,7 @@ function renderizarLancamentos() {
         // Recibos ficam disponíveis em qualquer status: não é preciso finalizar o mês.
         let recibos = botaoAcao(`gerarRecibo('${l.id}')`, 'recibo', 'fa-file-lines', 'Gerar recibo de pagamento');
         if (ehCLT) {
-            recibos += botaoAcao(`gerarReciboPremio('${l.id}')`, 'premio', 'fa-award', 'Gerar recibo de prêmio');
+            recibos += botaoAcao(`gerarReciboPremio('${l.id}')`, 'premio', 'fa-award', 'Gerar recibo do EVA (prêmio, assiduidade e horas extras)');
         } else {
             recibos += botaoAcao(`gerarReciboAutonomo('${l.id}')`, 'autonomo', 'fa-file-contract', 'Gerar recibo de pagamento de autônomo');
         }
@@ -2164,33 +2164,27 @@ function gerarReciboPremio(id) {
     const c = colaboradores.find(co => co.id === l.colaboradorId);
     if (!c) return;
 
-    // Recibo do EVA: prêmio + assiduidade + horas extras (cartão alimentação não entra).
-    const premio = l.bonificacao || 0, assiduidade = l.assiduidade || 0, extras = l.horasExtras || 0;
-    const valor = numeroBR(premio + assiduidade + extras);
+    // Recibo do EVA (modelo do cliente): assiduidade, "prestação de serviços" (= horas extras)
+    // e prêmios (o cartão alimentação não entra).
+    const assiduidade = l.assiduidade || 0, servicos = l.horasExtras || 0, premios = l.bonificacao || 0;
+    const total = numeroBR(assiduidade + servicos + premios);
     const dataExtenso = formatarDataExtenso(new Date());
-    const item = (nome, v) => `<tr><td style="padding:2px 0;">${nome}</td><td style="padding:2px 0; text-align:right;">R$ ${numeroBR(v)}</td></tr>`;
 
     document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Prêmio (EVA)';
     document.getElementById('reciboEvaConteudo').innerHTML = `
         ${logoReciboHtml()}
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PRÊMIO</h4></div>
-        <p>Eu, <strong>${esc(c.nome)}</strong>, declaro que recebi nesta data, como forma de premiação
-        (prêmio, assiduidade e horas extras) referente a ${formatarMesAno(l.mes)}, a quantia de
-        R$ ${valor} (reais) da empresa denominada ${EMPRESA_RECIBO.nome}, inscrita no CNPJ ${EMPRESA_RECIBO.cnpj},
-        com sede na Rua Anibal Cota, n°25, Sala 06, Edifício Jardins, Jardim Itacolomi, Ouro Preto/MG,
-        não ficando nenhum valor pendente.</p>
-        <table style="width:100%; margin:10px 0; border-collapse:collapse;">
-            ${item('Prêmio', premio)}
-            ${item('Assiduidade', assiduidade)}
-            ${item('Horas extras', extras)}
-            <tr><td style="padding:4px 0; border-top:1px solid #000;"><strong>Total</strong></td>
-                <td style="padding:4px 0; border-top:1px solid #000; text-align:right;"><strong>R$ ${valor}</strong></td></tr>
-        </table>
+        <p>Eu, <strong>${esc(c.nome)}</strong>, declaro que recebi nesta data, a quantia de
+        R$ ${numeroBR(assiduidade)} referente a assiduidade, R$ ${numeroBR(servicos)} referente a prestação de serviços,
+        R$ ${numeroBR(premios)} referente a prêmios, da empresa denominada ${EMPRESA_RECIBO.nome}, inscrita no CNPJ
+        ${EMPRESA_RECIBO.cnpj}, com sede na Rua Anibal Cota, n°25, Sala 06, Edifício Jardins, Jardim Itacolomi,
+        Ouro Preto/MG. Totalizando o valor de R$ ${total}.</p>
+        <br>
         <p>Ouro Preto/MG, ${dataExtenso}</p>
         <br><br>
         <div class="text-center">
             <p>______________________________________________________</p>
-            <p>${esc(c.nome.toUpperCase())}</p>
+            <p>ASSINATURA</p>
         </div>
     `;
 
@@ -2548,12 +2542,22 @@ function limparFiltros() {
 
 // Abre o modal pedindo o mês só na hora de exportar (evita um segundo filtro de
 // data sempre visível na tela, competindo com o filtro de período da listagem).
+// Texto do modal de exportação conforme a categoria escolhida.
+function atualizarDescricaoExportar() {
+    const eva = document.getElementById('exportarTipo')?.value === 'eva';
+    const desc = document.getElementById('exportarDescricao');
+    if (desc) desc.innerHTML = eva
+        ? 'Planilha do <strong>EVA</strong> do mês (somente CLT): Prêmio, Assiduidade e Horas Extras de quem tem valor lançado.'
+        : 'Exporta quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado no mês (Nome, Empresa e os dois valores).';
+}
+
 function abrirExportarCSV() {
     const mesInput = document.getElementById('exportarCSVMes');
     if (mesInput && !mesInput.value) {
         mesInput.value = document.getElementById('filtroPeriodoLanc')?.value || new Date().toISOString().substring(0, 7);
         mesInput.dispatchEvent(new Event('change', { bubbles: true }));
     }
+    atualizarDescricaoExportar();
     abrirModal('modalExportarCSV');
 }
 
@@ -2564,6 +2568,8 @@ async function exportarPlanilha() {
         notificar('Selecione um mês para exportar.', 'info');
         return;
     }
+    // Categoria "EVA" (somente CLT) usa a planilha do EVA; as demais, a de pagamentos.
+    if (document.getElementById('exportarTipo')?.value === 'eva') return exportarEva();
     try {
         const tipo = document.getElementById('exportarTipo')?.value || 'todos';
         const resp = await fetch('/api/exportar-planilha?mes=' + encodeURIComponent(mesFiltro) + '&tipo=' + encodeURIComponent(tipo));
