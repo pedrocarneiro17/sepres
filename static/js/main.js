@@ -1671,6 +1671,16 @@ function colaboradoresSemLancamento(periodo) {
         !comLancamento.has(c.id));
 }
 
+// Lançamentos do mês sem Pagamento Espécie/em Conta (respeita o filtro de contrato).
+function lancamentosSemPagamento(periodo) {
+    const tipo = document.getElementById('filtroTipoLanc')?.value || 'todos';
+    return lancamentos.filter(l => {
+        if (l.mes !== periodo || !pagamentoPendente(l)) return false;
+        const c = colaboradores.find(co => co.id === l.colaboradorId);
+        return tipo === 'todos' || (c && c.contratacao === tipo);
+    });
+}
+
 // Faixa de controle do mês: lançamentos sem pagamento e colaboradores sem lançamento.
 function renderizarResumoPagamentos() {
     const faixa = document.getElementById('resumoPagamentosLanc');
@@ -1691,7 +1701,7 @@ function renderizarResumoPagamentos() {
     const mesTxt = formatarMesAno(periodo);
 
     const parte1 = pendentes > 0
-        ? `<span><strong class="text-amber-700">${pendentes}</strong> de ${doMes.length} lançamento(s) de ${mesTxt} <strong class="text-amber-700">sem pagamento</strong> lançado</span>`
+        ? `<span><strong class="text-amber-700">${pendentes}</strong> de ${doMes.length} lançamento(s) de ${mesTxt} <strong class="text-amber-700">sem pagamento</strong> lançado <button type="button" class="ml-1 font-medium text-sepres-700 underline hover:text-sepres-800" onclick="abrirSemLancamento()">ver nomes</button></span>`
         : `<span class="text-emerald-700"><i class="fas fa-circle-check"></i> ${doMes.length > 0 ? 'Todos os ' + doMes.length + ' lançamento(s) de ' + mesTxt + ' têm pagamento lançado' : 'Nenhum lançamento em ' + mesTxt + ' ainda'}</span>`;
     const parte2 = semLanc > 0
         ? `<span><strong class="text-amber-700">${semLanc}</strong> colaborador(es) <strong class="text-amber-700">sem lançamento</strong> em ${mesTxt} <button type="button" class="ml-1 font-medium text-sepres-700 underline hover:text-sepres-800" onclick="abrirSemLancamento()">ver nomes</button></span>`
@@ -1703,17 +1713,68 @@ function renderizarResumoPagamentos() {
 function abrirSemLancamento() {
     const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
     if (!periodo) return;
-    const lista = colaboradoresSemLancamento(periodo)
-        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
-    document.getElementById('semLancTitulo').textContent = `Sem lançamento em ${formatarMesAno(periodo)} (${lista.length})`;
-    document.getElementById('semLancLista').innerHTML = lista.length === 0
-        ? '<p class="text-slate-500">Todos os colaboradores ativos já têm lançamento neste mês.</p>'
-        : '<ul class="divide-y divide-slate-100">' + lista.map(c => `
-            <li class="flex items-center justify-between gap-3 py-2">
-                <span class="font-medium text-slate-800">${esc(c.nome)}</span>
-                <span class="flex shrink-0 items-center gap-2 text-xs text-slate-500">${esc(c.empresa || '')} ${badgeContratacao(c.contratacao)}</span>
-            </li>`).join('') + '</ul>';
+    const porNome = (a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' });
+    const semPagamento = lancamentosSemPagamento(periodo)
+        .map(l => ({ l, c: colaboradores.find(co => co.id === l.colaboradorId) || { nome: 'Desconhecido' } }))
+        .sort((x, y) => porNome(x.c, y.c));
+    const semLanc = colaboradoresSemLancamento(periodo).sort(porNome);
+
+    const linha = (nome, detalhe, acao) => `
+        <button type="button" class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-slate-50" onclick="${acao}">
+            <span class="font-medium text-slate-800">${esc(nome)}</span>
+            <span class="flex shrink-0 items-center gap-2 text-xs text-slate-500">${detalhe}<i class="fas fa-chevron-right text-slate-300"></i></span>
+        </button>`;
+    const secao = (titulo, itens, vazio) => `
+        <h4 class="mb-1 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500 first:mt-0">${titulo}</h4>
+        ${itens.length ? '<div class="space-y-0.5">' + itens.join('') + '</div>' : `<p class="px-3 py-2 text-slate-400">${vazio}</p>`}`;
+
+    document.getElementById('semLancTitulo').textContent = `Pendências de ${formatarMesAno(periodo)}`;
+    document.getElementById('semLancLista').innerHTML =
+        secao(`Sem pagamento lançado (${semPagamento.length})`,
+            semPagamento.map(({ l, c }) => linha(c.nome,
+                `${esc(c.empresa || '')} ${c.contratacao ? badgeContratacao(c.contratacao) : ''} ${badgeStatus(l.status)}`,
+                `abrirLancamentoDaLista('${esc(l.id)}')`)),
+            'Todos os lançamentos já têm pagamento lançado.') +
+        secao(`Sem lançamento (${semLanc.length})`,
+            semLanc.map(c => linha(c.nome,
+                `${esc(c.empresa || '')} ${badgeContratacao(c.contratacao)}`,
+                `novoLancamentoPara('${esc(c.id)}', '${esc(periodo)}')`)),
+            'Todos os colaboradores ativos têm lançamento neste mês.');
     abrirModal('modalSemLancamento');
+}
+
+// Abre o lançamento escolhido na lista de pendências: em aberto vai para a edição;
+// finalizado abre só para visualizar (reabra pela lista se precisar editar).
+function abrirLancamentoDaLista(id) {
+    const l = lancamentos.find(lanc => lanc.id === id);
+    if (!l) return;
+    fecharModal('modalSemLancamento');
+    if (l.status === 'aberto') editarLancamento(id); else visualizarLancamento(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Abre um lançamento NOVO já com o colaborador e o mês escolhidos.
+async function novoLancamentoPara(colaboradorId, mes) {
+    const c = colaboradores.find(co => co.id === colaboradorId);
+    if (!c) return;
+    fecharModal('modalSemLancamento');
+    await abrirNovoLancamento();
+    const painel = document.getElementById('painelFormLancamento');
+    if (!painel || painel.style.display !== 'block') return; // usuário desistiu de descartar o formulário atual
+
+    const campoMes = document.getElementById('lancMes');
+    campoMes.value = mes;
+    campoMes.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Garante que o tipo do colaborador está ativo nos chips do formulário
+    filtroContratoLancamento.add(c.contratacao);
+    document.querySelectorAll('#lancFiltroContratoChips .filtro-chip').forEach(chip =>
+        chip.classList.toggle('ativo', filtroContratoLancamento.has(chip.dataset.tipo)));
+    atualizarSelectColaboradores();
+
+    const select = document.getElementById('lancColaborador');
+    select.value = colaboradorId;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function renderizarLancamentos() {

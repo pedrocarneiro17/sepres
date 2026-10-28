@@ -355,9 +355,12 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   Mensalista e Diarista (mesmos campos). Lançamento só com adiantamento continua
   **pendente**; lançamento de férias não conta como pendente. Uma faixa acima da tabela mostra,
   para o mês e o contrato filtrados, quantos lançamentos estão sem pagamento e quantos
-  colaboradores ativos (pelos períodos de contrato) **ainda não têm lançamento** no mês —
-  com o link **"ver nomes"**. O **Finalizar todos** avisa quantos dos lançamentos ainda
-  estão sem pagamento.
+  colaboradores ativos (pelos períodos de contrato) **ainda não têm lançamento** no mês.
+  O link **"ver nomes"** abre as **Pendências do mês** em duas listas — *Sem pagamento
+  lançado* e *Sem lançamento* — e **clicar num nome** abre o lançamento: em aberto vai para
+  a edição, finalizado abre só para visualizar, e quem não tem lançamento abre um
+  **lançamento novo** já com o colaborador e o mês escolhidos. O **Finalizar todos** avisa
+  quantos dos lançamentos ainda estão sem pagamento.
 - **Após salvar um lançamento novo**, a tela continua no formulário, limpo e **no mesmo
   mês**, pronta para o próximo colaborador (o filtro da lista não muda). Salvar uma
   **edição** volta para a lista.
