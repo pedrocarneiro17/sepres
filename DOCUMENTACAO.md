@@ -196,11 +196,12 @@ O campo "Tipo de Contratação" é reconstruído ao trocar a empresa.
 
 **CLT**
 ```
-Líquido = Pagamento Contab. + Pagamento Espécie
+Líquido = Pagamento Contab. + Pagamento Espécie − Empréstimo
 ```
-Nada mais entra: remuneração, prêmio, assiduidade, horas extras (que formam o **EVA**,
-mostrado só como informação), Vale Transporte, Outros, Empréstimo e Adiantamento ficam de
-fora. Se Contab. e Espécie estiverem em zero, o líquido é R$ 0,00.
+O **empréstimo** (parcela paga no mês) desconta do valor final. Nada mais entra: remuneração,
+prêmio, assiduidade, horas extras (que formam o **EVA**, mostrado só como informação),
+Vale Transporte, Outros e Adiantamento ficam de fora. Se Contab. e Espécie estiverem em
+zero, o líquido é R$ 0,00 (ou negativo, se houver empréstimo).
 
 **Mensalista** (o salário bruto **não** entra)
 ```
@@ -298,11 +299,18 @@ CLT, Somente Contrato = Mensalista + Diarista). Sem nenhum pagamento no mês/cat
 sistema avisa e não baixa arquivo. "Pagamento em Conta" é o campo Pagamento Contab. (CLT) /
 Pagamento em conta (Mensalista e Diarista).
 
+**c) Planilha do EVA do mês (somente CLT)** — botão **Planilha EVA** no modal de
+**Lançamentos → Exportar** (`/api/exportar-eva?mes=YYYY-MM`, arquivo `eva_MM-AAAA.xlsx`).
+Uma aba **EVA** com **Nome, Empresa, Prêmio, Assiduidade, Horas Extras e EVA (total)**
+(prêmio + assiduidade + horas extras; o cartão alimentação não entra). Só entra CLT com
+algum valor de EVA lançado no mês.
+
 ### 5.10 Recibos
 
 - Disponíveis **a qualquer momento**, com o lançamento em aberto ou finalizado (não é
   preciso fechar o mês).
-- CLT: **recibo de pagamento** e **recibo de prêmio**. Mensalista/Diarista: **recibo de
+- CLT: **recibo de pagamento** e **recibo de prêmio (EVA)**, este com o total de prêmio +
+  assiduidade + horas extras e o detalhamento dos três valores. Mensalista/Diarista: **recibo de
   pagamento** e **recibo de pagamento de autônomo**. O valor do recibo é o líquido salvo
   no momento **em módulo**: se o líquido estiver negativo (adiantamento já lançado), o
   recibo mostra o valor positivo que foi pago. Se o lançamento for editado, gere o recibo

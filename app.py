@@ -894,6 +894,36 @@ def exportar_colaboradores():
     return _enviar_xlsx(wb, f'colaboradores_{datetime.now().strftime("%d-%m-%Y")}.xlsx')
 
 
+@app.route('/api/exportar-eva', methods=['GET'])
+def exportar_eva():
+    """Planilha do EVA do mês (somente CLT): Prêmio + Assiduidade + Horas Extras. Só entra
+    quem tem algum valor de EVA lançado no mês."""
+    mes = request.args.get('mes', '')
+    if len(mes) != 7:
+        return jsonify({'erro': 'Informe o mês (YYYY-MM).'}), 400
+    linhas = (db.session.query(Lancamento, Colaborador)
+              .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
+              .filter(Lancamento.mes == mes, Colaborador.contratacao == 'CLT').all())
+    registros = []
+    for l, c in linhas:
+        premio, assiduidade, extras = l.bonificacao or 0, l.assiduidade or 0, l.horasExtras or 0
+        total = premio + assiduidade + extras
+        if total <= 0:
+            continue
+        registros.append({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
+                          'premio': premio, 'assiduidade': assiduidade, 'extras': extras,
+                          'eva': total})
+    if not registros:
+        return jsonify({'erro': 'Não há valores de EVA lançados para o mês selecionado.'}), 404
+    registros.sort(key=lambda r: r['nome'].lower())
+    colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
+               ('Prêmio', 'premio', 1, 0, 16), ('Assiduidade', 'assiduidade', 1, 0, 16),
+               ('Horas Extras', 'extras', 1, 0, 16), ('EVA (total)', 'eva', 1, 0, 16)]
+    wb, estilo = _novo_workbook()
+    _preencher_aba(wb, estilo, 'EVA', colunas, registros)
+    return _enviar_xlsx(wb, f'eva_{mes[5:]}-{mes[:4]}.xlsx')
+
+
 @app.route('/api/exportar-planilha', methods=['GET'])
 def exportar_planilha():
     """Planilha de PAGAMENTOS do mês: Nome, Empresa, Pagamento em Espécie e Pagamento em

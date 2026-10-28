@@ -1554,8 +1554,8 @@ function calcularLiquidoTotal() {
     // Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto no líquido.
     const baseVariavel = ehCLT ? 0 : (premio + horasExtras);
 
-    // CLT: Líquido = Pagamento Contab. + Pagamento Espécie (nada mais entra na conta;
-    //      adiantamento só é registrado).
+    // CLT: Líquido = Pagamento Contab. + Pagamento Espécie - Empréstimo (nada mais entra na
+    //      conta; adiantamento só é registrado).
     //
     // Mensalista: o Salário Bruto NÃO entra. Líquido =
     //      Pagamento Espécie + Pagamento em conta + Prêmio + Horas Extras
@@ -1571,7 +1571,8 @@ function calcularLiquidoTotal() {
     // "Pagamento em conta" (Mensalista/Diarista) usa o mesmo campo de Pagamento Contab. do CLT.
     let liquido;
     if (ehCLT) {
-        liquido = pagamentoContab + pagamentoEspecie;
+        // O empréstimo (parcela paga no mês) desconta do valor final.
+        liquido = pagamentoContab + pagamentoEspecie - emprestimo;
     } else if (ehDiarista) {
         // A remuneração (diária x dias) fica só no Salário Bruto: o líquido soma o que é pago.
         liquido = baseVariavel + pagamentoEspecie + pagamentoContab
@@ -2163,18 +2164,28 @@ function gerarReciboPremio(id) {
     const c = colaboradores.find(co => co.id === l.colaboradorId);
     if (!c) return;
 
-    const valor = numeroBR(l.bonificacao || 0);
+    // Recibo do EVA: prêmio + assiduidade + horas extras (cartão alimentação não entra).
+    const premio = l.bonificacao || 0, assiduidade = l.assiduidade || 0, extras = l.horasExtras || 0;
+    const valor = numeroBR(premio + assiduidade + extras);
     const dataExtenso = formatarDataExtenso(new Date());
+    const item = (nome, v) => `<tr><td style="padding:2px 0;">${nome}</td><td style="padding:2px 0; text-align:right;">R$ ${numeroBR(v)}</td></tr>`;
 
-    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Prêmio';
+    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Prêmio (EVA)';
     document.getElementById('reciboEvaConteudo').innerHTML = `
         ${logoReciboHtml()}
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PRÊMIO</h4></div>
-        <p>Eu, <strong>${esc(c.nome)}</strong>, declaro que recebi nesta data, como forma de prêmio a quantia de
+        <p>Eu, <strong>${esc(c.nome)}</strong>, declaro que recebi nesta data, como forma de premiação
+        (prêmio, assiduidade e horas extras) referente a ${formatarMesAno(l.mes)}, a quantia de
         R$ ${valor} (reais) da empresa denominada ${EMPRESA_RECIBO.nome}, inscrita no CNPJ ${EMPRESA_RECIBO.cnpj},
         com sede na Rua Anibal Cota, n°25, Sala 06, Edifício Jardins, Jardim Itacolomi, Ouro Preto/MG,
-        não ficando nenhum valor pendente. Totalizando o valor de R$ ${valor} (reais).</p>
-        <br>
+        não ficando nenhum valor pendente.</p>
+        <table style="width:100%; margin:10px 0; border-collapse:collapse;">
+            ${item('Prêmio', premio)}
+            ${item('Assiduidade', assiduidade)}
+            ${item('Horas extras', extras)}
+            <tr><td style="padding:4px 0; border-top:1px solid #000;"><strong>Total</strong></td>
+                <td style="padding:4px 0; border-top:1px solid #000; text-align:right;"><strong>R$ ${valor}</strong></td></tr>
+        </table>
         <p>Ouro Preto/MG, ${dataExtenso}</p>
         <br><br>
         <div class="text-center">
@@ -2574,6 +2585,36 @@ async function exportarPlanilha() {
         notificar(`Pagamentos de ${formatarMesAno(mesFiltro)} exportados!`, 'success');
     } catch (e) {
         notificar('Erro ao gerar a planilha.', 'info');
+    }
+}
+
+// Planilha .xlsx do EVA do mês (somente CLT): Prêmio + Assiduidade + Horas Extras.
+async function exportarEva() {
+    const mesFiltro = document.getElementById('exportarCSVMes').value;
+    if (!mesFiltro) {
+        notificar('Selecione um mês para exportar.', 'info');
+        return;
+    }
+    try {
+        const resp = await fetch('/api/exportar-eva?mes=' + encodeURIComponent(mesFiltro));
+        if (!resp.ok) {
+            const erro = await resp.json().catch(() => ({}));
+            notificar(erro.erro || 'Erro ao gerar a planilha do EVA.', 'info');
+            return;
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `eva_${formatarMesAno(mesFiltro).replace('/', '-')}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        fecharModal('modalExportarCSV');
+        notificar(`Planilha do EVA de ${formatarMesAno(mesFiltro)} exportada!`, 'success');
+    } catch (e) {
+        notificar('Erro ao gerar a planilha do EVA.', 'error');
     }
 }
 
