@@ -1587,21 +1587,34 @@ function calcularLiquidoTotal() {
 
 // Filtros da listagem de lançamentos: contrato e status (seletores) além de busca e mês.
 function configurarFiltrosListaLancamentos() {
-    ['filtroTipoLanc', 'filtroStatusLanc'].forEach(id => {
+    ['filtroTipoLanc', 'filtroStatusLanc', 'filtroPagamentoLanc'].forEach(id => {
         const campo = document.getElementById(id);
         if (campo) campo.addEventListener('change', renderizarLancamentos);
     });
 }
 
-// Lançamentos que passam pelos filtros da listagem (busca por nome, período, contrato e status).
+// Pagamento lançado = tem Pagamento Espécie e/ou Pagamento Contab./em conta (mesmos campos nos
+// três tipos de contratação). Lançamento de férias não conta como pendente.
+function pagamentoLancado(l) {
+    return (l.pagamentoEspecie || 0) > 0 || (l.pagamentoContab || 0) > 0;
+}
+
+function pagamentoPendente(l) {
+    return l.ferias !== 'Férias' && !pagamentoLancado(l);
+}
+
+// Lançamentos que passam pelos filtros da listagem (busca por nome, período, contrato, status e pagamento).
 function lancamentosFiltrados() {
     const termo = (document.getElementById('filtroNomeLanc')?.value || '').trim().toLowerCase();
     const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
     const tipo = document.getElementById('filtroTipoLanc')?.value || 'todos';
     const status = document.getElementById('filtroStatusLanc')?.value || 'todos';
+    const pagamento = document.getElementById('filtroPagamentoLanc')?.value || 'todos';
     return lancamentos.filter(l => {
         if (periodo && l.mes !== periodo) return false;
         if (status !== 'todos' && l.status !== status) return false;
+        if (pagamento === 'pendente' && !pagamentoPendente(l)) return false;
+        if (pagamento === 'lancado' && !pagamentoLancado(l)) return false;
         const c = colaboradores.find(co => co.id === l.colaboradorId);
         if (tipo !== 'todos' && (!c || c.contratacao !== tipo)) return false;
         if (termo && (!c || !c.nome.toLowerCase().includes(termo))) return false;
@@ -1622,7 +1635,11 @@ async function finalizarTodosLancamentos() {
         notificar(`Não há lançamentos em aberto em ${formatarMesAno(periodo)}.`, 'info');
         return;
     }
-    if (!await confirmar(`Finalizar ${abertos.length} lançamento(s) em aberto de ${formatarMesAno(periodo)}? Depois de finalizados, só dá para editar reabrindo cada um.`,
+    const semPagamento = abertos.filter(pagamentoPendente).length;
+    const aviso = semPagamento > 0
+        ? ` Atenção: ${semPagamento} ${semPagamento === 1 ? 'deles ainda está' : 'deles ainda estão'} sem Pagamento Espécie/em Conta lançado.`
+        : '';
+    if (!await confirmar(`Finalizar ${abertos.length} lançamento(s) em aberto de ${formatarMesAno(periodo)}?${aviso} Depois de finalizados, só dá para editar reabrindo cada um.`,
         { titulo: 'Finalizar todos', confirmar: `Finalizar ${abertos.length}` })) return;
     try {
         const response = await fetch(`${API_URL}/lancamentos/finalizar-todos`, {
@@ -1644,9 +1661,65 @@ async function finalizarTodosLancamentos() {
     }
 }
 
+// Colaboradores com contrato vigente no mês que ainda não têm lançamento nele (respeita o filtro de contrato).
+function colaboradoresSemLancamento(periodo) {
+    const tipo = document.getElementById('filtroTipoLanc')?.value || 'todos';
+    const comLancamento = new Set(lancamentos.filter(l => l.mes === periodo).map(l => l.colaboradorId));
+    return colaboradores.filter(c =>
+        (tipo === 'todos' || c.contratacao === tipo) &&
+        colaboradorAtivoNoMes(c, periodo) &&
+        !comLancamento.has(c.id));
+}
+
+// Faixa de controle do mês: lançamentos sem pagamento e colaboradores sem lançamento.
+function renderizarResumoPagamentos() {
+    const faixa = document.getElementById('resumoPagamentosLanc');
+    if (!faixa) return;
+    const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
+    if (!periodo) {
+        faixa.classList.add('hidden'); faixa.classList.remove('flex');
+        return;
+    }
+    const tipo = document.getElementById('filtroTipoLanc')?.value || 'todos';
+    const doMes = lancamentos.filter(l => {
+        if (l.mes !== periodo) return false;
+        const c = colaboradores.find(co => co.id === l.colaboradorId);
+        return tipo === 'todos' || (c && c.contratacao === tipo);
+    });
+    const pendentes = doMes.filter(pagamentoPendente).length;
+    const semLanc = colaboradoresSemLancamento(periodo).length;
+    const mesTxt = formatarMesAno(periodo);
+
+    const parte1 = pendentes > 0
+        ? `<span><strong class="text-amber-700">${pendentes}</strong> de ${doMes.length} lançamento(s) de ${mesTxt} <strong class="text-amber-700">sem pagamento</strong> lançado</span>`
+        : `<span class="text-emerald-700"><i class="fas fa-circle-check"></i> ${doMes.length > 0 ? 'Todos os ' + doMes.length + ' lançamento(s) de ' + mesTxt + ' têm pagamento lançado' : 'Nenhum lançamento em ' + mesTxt + ' ainda'}</span>`;
+    const parte2 = semLanc > 0
+        ? `<span><strong class="text-amber-700">${semLanc}</strong> colaborador(es) <strong class="text-amber-700">sem lançamento</strong> em ${mesTxt} <button type="button" class="ml-1 font-medium text-sepres-700 underline hover:text-sepres-800" onclick="abrirSemLancamento()">ver nomes</button></span>`
+        : `<span class="text-emerald-700"><i class="fas fa-circle-check"></i> Todos os colaboradores ativos têm lançamento em ${mesTxt}</span>`;
+    faixa.innerHTML = parte1 + parte2;
+    faixa.classList.remove('hidden'); faixa.classList.add('flex');
+}
+
+function abrirSemLancamento() {
+    const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
+    if (!periodo) return;
+    const lista = colaboradoresSemLancamento(periodo)
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+    document.getElementById('semLancTitulo').textContent = `Sem lançamento em ${formatarMesAno(periodo)} (${lista.length})`;
+    document.getElementById('semLancLista').innerHTML = lista.length === 0
+        ? '<p class="text-slate-500">Todos os colaboradores ativos já têm lançamento neste mês.</p>'
+        : '<ul class="divide-y divide-slate-100">' + lista.map(c => `
+            <li class="flex items-center justify-between gap-3 py-2">
+                <span class="font-medium text-slate-800">${esc(c.nome)}</span>
+                <span class="flex shrink-0 items-center gap-2 text-xs text-slate-500">${esc(c.empresa || '')} ${badgeContratacao(c.contratacao)}</span>
+            </li>`).join('') + '</ul>';
+    abrirModal('modalSemLancamento');
+}
+
 function renderizarLancamentos() {
     const tbody = document.getElementById('tabelaLancamentos');
     if (!tbody) return;
+    renderizarResumoPagamentos();
 
     if (lancamentos.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400"><i class="fas fa-file-invoice mb-2 block text-2xl"></i>Nenhum lançamento registrado</td></tr>`;
@@ -1699,9 +1772,14 @@ function renderizarLancamentos() {
             ? ` <span class="ml-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20" title="Adiantamento lançado">Adiantamento</span>`
             : '';
 
+        // Controle: lançamento ainda sem Pagamento Espécie nem em Conta.
+        const marcaSemPagamento = pagamentoPendente(l)
+            ? ' <span class="ml-1 inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-300/60" title="Nenhum Pagamento em Espécie ou em Conta lançado">Sem pagamento</span>'
+            : '';
+
         return `
         <tr class="border-b border-slate-100 transition hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium text-slate-800">${esc(c ? c.nome : 'Desconhecido')}${marcaAdiantamento}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${esc(c ? c.nome : 'Desconhecido')}${marcaAdiantamento}${marcaSemPagamento}</td>
             <td class="px-4 py-3 text-slate-600">${formatarMesAno(l.mes)}</td>
             <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(l.liquidoTotal || 0)}</td>
             <td class="px-4 py-3">${badgeStatus(l.status)}</td>

@@ -347,9 +347,18 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   um único **Voltar**.
 - **Filtros da lista** (todos no mesmo estilo de campo): busca por nome, **mês** (abre no mês
   atual só na primeira abertura, **se mantém** depois de salvar/editar, e não tem botão de
-  limpar — sempre há um mês), **Contrato** (Todos / CLT / Diarista / Mensalista) e **Status**
-  (Todos / Em aberto / Finalizado), que se combinam. Botões **Finalizar todos** (só pelo mês
-  do filtro) e **Exportar**.
+  limpar — sempre há um mês), **Contrato** (Todos / CLT / Diarista / Mensalista),
+  **Pagamento** (Todos / Pendente / Lançado) e **Status** (Todos / Em aberto / Finalizado),
+  que se combinam. Botões **Finalizar todos** (só pelo mês do filtro) e **Exportar**.
+- **Controle de pagamento do mês**: considera-se **pagamento lançado** quando o lançamento
+  tem **Pagamento Espécie e/ou Pagamento Contab. (em conta)** com valor — vale para CLT,
+  Mensalista e Diarista (mesmos campos). Lançamento só com adiantamento continua
+  **pendente**; lançamento de férias não conta como pendente. Na lista, o lançamento
+  pendente ganha a etiqueta cinza **"Sem pagamento"**. Uma faixa acima da tabela mostra,
+  para o mês e o contrato filtrados, quantos lançamentos estão sem pagamento e quantos
+  colaboradores ativos (pelos períodos de contrato) **ainda não têm lançamento** no mês —
+  com o link **"ver nomes"**. O **Finalizar todos** avisa quantos dos lançamentos ainda
+  estão sem pagamento.
 - **Após salvar um lançamento novo**, a tela continua no formulário, limpo e **no mesmo
   mês**, pronta para o próximo colaborador (o filtro da lista não muda). Salvar uma
   **edição** volta para a lista.

@@ -277,6 +277,13 @@
                                 <option value="Mensalista">Mensalista</option>
                             </select>
                         </div>
+                        <div class="relative w-full sm:w-56">
+                            <select class="input" id="filtroPagamentoLanc" title="Filtrar por pagamento lançado (espécie e/ou em conta)">
+                                <option value="todos">Todos os pagamentos</option>
+                                <option value="pendente">Pagamento pendente</option>
+                                <option value="lancado">Pagamento lançado</option>
+                            </select>
+                        </div>
                         <div class="relative w-full sm:w-40">
                             <select class="input" id="filtroStatusLanc" title="Filtrar por status">
                                 <option value="todos">Todos os status</option>
@@ -288,6 +295,8 @@
                         <button class="btn-success shrink-0" onclick="abrirExportarCSV()" title="Exportar um mês"><i class="fas fa-file-export"></i> Exportar</button>
                     </div>
                 </div>
+                <!-- Controle do mês: quantos lançamentos ainda estão sem pagamento e quem nem tem lançamento -->
+                <div id="resumoPagamentosLanc" class="hidden flex-wrap items-center gap-x-6 gap-y-1 border-b border-slate-100 bg-slate-50 px-6 py-2.5 text-xs text-slate-500"></div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -350,6 +359,17 @@
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
                 <button type="button" class="btn-primary" onclick="imprimirRecibo('reciboEvaConteudo')"><i class="fas fa-print"></i> Imprimir</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal: colaboradores ativos no mês que ainda não têm lançamento -->
+    <div id="modalSemLancamento" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h3 class="text-lg font-semibold text-slate-900" id="semLancTitulo">Sem lançamento</h3>
+                <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalSemLancamento')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="max-h-[60vh] overflow-y-auto px-6 py-4 text-sm" id="semLancLista"></div>
         </div>
     </div>
 
