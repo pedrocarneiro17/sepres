@@ -1564,15 +1564,17 @@ function calcularLiquidoTotal() {
     //      lançado (fica negativo só com o adiantamento; ao lançar o pagamento do fim do
     //      mês, que já vem líquido do adiantamento, o adiantamento deixa de descontar).
     //
-    // Diarista: Remuneração (diária x dias) + Horas Extras + Pagamento Espécie
-    //      + Pagamento em conta + Vale Transporte + Outros - Empréstimo - Adiantamento Espécie
+    // Diarista: o Salário Bruto (diária x dias) NÃO entra. Líquido = Horas Extras
+    //      + Pagamento Espécie + Pagamento em conta + Vale Transporte + Outros
+    //      - Empréstimo - Adiantamento Espécie
     //
     // "Pagamento em conta" (Mensalista/Diarista) usa o mesmo campo de Pagamento Contab. do CLT.
     let liquido;
     if (ehCLT) {
         liquido = pagamentoContab + pagamentoEspecie;
     } else if (ehDiarista) {
-        liquido = remuneracao + baseVariavel + pagamentoEspecie + pagamentoContab
+        // A remuneração (diária x dias) fica só no Salário Bruto: o líquido soma o que é pago.
+        liquido = baseVariavel + pagamentoEspecie + pagamentoContab
                   + valeTransporte + outros - emprestimo - adiantamentoEspecie;
     } else {
         // O adiantamento só desconta enquanto o pagamento ainda não foi lançado; depois que

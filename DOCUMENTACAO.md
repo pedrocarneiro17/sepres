@@ -214,14 +214,15 @@ em conta do fim do mês — que já vem líquido do adiantamento (ex.: salário 
 adiantamento 2.200 = 3.300) — o adiantamento deixa de descontar e o líquido mostra o valor
 pago (R$ 3.300). O adiantamento continua registrado e marcado na lista.
 
-**Diarista**
+**Diarista** (o Salário Bruto — diária × dias trabalhados — **não** entra, como no Mensalista)
 ```
-Líquido = (diária × dias trabalhados) + Horas Extras + Pagamento Espécie
-          + Pagamento em conta + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
+Líquido = Horas Extras + Pagamento Espécie + Pagamento em conta
+          + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
 ```
 No Diarista o adiantamento **subtrai** do líquido sempre, e ele pode ficar **negativo** (por
-exemplo, quando só o adiantamento foi lançado e os dias trabalhados ainda não entraram). O
-Diarista não tem prêmio.
+exemplo, quando só o adiantamento foi lançado e o pagamento ainda não entrou). O Diarista
+não tem prêmio. A diária × dias aparece no **Salário Bruto** do lançamento e é só
+informativa: o líquido soma o que é pago (espécie e em conta), para não duplicar.
 
 Lançamentos antigos só passam a usar a regra nova quando abertos e salvos de novo.
 O recibo e o Dashboard usam o líquido salvo.
