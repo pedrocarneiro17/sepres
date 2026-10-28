@@ -2406,7 +2406,7 @@ function abrirExportarCSV() {
     abrirModal('modalExportarCSV');
 }
 
-// Planilha .xlsx no padrão da contabilidade (gerada no servidor, uma aba por empresa).
+// Planilha .xlsx de PAGAMENTOS do mês (Nome, Empresa, Pagamento em Espécie e em Conta).
 async function exportarPlanilha() {
     const mesFiltro = document.getElementById('exportarCSVMes').value;
     if (!mesFiltro) {
@@ -2425,15 +2425,39 @@ async function exportarPlanilha() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `planilha_${formatarMesAno(mesFiltro).replace('/', '-')}${tipo === 'todos' ? '' : '_' + tipo}.xlsx`;
+        link.download = `pagamentos_${formatarMesAno(mesFiltro).replace('/', '-')}${tipo === 'todos' ? '' : '_' + tipo}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         fecharModal('modalExportarCSV');
-        notificar(`Planilha de ${formatarMesAno(mesFiltro)} exportada!`, 'success');
+        notificar(`Pagamentos de ${formatarMesAno(mesFiltro)} exportados!`, 'success');
     } catch (e) {
         notificar('Erro ao gerar a planilha.', 'info');
+    }
+}
+
+// Planilha .xlsx de COLABORADORES (cadastro), no padrão da contabilidade.
+async function exportarColaboradores() {
+    try {
+        const resp = await fetch('/api/exportar-colaboradores');
+        if (!resp.ok) {
+            const erro = await resp.json().catch(() => ({}));
+            notificar(erro.erro || 'Erro ao gerar a planilha.', 'info');
+            return;
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `colaboradores_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        notificar('Planilha de colaboradores exportada!', 'success');
+    } catch (e) {
+        notificar('Erro ao gerar a planilha.', 'error');
     }
 }
 

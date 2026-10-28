@@ -156,7 +156,8 @@ Pagamento mensal de um colaborador (um por colaborador/mês).
 | `/api/lancamentos/<id>/finalizar` | PUT | logado | Status → `finalizado`. |
 | `/api/lancamentos/<id>/reabrir` | PUT | logado | Status → `aberto`. |
 | `/api/lancamentos/finalizar-todos` | POST | logado | Finaliza em lote os `ids` enviados que estão em aberto. |
-| `/api/exportar-planilha?mes=YYYY-MM` | GET | logado | Planilha Excel do mês (ver 5.9). |
+| `/api/exportar-planilha?mes=YYYY-MM&tipo=` | GET | logado | Planilha Excel de pagamentos do mês (ver 5.9). |
+| `/api/exportar-colaboradores` | GET | logado | Planilha Excel de colaboradores (ver 5.9). |
 | `/api/backup` | GET | logado | Dump completo, somente leitura. |
 
 Não existe rota de restauração/reset de dados. Rota inexistente retorna `404`.
@@ -267,23 +268,34 @@ se **aberto**, carrega para edição. Essa validação existe só na tela, não 
 
 ### 5.9 Exportação para planilha Excel
 
-Em **Lançamentos → Exportar**, escolhe-se o mês e a **categoria** — *Todos*, *Somente CLT*
-ou *Somente Contrato* (Mensalista + Diarista) — e baixa-se `planilha_MM-AAAA.xlsx`
-(com sufixo `_clt` ou `_contrato` quando filtrada; rota `?mes=YYYY-MM&tipo=todos|clt|contrato`).
-Não existe mais exportação CSV. Uma aba por empresa, com as colunas na ordem do modelo
-da contabilidade; só entram colaboradores com lançamento no mês, em ordem alfabética.
-Sem empresa cadastrada, o colaborador cai na aba Gerenciadora.
+Existem duas planilhas (não há mais exportação CSV):
+
+**a) Planilha de COLABORADORES** — botão **Exportar** na lista de Colaboradores
+(`/api/exportar-colaboradores`, arquivo `colaboradores_DD-MM-AAAA.xlsx`). Usa os dados do
+**cadastro**, no padrão da contabilidade: uma aba por empresa, colunas na ordem do modelo.
+Entram todos os colaboradores, **exceto os de contrato encerrado** (todos os períodos já
+terminaram). Sem empresa cadastrada, o colaborador cai na aba Gerenciadora.
 
 | Aba | Colunas (A→H) |
 |---|---|
 | **Gerenciadora** | *(tipo)*, CPF, Nome completo, Salário, Bonificação, Bonus em Dinheiro, Cargo, Admissão |
 | **Engenharia** | Nome, Salário, Bonus, Bonus em Dinheiro, *(tipo)*, ADMISSÃO, Inicio de contrato, CPF |
 
-Origem dos dados: **tipo** = `CLT`, ou `CONTRATO` para Mensalista/Diarista; **Salário** =
-remuneração do lançamento (no Diarista, diária × dias); **Bonificação/Bonus** = prêmio do
-lançamento; **Bonus em Dinheiro** = Pagamento Espécie do lançamento; **Cargo** = função;
-**Admissão** = admissão do cadastro; **Inicio de contrato** = admissão, só para quem não é
-CLT. A planilha não exporta o líquido nem o adiantamento.
+Origem: **tipo** = `CLT`, ou `CONTRATO` para Mensalista/Diarista; **Salário** = remuneração
+do cadastro (no Diarista, o **valor da diária**); **Bonificação/Bonus** = prêmio;
+**Bonus em Dinheiro** = em branco (não existe no cadastro); **Cargo** = função;
+**Admissão** = admissão; **Inicio de contrato** = início do primeiro período de contrato (ou
+a admissão, se não houver períodos), só para quem não é CLT.
+
+**b) Planilha de PAGAMENTOS do mês** — **Lançamentos → Exportar**
+(`/api/exportar-planilha?mes=YYYY-MM&tipo=todos|clt|contrato`, arquivo
+`pagamentos_MM-AAAA.xlsx`, com sufixo `_clt` ou `_contrato` quando filtrada). Uma única aba
+**Pagamentos** com as colunas **Nome, Empresa, Pagamento em Espécie, Pagamento em Conta**,
+em ordem alfabética. **Só entra quem tem valor em pelo menos um dos dois pagamentos** no
+mês; quem não tem nenhum fica de fora. O modal permite filtrar a categoria (Todos, Somente
+CLT, Somente Contrato = Mensalista + Diarista). Sem nenhum pagamento no mês/categoria, o
+sistema avisa e não baixa arquivo. "Pagamento em Conta" é o campo Pagamento Contab. (CLT) /
+Pagamento em conta (Mensalista e Diarista).
 
 ### 5.10 Recibos
 
@@ -322,8 +334,8 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
 - A tela abre na **listagem**; **"+ Novo Colaborador"** alterna para o formulário (com
   confirmação se já houver dados preenchidos). Um único botão **Voltar** fecha o
   formulário ou, estando na lista, volta ao Dashboard.
-- Lista com busca por nome, chips de tipo (CLT/Diarista/Mensalista) e "Mostrar
-  encerrados" (ver 5.2).
+- Lista com busca por nome, chips de tipo (CLT/Diarista/Mensalista), "Mostrar
+  encerrados" (ver 5.2) e o botão **Exportar** (planilha de colaboradores, ver 5.9).
 - Formulário: Dados Pessoais, Dados Profissionais (empresa, contratação, admissão,
   **períodos de contrato**), Remuneração (com diária quando aplicável), Benefícios,
   Adiantamento, Empréstimos e Observações. Máscaras de CPF e dinheiro (R$).

@@ -783,49 +783,93 @@ def _data_iso(valor):
         return None
 
 
-@app.route('/api/exportar-planilha', methods=['GET'])
-def exportar_planilha():
-    """Planilha do mês no padrão da contabilidade: uma aba por empresa,
-    cada uma com as colunas na ordem do modelo."""
-    from io import BytesIO
-    from flask import send_file
+def _novo_workbook():
+    """Workbook vazio + estilos usados nas planilhas (cabeçalho dourado SEPRES)."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
+    wb = Workbook()
+    wb.remove(wb.active)
+    estilo = {'fonte': Font(bold=True, color='FFFFFF'),
+              'fundo': PatternFill('solid', fgColor='A89826'),
+              'alinhamento': Alignment(vertical='center')}
+    return wb, estilo
+
+
+def _preencher_aba(wb, estilo, nome_aba, colunas, registros):
+    """colunas: lista de (título, chave, é moeda, é data, largura)."""
     from openpyxl.utils import get_column_letter
+    ws = wb.create_sheet(nome_aba)
+    for i, (titulo, chave, moeda, data, largura) in enumerate(colunas, start=1):
+        c = ws.cell(row=1, column=i, value=titulo or None)
+        c.font, c.fill, c.alignment = estilo['fonte'], estilo['fundo'], estilo['alinhamento']
+        ws.column_dimensions[get_column_letter(i)].width = largura
+    for r, reg in enumerate(registros, start=2):
+        for i, (_, chave, moeda, data, _) in enumerate(colunas, start=1):
+            c = ws.cell(row=r, column=i, value=reg[chave])
+            if moeda:
+                c.number_format = '"R$" #,##0.00'
+            elif data:
+                c.number_format = 'dd/mm/yyyy'
+    ws.freeze_panes = 'A2'
+    ws.auto_filter.ref = f'A1:{get_column_letter(len(colunas))}{max(1, len(registros) + 1)}'
 
-    mes = request.args.get('mes', '')
-    if len(mes) != 7:
-        return jsonify({'erro': 'Informe o mês (YYYY-MM).'}), 400
-    # Categoria: todos | clt | contrato (Mensalista + Diarista)
-    tipo = request.args.get('tipo', 'todos')
-    if tipo not in ('todos', 'clt', 'contrato'):
-        return jsonify({'erro': 'Tipo inválido.'}), 400
 
-    consulta = (db.session.query(Lancamento, Colaborador)
-                .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
-                .filter(Lancamento.mes == mes))
-    if tipo == 'clt':
-        consulta = consulta.filter(Colaborador.contratacao == 'CLT')
-    elif tipo == 'contrato':
-        consulta = consulta.filter(Colaborador.contratacao != 'CLT')
-    linhas = consulta.all()
-    if not linhas:
-        return jsonify({'erro': 'Não há lançamentos para o mês e a categoria selecionados.'}), 404
+def _enviar_xlsx(wb, nome_arquivo):
+    from io import BytesIO
+    from flask import send_file
+    saida = BytesIO()
+    wb.save(saida)
+    saida.seek(0)
+    return send_file(saida, as_attachment=True, download_name=nome_arquivo,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-    def dados(lanc, colab):
+
+def _contrato_encerrado(colab):
+    """Mensalista/Diarista cujos períodos de contrato já terminaram todos (sem período
+    vigente nem futuro). CLT e quem não tem períodos cadastrados nunca está encerrado."""
+    if colab.contratacao == 'CLT' or not colab.contratosJson:
+        return False
+    periodos = json.loads(colab.contratosJson)
+    if not periodos:
+        return False
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    for p in periodos:
+        inicio, fim = p.get('inicio') or '', p.get('fim') or ''
+        if (not inicio or inicio <= hoje) and (not fim or hoje <= fim):
+            return False  # vigente
+        if inicio and inicio > hoje:
+            return False  # período futuro
+    return True
+
+
+@app.route('/api/exportar-colaboradores', methods=['GET'])
+def exportar_colaboradores():
+    """Planilha de COLABORADORES no padrão da contabilidade: uma aba por empresa, com as
+    colunas na ordem do modelo. Usa os dados do cadastro; contratos encerrados ficam de fora."""
+    colaboradores_list = [c for c in Colaborador.query.all() if not _contrato_encerrado(c)]
+    if not colaboradores_list:
+        return jsonify({'erro': 'Não há colaboradores para exportar.'}), 404
+
+    def dados(c):
+        periodos = sorted(json.loads(c.contratosJson), key=lambda p: p.get('inicio') or '') \
+            if c.contratosJson else []
+        inicio_contrato = None
+        if c.contratacao != 'CLT':
+            # Início do contrato: começo do primeiro período; sem períodos, a admissão.
+            inicio_contrato = _data_iso(periodos[0].get('inicio')) if periodos and periodos[0].get('inicio') \
+                else _data_iso(c.admissao)
         return {
-            'tipo': 'CLT' if colab.contratacao == 'CLT' else 'CONTRATO',
-            'cpf': colab.cpf, 'nome': (colab.nome or '').strip(),
-            'salario': lanc.remuneracao or 0,
-            'bonificacao': lanc.bonificacao or 0,
-            'bonus_dinheiro': lanc.pagamentoEspecie or 0,
-            'cargo': (colab.funcao or '').strip(),
-            'admissao': _data_iso(colab.admissao),
-            # Início de contrato = admissão, só para quem tem contrato por prazo (não-CLT).
-            'inicio_contrato': _data_iso(colab.admissao) if colab.contratacao != 'CLT' else None,
+            'tipo': 'CLT' if c.contratacao == 'CLT' else 'CONTRATO',
+            'cpf': c.cpf, 'nome': (c.nome or '').strip(),
+            # No Diarista o "salário" da planilha é o valor da diária.
+            'salario': (c.valorDiaria if c.contratacao == 'Diarista' else c.remuneracao) or 0,
+            'bonificacao': c.premio or 0,
+            'bonus_dinheiro': None,  # não existe no cadastro: preencher à mão se necessário
+            'cargo': (c.funcao or '').strip(),
+            'admissao': _data_iso(c.admissao),
+            'inicio_contrato': inicio_contrato,
         }
 
-    # (título, chave, é moeda, é data, largura) na ordem exata de cada modelo
     layouts = {
         'Gerenciadora': [
             ('', 'tipo', 0, 0, 12), ('CPF', 'cpf', 0, 0, 16), ('Nome completo', 'nome', 0, 0, 38),
@@ -838,41 +882,55 @@ def exportar_planilha():
             ('', 'tipo', 0, 0, 12), ('ADMISSÃO', 'admissao', 0, 1, 14),
             ('Inicio de contrato', 'inicio_contrato', 0, 1, 18), ('CPF', 'cpf', 0, 0, 16)],
     }
-
-    wb = Workbook()
-    wb.remove(wb.active)
-    cabecalho_fill = PatternFill('solid', fgColor='A89826')
     por_empresa = {}
-    for lanc, colab in linhas:
-        aba = colab.empresa if colab.empresa in layouts else 'Gerenciadora'
-        por_empresa.setdefault(aba, []).append(dados(lanc, colab))
+    for c in colaboradores_list:
+        aba = c.empresa if c.empresa in layouts else 'Gerenciadora'
+        por_empresa.setdefault(aba, []).append(dados(c))
 
+    wb, estilo = _novo_workbook()
     for aba in ('Gerenciadora', 'Engenharia'):
         registros = sorted(por_empresa.get(aba, []), key=lambda r: r['nome'].lower())
-        ws = wb.create_sheet(aba)
-        colunas = layouts[aba]
-        for i, (titulo, chave, moeda, data, largura) in enumerate(colunas, start=1):
-            c = ws.cell(row=1, column=i, value=titulo or None)
-            c.font = Font(bold=True, color='FFFFFF')
-            c.fill = cabecalho_fill
-            c.alignment = Alignment(vertical='center')
-            ws.column_dimensions[get_column_letter(i)].width = largura
-        for r, reg in enumerate(registros, start=2):
-            for i, (_, chave, moeda, data, _) in enumerate(colunas, start=1):
-                c = ws.cell(row=r, column=i, value=reg[chave])
-                if moeda:
-                    c.number_format = '"R$" #,##0.00'
-                elif data:
-                    c.number_format = 'dd/mm/yyyy'
-        ws.freeze_panes = 'A2'
-        ws.auto_filter.ref = f'A1:{get_column_letter(len(colunas))}{max(1, len(registros) + 1)}'
+        _preencher_aba(wb, estilo, aba, layouts[aba], registros)
+    return _enviar_xlsx(wb, f'colaboradores_{datetime.now().strftime("%d-%m-%Y")}.xlsx')
 
-    saida = BytesIO()
-    wb.save(saida)
-    saida.seek(0)
-    return send_file(saida, as_attachment=True,
-                     download_name=f'planilha_{mes[5:]}-{mes[:4]}{"" if tipo == "todos" else "_" + tipo}.xlsx',
-                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+@app.route('/api/exportar-planilha', methods=['GET'])
+def exportar_planilha():
+    """Planilha de PAGAMENTOS do mês: Nome, Empresa, Pagamento em Espécie e Pagamento em
+    Conta. Só entra quem tem valor em pelo menos um dos dois pagamentos."""
+    from sqlalchemy import or_
+    mes = request.args.get('mes', '')
+    if len(mes) != 7:
+        return jsonify({'erro': 'Informe o mês (YYYY-MM).'}), 400
+    # Categoria: todos | clt | contrato (Mensalista + Diarista)
+    tipo = request.args.get('tipo', 'todos')
+    if tipo not in ('todos', 'clt', 'contrato'):
+        return jsonify({'erro': 'Tipo inválido.'}), 400
+
+    consulta = (db.session.query(Lancamento, Colaborador)
+                .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
+                .filter(Lancamento.mes == mes)
+                .filter(or_(Lancamento.pagamentoEspecie > 0, Lancamento.pagamentoContab > 0)))
+    if tipo == 'clt':
+        consulta = consulta.filter(Colaborador.contratacao == 'CLT')
+    elif tipo == 'contrato':
+        consulta = consulta.filter(Colaborador.contratacao != 'CLT')
+    linhas = consulta.all()
+    if not linhas:
+        return jsonify({'erro': 'Não há pagamentos lançados para o mês e a categoria selecionados.'}), 404
+
+    registros = sorted(
+        ({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
+          'especie': l.pagamentoEspecie or 0, 'conta': l.pagamentoContab or 0}
+         for l, c in linhas),
+        key=lambda r: r['nome'].lower())
+    colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
+               ('Pagamento em Espécie', 'especie', 1, 0, 22),
+               ('Pagamento em Conta', 'conta', 1, 0, 22)]
+    wb, estilo = _novo_workbook()
+    _preencher_aba(wb, estilo, 'Pagamentos', colunas, registros)
+    return _enviar_xlsx(
+        wb, f'pagamentos_{mes[5:]}-{mes[:4]}{"" if tipo == "todos" else "_" + tipo}.xlsx')
 
 
 @app.route('/api/lancamentos', methods=['GET'])
