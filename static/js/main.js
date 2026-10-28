@@ -1701,45 +1701,49 @@ function renderizarResumoPagamentos() {
     const mesTxt = formatarMesAno(periodo);
 
     const parte1 = pendentes > 0
-        ? `<span><strong class="text-amber-700">${pendentes}</strong> de ${doMes.length} lançamento(s) de ${mesTxt} <strong class="text-amber-700">sem pagamento</strong> lançado <button type="button" class="ml-1 font-medium text-sepres-700 underline hover:text-sepres-800" onclick="abrirSemLancamento()">ver nomes</button></span>`
+        ? `<span><strong class="text-amber-700">${pendentes}</strong> de ${doMes.length} lançamento(s) de ${mesTxt} <strong class="text-amber-700">sem pagamento</strong> lançado <button type="button" class="ml-1 font-medium text-sepres-700 underline hover:text-sepres-800" onclick="abrirPendencias('pagamento')">ver nomes</button></span>`
         : `<span class="text-emerald-700"><i class="fas fa-circle-check"></i> ${doMes.length > 0 ? 'Todos os ' + doMes.length + ' lançamento(s) de ' + mesTxt + ' têm pagamento lançado' : 'Nenhum lançamento em ' + mesTxt + ' ainda'}</span>`;
     const parte2 = semLanc > 0
-        ? `<span><strong class="text-amber-700">${semLanc}</strong> colaborador(es) <strong class="text-amber-700">sem lançamento</strong> em ${mesTxt} <button type="button" class="ml-1 font-medium text-sepres-700 underline hover:text-sepres-800" onclick="abrirSemLancamento()">ver nomes</button></span>`
+        ? `<span><strong class="text-amber-700">${semLanc}</strong> colaborador(es) <strong class="text-amber-700">sem lançamento</strong> em ${mesTxt} <button type="button" class="ml-1 font-medium text-sepres-700 underline hover:text-sepres-800" onclick="abrirPendencias('lancamento')">ver nomes</button></span>`
         : `<span class="text-emerald-700"><i class="fas fa-circle-check"></i> Todos os colaboradores ativos têm lançamento em ${mesTxt}</span>`;
     faixa.innerHTML = parte1 + parte2;
     faixa.classList.remove('hidden'); faixa.classList.add('flex');
 }
 
-function abrirSemLancamento() {
+// Abre a lista pedida: 'pagamento' (lançamentos sem Espécie/em Conta) ou 'lancamento'
+// (colaboradores ativos sem lançamento no mês). Clicar num nome abre o lançamento.
+function abrirPendencias(tipo) {
     const periodo = document.getElementById('filtroPeriodoLanc')?.value || '';
     if (!periodo) return;
     const porNome = (a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' });
-    const semPagamento = lancamentosSemPagamento(periodo)
-        .map(l => ({ l, c: colaboradores.find(co => co.id === l.colaboradorId) || { nome: 'Desconhecido' } }))
-        .sort((x, y) => porNome(x.c, y.c));
-    const semLanc = colaboradoresSemLancamento(periodo).sort(porNome);
-
     const linha = (nome, detalhe, acao) => `
         <button type="button" class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-slate-50" onclick="${acao}">
             <span class="font-medium text-slate-800">${esc(nome)}</span>
             <span class="flex shrink-0 items-center gap-2 text-xs text-slate-500">${detalhe}<i class="fas fa-chevron-right text-slate-300"></i></span>
         </button>`;
-    const secao = (titulo, itens, vazio) => `
-        <h4 class="mb-1 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500 first:mt-0">${titulo}</h4>
-        ${itens.length ? '<div class="space-y-0.5">' + itens.join('') + '</div>' : `<p class="px-3 py-2 text-slate-400">${vazio}</p>`}`;
-
-    document.getElementById('semLancTitulo').textContent = `Pendências de ${formatarMesAno(periodo)}`;
-    document.getElementById('semLancLista').innerHTML =
-        secao(`Sem pagamento lançado (${semPagamento.length})`,
-            semPagamento.map(({ l, c }) => linha(c.nome,
-                `${esc(c.empresa || '')} ${c.contratacao ? badgeContratacao(c.contratacao) : ''} ${badgeStatus(l.status)}`,
-                `abrirLancamentoDaLista('${esc(l.id)}')`)),
-            'Todos os lançamentos já têm pagamento lançado.') +
-        secao(`Sem lançamento (${semLanc.length})`,
-            semLanc.map(c => linha(c.nome,
-                `${esc(c.empresa || '')} ${badgeContratacao(c.contratacao)}`,
-                `novoLancamentoPara('${esc(c.id)}', '${esc(periodo)}')`)),
-            'Todos os colaboradores ativos têm lançamento neste mês.');
+    const mes = formatarMesAno(periodo);
+    let titulo, itens, vazio;
+    if (tipo === 'pagamento') {
+        const lista = lancamentosSemPagamento(periodo)
+            .map(l => ({ l, c: colaboradores.find(co => co.id === l.colaboradorId) || { nome: 'Desconhecido' } }))
+            .sort((x, y) => porNome(x.c, y.c));
+        titulo = `Sem pagamento lançado em ${mes} (${lista.length})`;
+        vazio = 'Todos os lançamentos já têm pagamento lançado.';
+        itens = lista.map(({ l, c }) => linha(c.nome,
+            `${esc(c.empresa || '')} ${c.contratacao ? badgeContratacao(c.contratacao) : ''} ${badgeStatus(l.status)}`,
+            `abrirLancamentoDaLista('${esc(l.id)}')`));
+    } else {
+        const lista = colaboradoresSemLancamento(periodo).sort(porNome);
+        titulo = `Sem lançamento em ${mes} (${lista.length})`;
+        vazio = 'Todos os colaboradores ativos têm lançamento neste mês.';
+        itens = lista.map(c => linha(c.nome,
+            `${esc(c.empresa || '')} ${badgeContratacao(c.contratacao)}`,
+            `novoLancamentoPara('${esc(c.id)}', '${esc(periodo)}')`));
+    }
+    document.getElementById('semLancTitulo').textContent = titulo;
+    document.getElementById('semLancLista').innerHTML = itens.length
+        ? '<div class="space-y-0.5">' + itens.join('') + '</div>'
+        : `<p class="px-3 py-2 text-slate-400">${vazio}</p>`;
     abrirModal('modalSemLancamento');
 }
 

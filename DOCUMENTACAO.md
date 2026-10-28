@@ -356,8 +356,8 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   **pendente**; lançamento de férias não conta como pendente. Uma faixa acima da tabela mostra,
   para o mês e o contrato filtrados, quantos lançamentos estão sem pagamento e quantos
   colaboradores ativos (pelos períodos de contrato) **ainda não têm lançamento** no mês.
-  O link **"ver nomes"** abre as **Pendências do mês** em duas listas — *Sem pagamento
-  lançado* e *Sem lançamento* — e **clicar num nome** abre o lançamento: em aberto vai para
+  Cada link **"ver nomes"** abre a **sua lista** — *Sem pagamento lançado* ou *Sem
+  lançamento* — e **clicar num nome** abre o lançamento: em aberto vai para
   a edição, finalizado abre só para visualizar, e quem não tem lançamento abre um
   **lançamento novo** já com o colaborador e o mês escolhidos. O **Finalizar todos** avisa
   quantos dos lançamentos ainda estão sem pagamento.

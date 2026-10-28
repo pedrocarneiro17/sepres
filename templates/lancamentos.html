@@ -362,11 +362,11 @@
         </div>
     </div>
 
-    <!-- Modal: pendências do mês (sem pagamento lançado / sem lançamento); clicar abre o lançamento -->
+    <!-- Modal: lista de pendências do mês (uma por vez: sem pagamento lançado OU sem lançamento); clicar abre o lançamento -->
     <div id="modalSemLancamento" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
         <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl">
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                <h3 class="text-lg font-semibold text-slate-900" id="semLancTitulo">Pendências do mês</h3>
+                <h3 class="text-lg font-semibold text-slate-900" id="semLancTitulo">Pendências</h3>
                 <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalSemLancamento')"><i class="fas fa-times"></i></button>
             </div>
             <div class="max-h-[60vh] overflow-y-auto px-6 py-4 text-sm" id="semLancLista"></div>
