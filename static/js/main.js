@@ -1772,14 +1772,9 @@ function renderizarLancamentos() {
             ? ` <span class="ml-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20" title="Adiantamento lançado">Adiantamento</span>`
             : '';
 
-        // Controle: lançamento ainda sem Pagamento Espécie nem em Conta.
-        const marcaSemPagamento = pagamentoPendente(l)
-            ? ' <span class="ml-1 inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-300/60" title="Nenhum Pagamento em Espécie ou em Conta lançado">Sem pagamento</span>'
-            : '';
-
         return `
         <tr class="border-b border-slate-100 transition hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium text-slate-800">${esc(c ? c.nome : 'Desconhecido')}${marcaAdiantamento}${marcaSemPagamento}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${esc(c ? c.nome : 'Desconhecido')}${marcaAdiantamento}</td>
             <td class="px-4 py-3 text-slate-600">${formatarMesAno(l.mes)}</td>
             <td class="px-4 py-3 font-medium text-slate-800">${formatarMoeda(l.liquidoTotal || 0)}</td>
             <td class="px-4 py-3">${badgeStatus(l.status)}</td>

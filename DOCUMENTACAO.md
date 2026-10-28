@@ -353,8 +353,7 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
 - **Controle de pagamento do mês**: considera-se **pagamento lançado** quando o lançamento
   tem **Pagamento Espécie e/ou Pagamento Contab. (em conta)** com valor — vale para CLT,
   Mensalista e Diarista (mesmos campos). Lançamento só com adiantamento continua
-  **pendente**; lançamento de férias não conta como pendente. Na lista, o lançamento
-  pendente ganha a etiqueta cinza **"Sem pagamento"**. Uma faixa acima da tabela mostra,
+  **pendente**; lançamento de férias não conta como pendente. Uma faixa acima da tabela mostra,
   para o mês e o contrato filtrados, quantos lançamentos estão sem pagamento e quantos
   colaboradores ativos (pelos períodos de contrato) **ainda não têm lançamento** no mês —
   com o link **"ver nomes"**. O **Finalizar todos** avisa quantos dos lançamentos ainda
