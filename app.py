@@ -900,8 +900,8 @@ def exportar_colaboradores():
 
 @app.route('/api/exportar-eva', methods=['GET'])
 def exportar_eva():
-    """Planilha do EVA do mês (somente CLT): Prêmio + Assiduidade + Horas Extras + Combustível. Só entra
-    quem tem algum valor de EVA lançado no mês."""
+    """Planilha do EVA do mês (somente CLT): Prêmio + Assiduidade + Horas Extras + Combustível.
+    Entram todos os CLT com lançamento no mês, inclusive os zerados."""
     mes = request.args.get('mes', '')
     if len(mes) != 7:
         return jsonify({'erro': 'Informe o mês (YYYY-MM).'}), 400
@@ -913,14 +913,12 @@ def exportar_eva():
         premio, assiduidade, extras = l.bonificacao or 0, l.assiduidade or 0, l.horasExtras or 0
         combustivel = l.combustivel or 0
         total = premio + assiduidade + extras + combustivel  # o cartão alimentação não soma no EVA
-        if total <= 0:
-            continue
         registros.append({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
                           'premio': premio, 'assiduidade': assiduidade, 'extras': extras,
                           'combustivel': combustivel, 'alimentacao': l.cartaoAlimentacao or 0,
                           'eva': total})
     if not registros:
-        return jsonify({'erro': 'Não há valores de EVA lançados para o mês selecionado.'}), 404
+        return jsonify({'erro': 'Não há lançamentos de CLT no mês selecionado.'}), 404
     registros.sort(key=lambda r: r['nome'].lower())
     colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
                ('Prêmio', 'premio', 1, 0, 16), ('Assiduidade', 'assiduidade', 1, 0, 16),

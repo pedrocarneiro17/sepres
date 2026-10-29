@@ -2559,7 +2559,7 @@ function atualizarDescricaoExportar() {
     const eva = document.getElementById('exportarTipo')?.value === 'eva';
     const desc = document.getElementById('exportarDescricao');
     if (desc) desc.innerHTML = eva
-        ? 'Planilha do <strong>EVA</strong> do mês (somente CLT): Prêmio, Assiduidade, Horas Extras e Combustível de quem tem valor lançado.'
+        ? 'Planilha do <strong>EVA</strong> do mês: todos os <strong>CLT</strong> com lançamento no mês (inclusive zerados), com Prêmio, Assiduidade, Horas Extras, Combustível e Cartão Alimentação.'
         : 'Exporta quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado no mês (Nome, Empresa e os dois valores).';
 }
 
