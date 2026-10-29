@@ -303,8 +303,9 @@ Pagamento em conta (Mensalista e Diarista). **No CLT, o Vale Transporte sai soma
 **c) Planilha do EVA do mês (somente CLT)** — no modal de **Lançamentos → Exportar**, basta
 escolher a categoria **"EVA (somente CLT)"** (`/api/exportar-eva?mes=YYYY-MM`, arquivo
 `eva_MM-AAAA.xlsx`).
-Uma aba **EVA** com **Nome, Empresa, Prêmio, Assiduidade, Horas Extras, Combustível e EVA
-(total)** (prêmio + assiduidade + horas extras + combustível; o cartão alimentação não entra). Só entra CLT com
+Uma aba **EVA** com **Nome, Empresa, Prêmio, Assiduidade, Horas Extras, Combustível, EVA
+(total) e Cartão Alimentação**. O EVA (total) é prêmio + assiduidade + horas extras +
+combustível; o **Cartão Alimentação aparece só como informação** e não entra na soma. Só entra CLT com
 algum valor de EVA lançado no mês.
 
 ### 5.10 Recibos

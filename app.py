@@ -912,12 +912,12 @@ def exportar_eva():
     for l, c in linhas:
         premio, assiduidade, extras = l.bonificacao or 0, l.assiduidade or 0, l.horasExtras or 0
         combustivel = l.combustivel or 0
-        total = premio + assiduidade + extras + combustivel
+        total = premio + assiduidade + extras + combustivel  # o cartão alimentação não soma no EVA
         if total <= 0:
             continue
         registros.append({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
                           'premio': premio, 'assiduidade': assiduidade, 'extras': extras,
-                          'combustivel': combustivel,
+                          'combustivel': combustivel, 'alimentacao': l.cartaoAlimentacao or 0,
                           'eva': total})
     if not registros:
         return jsonify({'erro': 'Não há valores de EVA lançados para o mês selecionado.'}), 404
@@ -925,7 +925,7 @@ def exportar_eva():
     colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
                ('Prêmio', 'premio', 1, 0, 16), ('Assiduidade', 'assiduidade', 1, 0, 16),
                ('Horas Extras', 'extras', 1, 0, 16), ('Combustível', 'combustivel', 1, 0, 16),
-               ('EVA (total)', 'eva', 1, 0, 16)]
+               ('EVA (total)', 'eva', 1, 0, 16), ('Cartão Alimentação', 'alimentacao', 1, 0, 20)]
     wb, estilo = _novo_workbook()
     _preencher_aba(wb, estilo, 'EVA', colunas, registros)
     return _enviar_xlsx(wb, f'eva_{mes[5:]}-{mes[:4]}.xlsx')
