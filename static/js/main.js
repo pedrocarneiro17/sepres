@@ -2671,6 +2671,13 @@ function selecionarRecibosLote() {
 }
 
 function atualizarPrevisaoRecibosLote() {
+    const dicas = {
+        pagamento: 'CLT: valor em espécie. Mensalista e Diarista: valor líquido.',
+        eva: 'Somente CLT: assiduidade, prestação de serviços (horas extras), prêmios e vale combustível.',
+        autonomo: 'Somente Mensalista e Diarista: valor líquido.'
+    };
+    const dica = document.getElementById('reciboLoteDica');
+    if (dica) dica.textContent = dicas[document.getElementById('reciboLoteTipo').value] || '';
     const { itens, zerados, mes } = selecionarRecibosLote();
     const el = document.getElementById('reciboLotePrevisao');
     const btn = document.getElementById('btnGerarRecibosLote');

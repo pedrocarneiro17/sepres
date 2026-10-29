@@ -273,7 +273,7 @@
                         <div class="relative w-full sm:w-48">
                             <input type="month" class="input mes-ptbr" id="filtroPeriodoLanc" placeholder="Todos os períodos">
                         </div>
-                        <div class="relative w-full sm:w-44">
+                        <div class="relative w-full sm:w-48">
                             <select class="input" id="filtroTipoLanc" title="Filtrar por tipo de contrato">
                                 <option value="todos">Todos os contratos</option>
                                 <option value="CLT">CLT</option>
@@ -378,10 +378,11 @@
                 <div>
                     <label class="label">Recibo</label>
                     <select class="input" id="reciboLoteTipo" onchange="atualizarPrevisaoRecibosLote()">
-                        <option value="pagamento">Pagamento (CLT: espécie; Mensalista/Diarista: líquido)</option>
-                        <option value="eva">Prêmio / EVA (somente CLT)</option>
-                        <option value="autonomo">Pagamento de autônomo (Mensalista e Diarista)</option>
+                        <option value="pagamento">Pagamento</option>
+                        <option value="eva">Prêmio / EVA (CLT)</option>
+                        <option value="autonomo">Autônomo (Mensalista e Diarista)</option>
                     </select>
+                    <p class="mt-1.5 text-xs text-slate-500" id="reciboLoteDica"></p>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -397,7 +398,7 @@
                         <label class="label">Empresa</label>
                         <select class="input" id="reciboLoteEmpresa" onchange="atualizarPrevisaoRecibosLote()">
                             <option value="todas">Todas</option>
-                            <option value="Engenharia">Engenharia (Construtora)</option>
+                            <option value="Engenharia">Construtora</option>
                             <option value="Gerenciadora">Gerenciadora</option>
                         </select>
                     </div>
