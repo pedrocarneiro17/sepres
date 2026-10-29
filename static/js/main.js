@@ -2577,11 +2577,17 @@ function limparFiltros() {
 // data sempre visível na tela, competindo com o filtro de período da listagem).
 // Texto do modal de exportação conforme a categoria escolhida.
 function atualizarDescricaoExportar() {
-    const eva = document.getElementById('exportarTipo')?.value === 'eva';
+    const categoria = document.getElementById('exportarTipo')?.value;
     const desc = document.getElementById('exportarDescricao');
-    if (desc) desc.innerHTML = eva
-        ? 'Planilha do <strong>EVA</strong> do mês: todos os <strong>CLT</strong> com lançamento no mês (inclusive zerados), com Prêmio, Assiduidade, Horas Extras, Combustível e Cartão Alimentação.'
-        : 'Exporta quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado no mês (Nome, Empresa e os dois valores).';
+    if (!desc) return;
+    if (categoria === 'eva') {
+        desc.innerHTML = 'Planilha do <strong>EVA</strong> do mês: todos os <strong>CLT</strong> com lançamento no mês (inclusive zerados), com Prêmio, Assiduidade, Horas Extras, Combustível e Cartão Alimentação.';
+    } else if (categoria === 'engenharia' || categoria === 'gerenciadora') {
+        const nome = categoria === 'engenharia' ? 'Construtora (Engenharia)' : 'Gerenciadora';
+        desc.innerHTML = `Pagamentos do mês só da <strong>${nome}</strong>: quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado (Nome, Empresa e os dois valores).`;
+    } else {
+        desc.innerHTML = 'Exporta quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado no mês (Nome, Empresa e os dois valores).';
+    }
 }
 
 function abrirExportarCSV() {
@@ -2604,8 +2610,11 @@ async function exportarPlanilha() {
     // Categoria "EVA" (somente CLT) usa a planilha do EVA; as demais, a de pagamentos.
     if (document.getElementById('exportarTipo')?.value === 'eva') return exportarEva();
     try {
-        const tipo = document.getElementById('exportarTipo')?.value || 'todos';
-        const empresa = document.getElementById('exportarEmpresa')?.value || 'todas';
+        // A categoria também pode ser uma empresa: Construtora (Engenharia) ou Gerenciadora.
+        const categoria = document.getElementById('exportarTipo')?.value || 'todos';
+        const porEmpresa = { engenharia: 'Engenharia', gerenciadora: 'Gerenciadora' };
+        const empresa = porEmpresa[categoria] || 'todas';
+        const tipo = porEmpresa[categoria] ? 'todos' : categoria;
         const resp = await fetch('/api/exportar-planilha?mes=' + encodeURIComponent(mesFiltro) + '&tipo=' + encodeURIComponent(tipo) + '&empresa=' + encodeURIComponent(empresa));
         if (!resp.ok) {
             const erro = await resp.json().catch(() => ({}));
@@ -2705,8 +2714,7 @@ async function exportarEva() {
         return;
     }
     try {
-        const empresa = document.getElementById('exportarEmpresa')?.value || 'todas';
-        const resp = await fetch('/api/exportar-eva?mes=' + encodeURIComponent(mesFiltro) + '&empresa=' + encodeURIComponent(empresa));
+        const resp = await fetch('/api/exportar-eva?mes=' + encodeURIComponent(mesFiltro));
         if (!resp.ok) {
             const erro = await resp.json().catch(() => ({}));
             notificar(erro.erro || 'Erro ao gerar a planilha do EVA.', 'info');
@@ -2716,7 +2724,7 @@ async function exportarEva() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `eva_${formatarMesAno(mesFiltro).replace('/', '-')}${empresa === 'todas' ? '' : '_' + empresa.toLowerCase()}.xlsx`;
+        link.download = `eva_${formatarMesAno(mesFiltro).replace('/', '-')}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

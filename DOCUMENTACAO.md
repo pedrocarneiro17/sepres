@@ -309,11 +309,11 @@ combustível; o **Cartão Alimentação aparece só como informação** e não e
 Entram **todos os CLT com lançamento no mês, inclusive os zerados** (para conferir quem ainda
 está sem EVA); Mensalista e Diarista ficam de fora.
 
-**Separar por empresa:** o modal **Exportar** tem o seletor **Empresa** (*Todas*, *Engenharia
-(Construtora)* ou *Gerenciadora*), que vale para a planilha de pagamentos e para a do EVA
-(`&empresa=Engenharia|Gerenciadora`). Cada empresa gera um arquivo próprio, com o sufixo
-`_engenharia` ou `_gerenciadora` no nome. A planilha de **colaboradores** já traz uma aba por
-empresa.
+**Separar por empresa:** no modal **Exportar**, a **categoria** também tem as opções
+**"Somente Construtora (Engenharia)"** e **"Somente Gerenciadora"**, no mesmo padrão da planilha
+de pagamentos (Nome, Empresa, Pagamento em Espécie e em Conta; `&empresa=Engenharia|Gerenciadora`).
+Cada uma gera um arquivo próprio, com o sufixo `_engenharia` ou `_gerenciadora` no nome. A
+planilha de **colaboradores** já traz uma aba por empresa.
 
 ### 5.10 Recibos
 
