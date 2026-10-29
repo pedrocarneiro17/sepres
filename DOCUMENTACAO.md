@@ -128,7 +128,7 @@ Pagamento mensal de um colaborador (um por colaborador/mês).
 | `ferias` | `Normal` ou `Férias` (Férias zera os valores). |
 | `diasTrabalhados` | Só Diarista: multiplica `valorDiaria` para formar a remuneração. |
 | `remuneracao`, `bonificacao` | Vêm do cadastro (ou diária × dias), editáveis. |
-| `assiduidade`, `cartaoAlimentacao`, `horasExtras` | Valores do mês. Assiduidade e Horas Extras compõem o EVA do CLT. |
+| `assiduidade`, `combustivel`, `cartaoAlimentacao`, `horasExtras` | Valores do mês. Assiduidade, Combustível e Horas Extras compõem o EVA do CLT (com o prêmio). |
 | `adiantamentoEspecie`, `adiantamentoContab` | Adiantamento do mês (Contab. só CLT). Ver 5.4. |
 | `valeTransporte`, `outros`, `emprestimo`, `emprestimosPagos` | VT, outros e empréstimo (ver 5.6). |
 | `pagamentoContab` | Valor pago pela contabilidade (CLT: **"Pagamento Contab."**) ou **pago em conta** (Mensalista/Diarista: **"Pagamento em conta"**). Mesmo campo, só o rótulo muda. |
@@ -196,11 +196,11 @@ O campo "Tipo de Contratação" é reconstruído ao trocar a empresa.
 
 **CLT**
 ```
-Líquido = Pagamento Contab. + Pagamento Espécie − Empréstimo
+Líquido = Pagamento Contab. + Pagamento Espécie + Vale Transporte − Empréstimo
 ```
-O **empréstimo** (parcela paga no mês) desconta do valor final. Nada mais entra: remuneração,
-prêmio, assiduidade, horas extras (que formam o **EVA**, mostrado só como informação),
-Vale Transporte, Outros e Adiantamento ficam de fora. Se Contab. e Espécie estiverem em
+O **Vale Transporte** soma e o **empréstimo** (parcela paga no mês) desconta do valor final.
+Nada mais entra: remuneração, prêmio, assiduidade, horas extras e combustível (que formam o
+**EVA**, mostrado só como informação), Outros e Adiantamento ficam de fora. Se Contab. e Espécie estiverem em
 zero, o líquido é R$ 0,00 (ou negativo, se houver empréstimo).
 
 **Mensalista** (o salário bruto **não** entra)
@@ -297,13 +297,14 @@ em ordem alfabética. **Só entra quem tem valor em pelo menos um dos dois pagam
 mês; quem não tem nenhum fica de fora. O modal permite filtrar a categoria (Todos, Somente
 CLT, Somente Contrato = Mensalista + Diarista). Sem nenhum pagamento no mês/categoria, o
 sistema avisa e não baixa arquivo. "Pagamento em Conta" é o campo Pagamento Contab. (CLT) /
-Pagamento em conta (Mensalista e Diarista).
+Pagamento em conta (Mensalista e Diarista). **No CLT, o Vale Transporte sai somado ao
+"Pagamento em Espécie"** (dinheiro), e um CLT só com Vale Transporte também entra na planilha.
 
 **c) Planilha do EVA do mês (somente CLT)** — no modal de **Lançamentos → Exportar**, basta
 escolher a categoria **"EVA (somente CLT)"** (`/api/exportar-eva?mes=YYYY-MM`, arquivo
 `eva_MM-AAAA.xlsx`).
-Uma aba **EVA** com **Nome, Empresa, Prêmio, Assiduidade, Horas Extras e EVA (total)**
-(prêmio + assiduidade + horas extras; o cartão alimentação não entra). Só entra CLT com
+Uma aba **EVA** com **Nome, Empresa, Prêmio, Assiduidade, Horas Extras, Combustível e EVA
+(total)** (prêmio + assiduidade + horas extras + combustível; o cartão alimentação não entra). Só entra CLT com
 algum valor de EVA lançado no mês.
 
 ### 5.10 Recibos
@@ -312,8 +313,9 @@ algum valor de EVA lançado no mês.
   preciso fechar o mês).
 - CLT: **recibo de pagamento** e **recibo de prêmio (EVA)**, no modelo do cliente: "declaro
   que recebi nesta data a quantia de R$ X referente a **assiduidade**, R$ Y referente a
-  **prestação de serviços** (= horas extras), R$ Z referente a **prêmios**…", com o total e a
-  linha de assinatura. O cartão alimentação não entra. Mensalista/Diarista: **recibo de
+  **prestação de serviços** (= horas extras), R$ Z referente a **prêmios** e R$ W referente a
+  **vale combustível**…", com o total e a linha de assinatura (valores zerados também
+  aparecem). O cartão alimentação não entra. Mensalista/Diarista: **recibo de
   pagamento** e **recibo de pagamento de autônomo**. O valor do recibo é o líquido salvo
   no momento **em módulo**: se o líquido estiver negativo (adiantamento já lançado), o
   recibo mostra o valor positivo que foi pago. Se o lançamento for editado, gere o recibo

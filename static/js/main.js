@@ -1203,6 +1203,7 @@ function preencherCamposAutomaticamente() {
     // Pagamento Espécie/Contab. NÃO são pré-preenchidos — são digitados manualmente
     // a cada mês, conforme como o pagamento realmente será dividido.
     setMoeda(document.getElementById('lancAssiduidade'), 0);
+    setMoeda(document.getElementById('lancCombustivel'), 0);
     setMoeda(document.getElementById('lancCartaoAlimentacao'), 0);
     setMoeda(document.getElementById('lancHorasExtras'), 0);
     setMoeda(document.getElementById('lancValeTransporte'), 0);
@@ -1334,7 +1335,7 @@ async function salvarLancamento(e) {
             diasFerias: parseInt(document.getElementById('lancDiasFerias').value) || 30,
             diasTrabalhados: 0,
             remuneracao: 0, bonificacao: 0, totalRecebido: 0,
-            assiduidade: 0, cartaoAlimentacao: 0,
+            assiduidade: 0, combustivel: 0, cartaoAlimentacao: 0,
             adiantamentoEspecie: 0, adiantamentoContab: 0, horasExtras: 0,
             valeTransporte: 0, emprestimo: 0, outros: 0, liquidoTotal: 0,
             pagamentoContab: 0, pagamentoEspecie: 0,
@@ -1356,6 +1357,7 @@ async function salvarLancamento(e) {
             bonificacao: lerMoeda(document.getElementById('lancBonificacao')),
             totalRecebido: lerMoeda(document.getElementById('lancTotalRecebido')),
             assiduidade: lerMoeda(document.getElementById('lancAssiduidade')),
+            combustivel: lerMoeda(document.getElementById('lancCombustivel')),
             cartaoAlimentacao: lerMoeda(document.getElementById('lancCartaoAlimentacao')),
             adiantamentoEspecie: lerMoeda(document.getElementById('lancAdiantamentoEspecie')),
             adiantamentoContab: lerMoeda(document.getElementById('lancAdiantamentoContab')),
@@ -1414,7 +1416,7 @@ function limparFormLancamento() {
     document.getElementById('divMensagemFerias').style.display = 'none';
 
     ['lancColaborador','lancMes','lancFerias','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
-     'lancAssiduidade','lancCartaoAlimentacao',
+     'lancAssiduidade','lancCombustivel','lancCartaoAlimentacao',
      'lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
         const el = document.getElementById(id);
@@ -1422,7 +1424,7 @@ function limparFormLancamento() {
     });
 
     // Zera campos de dinheiro
-    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancAssiduidade','lancCartaoAlimentacao',
+    ['lancRemuneracao','lancBonificacao','lancTotalRecebido','lancAssiduidade','lancCombustivel','lancCartaoAlimentacao',
      'lancEva','lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancLiquidoTotal','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
         setMoeda(document.getElementById(id), 0);
@@ -1526,12 +1528,13 @@ function colaboradorLancamentoEhCLT() {
     return !!colaborador && colaborador.contratacao === 'CLT';
 }
 
-// EVA (apenas CLT): Prêmio + Assiduidade + Horas Extras — Cartão Alimentação NÃO entra.
+// EVA (apenas CLT): Prêmio + Assiduidade + Horas Extras + Combustível — Cartão Alimentação NÃO entra.
 function calcularEva() {
     const premio = lerMoeda(document.getElementById('lancBonificacao'));
     const assiduidade = lerMoeda(document.getElementById('lancAssiduidade'));
     const horasExtras = lerMoeda(document.getElementById('lancHorasExtras'));
-    setMoeda(document.getElementById('lancEva'), premio + assiduidade + horasExtras);
+    const combustivel = lerMoeda(document.getElementById('lancCombustivel'));
+    setMoeda(document.getElementById('lancEva'), premio + assiduidade + horasExtras + combustivel);
 }
 
 function calcularLiquidoTotal() {
@@ -1554,8 +1557,8 @@ function calcularLiquidoTotal() {
     // Não-CLT: não tem EVA, então Prêmio e Horas Extras entram direto no líquido.
     const baseVariavel = ehCLT ? 0 : (premio + horasExtras);
 
-    // CLT: Líquido = Pagamento Contab. + Pagamento Espécie - Empréstimo (nada mais entra na
-    //      conta; adiantamento só é registrado).
+    // CLT: Líquido = Pagamento Contab. + Pagamento Espécie + Vale Transporte - Empréstimo
+    //      (nada mais entra na conta; adiantamento só é registrado).
     //
     // Mensalista: o Salário Bruto NÃO entra. Líquido =
     //      Pagamento Espécie + Pagamento em conta + Prêmio + Horas Extras
@@ -1571,8 +1574,8 @@ function calcularLiquidoTotal() {
     // "Pagamento em conta" (Mensalista/Diarista) usa o mesmo campo de Pagamento Contab. do CLT.
     let liquido;
     if (ehCLT) {
-        // O empréstimo (parcela paga no mês) desconta do valor final.
-        liquido = pagamentoContab + pagamentoEspecie - emprestimo;
+        // O Vale Transporte soma e o empréstimo (parcela paga no mês) desconta do valor final.
+        liquido = pagamentoContab + pagamentoEspecie + valeTransporte - emprestimo;
     } else if (ehDiarista) {
         // A remuneração (diária x dias) fica só no Salário Bruto: o líquido soma o que é pago.
         liquido = baseVariavel + pagamentoEspecie + pagamentoContab
@@ -1817,7 +1820,7 @@ function renderizarLancamentos() {
         // Recibos ficam disponíveis em qualquer status: não é preciso finalizar o mês.
         let recibos = botaoAcao(`gerarRecibo('${l.id}')`, 'recibo', 'fa-file-lines', 'Gerar recibo de pagamento');
         if (ehCLT) {
-            recibos += botaoAcao(`gerarReciboPremio('${l.id}')`, 'premio', 'fa-award', 'Gerar recibo do EVA (prêmio, assiduidade e horas extras)');
+            recibos += botaoAcao(`gerarReciboPremio('${l.id}')`, 'premio', 'fa-award', 'Gerar recibo do EVA (prêmio, assiduidade, horas extras e combustível)');
         } else {
             recibos += botaoAcao(`gerarReciboAutonomo('${l.id}')`, 'autonomo', 'fa-file-contract', 'Gerar recibo de pagamento de autônomo');
         }
@@ -1882,6 +1885,7 @@ function editarLancamento(id) {
     setMoeda(document.getElementById('lancBonificacao'), l.bonificacao || 0);
     setMoeda(document.getElementById('lancTotalRecebido'), l.totalRecebido || 0);
     setMoeda(document.getElementById('lancAssiduidade'), l.assiduidade || 0);
+    setMoeda(document.getElementById('lancCombustivel'), l.combustivel || 0);
     setMoeda(document.getElementById('lancCartaoAlimentacao'), l.cartaoAlimentacao || 0);
     setMoeda(document.getElementById('lancAdiantamentoEspecie'), l.adiantamentoEspecie || 0);
     setMoeda(document.getElementById('lancAdiantamentoContab'), l.adiantamentoContab || 0);
@@ -1954,7 +1958,7 @@ function visualizarLancamento(id) {
     editarLancamento(id);
 
     ['lancColaborador','lancMes','lancFerias','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
-     'lancAssiduidade','lancCartaoAlimentacao',
+     'lancAssiduidade','lancCombustivel','lancCartaoAlimentacao',
      'lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancPagamentoContab','lancPagamentoEspecie'].forEach(idc => {
         const el = document.getElementById(idc);
@@ -2164,10 +2168,11 @@ function gerarReciboPremio(id) {
     const c = colaboradores.find(co => co.id === l.colaboradorId);
     if (!c) return;
 
-    // Recibo do EVA (modelo do cliente): assiduidade, "prestação de serviços" (= horas extras)
-    // e prêmios (o cartão alimentação não entra).
+    // Recibo do EVA (modelo do cliente): assiduidade, "prestação de serviços" (= horas extras),
+    // prêmios e vale combustível (o cartão alimentação não entra).
     const assiduidade = l.assiduidade || 0, servicos = l.horasExtras || 0, premios = l.bonificacao || 0;
-    const total = numeroBR(assiduidade + servicos + premios);
+    const combustivel = l.combustivel || 0;
+    const total = numeroBR(assiduidade + servicos + premios + combustivel);
     const dataExtenso = formatarDataExtenso(new Date());
 
     document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Prêmio (EVA)';
@@ -2176,7 +2181,7 @@ function gerarReciboPremio(id) {
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PRÊMIO</h4></div>
         <p>Eu, <strong>${esc(c.nome)}</strong>, declaro que recebi nesta data, a quantia de
         R$ ${numeroBR(assiduidade)} referente a assiduidade, R$ ${numeroBR(servicos)} referente a prestação de serviços,
-        R$ ${numeroBR(premios)} referente a prêmios, da empresa denominada ${EMPRESA_RECIBO.nome}, inscrita no CNPJ
+        R$ ${numeroBR(premios)} referente a prêmios e R$ ${numeroBR(combustivel)} referente a vale combustível, da empresa denominada ${EMPRESA_RECIBO.nome}, inscrita no CNPJ
         ${EMPRESA_RECIBO.cnpj}, com sede na Rua Anibal Cota, n°25, Sala 06, Edifício Jardins, Jardim Itacolomi,
         Ouro Preto/MG. Totalizando o valor de R$ ${total}.</p>
         <br>
@@ -2547,7 +2552,7 @@ function atualizarDescricaoExportar() {
     const eva = document.getElementById('exportarTipo')?.value === 'eva';
     const desc = document.getElementById('exportarDescricao');
     if (desc) desc.innerHTML = eva
-        ? 'Planilha do <strong>EVA</strong> do mês (somente CLT): Prêmio, Assiduidade e Horas Extras de quem tem valor lançado.'
+        ? 'Planilha do <strong>EVA</strong> do mês (somente CLT): Prêmio, Assiduidade, Horas Extras e Combustível de quem tem valor lançado.'
         : 'Exporta quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado no mês (Nome, Empresa e os dois valores).';
 }
 

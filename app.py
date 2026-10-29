@@ -216,6 +216,7 @@ class Lancamento(db.Model):
     adiantamentoContab = db.Column(db.Float)
     horasExtras = db.Column(db.Float)
     assiduidade = db.Column(db.Float) # usado no cálculo do EVA (apenas CLT)
+    combustivel = db.Column(db.Float) # usado no cálculo do EVA (apenas CLT)
     cartaoAlimentacao = db.Column(db.Float) # registrado, mas não entra no EVA nem no líquido
     valeTransporte = db.Column(db.Float)
     emprestimo = db.Column(db.Float)
@@ -245,6 +246,7 @@ class Lancamento(db.Model):
             "adiantamentoContab": self.adiantamentoContab,
             "horasExtras": self.horasExtras,
             "assiduidade": self.assiduidade,
+            "combustivel": self.combustivel,
             "cartaoAlimentacao": self.cartaoAlimentacao,
             "valeTransporte": self.valeTransporte,
             "emprestimo": self.emprestimo,
@@ -281,6 +283,8 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "emprestimosPagos" TEXT'))
     if 'assiduidade' not in colunas_lancamento:
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN assiduidade FLOAT'))
+    if 'combustivel' not in colunas_lancamento:
+        db.session.execute(text('ALTER TABLE lancamento ADD COLUMN combustivel FLOAT'))
     if 'cartaoAlimentacao' not in colunas_lancamento:
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN "cartaoAlimentacao" FLOAT'))
     if 'faltas' not in colunas_lancamento:
@@ -896,7 +900,7 @@ def exportar_colaboradores():
 
 @app.route('/api/exportar-eva', methods=['GET'])
 def exportar_eva():
-    """Planilha do EVA do mês (somente CLT): Prêmio + Assiduidade + Horas Extras. Só entra
+    """Planilha do EVA do mês (somente CLT): Prêmio + Assiduidade + Horas Extras + Combustível. Só entra
     quem tem algum valor de EVA lançado no mês."""
     mes = request.args.get('mes', '')
     if len(mes) != 7:
@@ -907,18 +911,21 @@ def exportar_eva():
     registros = []
     for l, c in linhas:
         premio, assiduidade, extras = l.bonificacao or 0, l.assiduidade or 0, l.horasExtras or 0
-        total = premio + assiduidade + extras
+        combustivel = l.combustivel or 0
+        total = premio + assiduidade + extras + combustivel
         if total <= 0:
             continue
         registros.append({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
                           'premio': premio, 'assiduidade': assiduidade, 'extras': extras,
+                          'combustivel': combustivel,
                           'eva': total})
     if not registros:
         return jsonify({'erro': 'Não há valores de EVA lançados para o mês selecionado.'}), 404
     registros.sort(key=lambda r: r['nome'].lower())
     colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
                ('Prêmio', 'premio', 1, 0, 16), ('Assiduidade', 'assiduidade', 1, 0, 16),
-               ('Horas Extras', 'extras', 1, 0, 16), ('EVA (total)', 'eva', 1, 0, 16)]
+               ('Horas Extras', 'extras', 1, 0, 16), ('Combustível', 'combustivel', 1, 0, 16),
+               ('EVA (total)', 'eva', 1, 0, 16)]
     wb, estilo = _novo_workbook()
     _preencher_aba(wb, estilo, 'EVA', colunas, registros)
     return _enviar_xlsx(wb, f'eva_{mes[5:]}-{mes[:4]}.xlsx')
@@ -927,8 +934,9 @@ def exportar_eva():
 @app.route('/api/exportar-planilha', methods=['GET'])
 def exportar_planilha():
     """Planilha de PAGAMENTOS do mês: Nome, Empresa, Pagamento em Espécie e Pagamento em
-    Conta. Só entra quem tem valor em pelo menos um dos dois pagamentos."""
-    from sqlalchemy import or_
+    Conta. Só entra quem tem valor em pelo menos um dos dois pagamentos. No CLT, o Vale
+    Transporte é somado ao Pagamento em Espécie (dinheiro)."""
+    from sqlalchemy import or_, and_
     mes = request.args.get('mes', '')
     if len(mes) != 7:
         return jsonify({'erro': 'Informe o mês (YYYY-MM).'}), 400
@@ -940,7 +948,9 @@ def exportar_planilha():
     consulta = (db.session.query(Lancamento, Colaborador)
                 .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
                 .filter(Lancamento.mes == mes)
-                .filter(or_(Lancamento.pagamentoEspecie > 0, Lancamento.pagamentoContab > 0)))
+                .filter(or_(Lancamento.pagamentoEspecie > 0, Lancamento.pagamentoContab > 0,
+                            # Vale Transporte do CLT sai como pagamento em dinheiro
+                            and_(Colaborador.contratacao == 'CLT', Lancamento.valeTransporte > 0))))
     if tipo == 'clt':
         consulta = consulta.filter(Colaborador.contratacao == 'CLT')
     elif tipo == 'contrato':
@@ -951,7 +961,9 @@ def exportar_planilha():
 
     registros = sorted(
         ({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
-          'especie': l.pagamentoEspecie or 0, 'conta': l.pagamentoContab or 0}
+          # CLT: o Vale Transporte entra junto do Pagamento em Espécie (dinheiro)
+          'especie': (l.pagamentoEspecie or 0) + ((l.valeTransporte or 0) if c.contratacao == 'CLT' else 0),
+          'conta': l.pagamentoContab or 0}
          for l, c in linhas),
         key=lambda r: r['nome'].lower())
     colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
@@ -1006,6 +1018,7 @@ def adicionar_lancamento():
                 adiantamentoContab=data.get('adiantamentoContab'),
                 horasExtras=data.get('horasExtras'),
                 assiduidade=data.get('assiduidade', 0),
+                combustivel=data.get('combustivel', 0),
                 cartaoAlimentacao=data.get('cartaoAlimentacao', 0),
                 valeTransporte=data.get('valeTransporte'),
                 emprestimo=data.get('emprestimo'),
