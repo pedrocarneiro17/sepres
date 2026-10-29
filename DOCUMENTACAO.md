@@ -310,7 +310,7 @@ Entram **todos os CLT com lançamento no mês, inclusive os zerados** (para conf
 está sem EVA); Mensalista e Diarista ficam de fora.
 
 **Separar por empresa:** no modal **Exportar**, a **categoria** também tem as opções
-**"Somente Construtora (Engenharia)"** e **"Somente Gerenciadora"**, no mesmo padrão da planilha
+**"Somente Engenharia"** e **"Somente Gerenciadora"**, no mesmo padrão da planilha
 de pagamentos (Nome, Empresa, Pagamento em Espécie e em Conta; `&empresa=Engenharia|Gerenciadora`).
 Cada uma gera um arquivo próprio, com o sufixo `_engenharia` ou `_gerenciadora` no nome. **Nessas
 duas planilhas por empresa entra também a coluna "Líquido Total"** (o valor salvo no lançamento,

@@ -2583,7 +2583,7 @@ function atualizarDescricaoExportar() {
     if (categoria === 'eva') {
         desc.innerHTML = 'Planilha do <strong>EVA</strong> do mês: todos os <strong>CLT</strong> com lançamento no mês (inclusive zerados), com Prêmio, Assiduidade, Horas Extras, Combustível e Cartão Alimentação.';
     } else if (categoria === 'engenharia' || categoria === 'gerenciadora') {
-        const nome = categoria === 'engenharia' ? 'Construtora (Engenharia)' : 'Gerenciadora';
+        const nome = categoria === 'engenharia' ? 'Engenharia' : 'Gerenciadora';
         desc.innerHTML = `Pagamentos do mês só da <strong>${nome}</strong>: quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado (Nome, Empresa e os dois valores).`;
     } else {
         desc.innerHTML = 'Exporta quem tem <strong>Pagamento em Espécie</strong> ou <strong>Pagamento em Conta</strong> lançado no mês (Nome, Empresa e os dois valores).';
@@ -2610,7 +2610,7 @@ async function exportarPlanilha() {
     // Categoria "EVA" (somente CLT) usa a planilha do EVA; as demais, a de pagamentos.
     if (document.getElementById('exportarTipo')?.value === 'eva') return exportarEva();
     try {
-        // A categoria também pode ser uma empresa: Construtora (Engenharia) ou Gerenciadora.
+        // A categoria também pode ser uma empresa: Engenharia ou Gerenciadora.
         const categoria = document.getElementById('exportarTipo')?.value || 'todos';
         const porEmpresa = { engenharia: 'Engenharia', gerenciadora: 'Gerenciadora' };
         const empresa = porEmpresa[categoria] || 'todas';
