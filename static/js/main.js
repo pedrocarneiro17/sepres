@@ -2085,9 +2085,16 @@ function gerarRecibo(id) {
 
     document.getElementById('reciboNome').textContent = c.nome;
     document.getElementById('reciboCPF').textContent = c.cpf;
-    // Recibo em módulo: o líquido pode ficar negativo na tela (adiantamento já lançado),
-    // mas o recibo mostra o valor positivo que foi efetivamente pago.
-    document.getElementById('reciboValor').textContent = numeroBR(Math.abs(l.liquidoTotal || 0));
+    if (c.contratacao === 'CLT') {
+        // CLT: o recibo mostra só o Pagamento em espécie (não o líquido).
+        document.getElementById('reciboRotuloValor').textContent = 'Pagamento em espécie:';
+        document.getElementById('reciboValor').textContent = numeroBR(l.pagamentoEspecie || 0);
+    } else {
+        // Recibo em módulo: o líquido pode ficar negativo na tela (adiantamento já lançado),
+        // mas o recibo mostra o valor positivo que foi efetivamente pago.
+        document.getElementById('reciboRotuloValor').textContent = 'Valor líquido:';
+        document.getElementById('reciboValor').textContent = numeroBR(Math.abs(l.liquidoTotal || 0));
+    }
     document.getElementById('reciboData').textContent = new Date().toLocaleDateString('pt-BR');
     document.getElementById('reciboMes').textContent = formatarMesAno(l.mes);
 

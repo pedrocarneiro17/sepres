@@ -315,11 +315,12 @@ algum valor de EVA lançado no mês.
   que recebi nesta data a quantia de R$ X referente a **assiduidade**, R$ Y referente a
   **prestação de serviços** (= horas extras), R$ Z referente a **prêmios** e R$ W referente a
   **vale combustível**…", com o total e a linha de assinatura (valores zerados também
-  aparecem). O cartão alimentação não entra. Mensalista/Diarista: **recibo de
-  pagamento** e **recibo de pagamento de autônomo**. O valor do recibo é o líquido salvo
-  no momento **em módulo**: se o líquido estiver negativo (adiantamento já lançado), o
-  recibo mostra o valor positivo que foi pago. Se o lançamento for editado, gere o recibo
-  de novo.
+  aparecem). O cartão alimentação não entra. No **recibo de pagamento do CLT** o valor é
+  só o **Pagamento em espécie** (rótulo "Pagamento em espécie"; não inclui contab. nem vale
+  transporte). Mensalista/Diarista: **recibo de pagamento** (rótulo "Valor líquido") e
+  **recibo de pagamento de autônomo**; o valor é o líquido salvo no momento **em módulo**: se
+  estiver negativo (adiantamento já lançado), o recibo mostra o valor positivo que foi pago.
+  Se o lançamento for editado, gere o recibo de novo.
 - Ao imprimir, abre a janela de impressão do navegador; quando ela fecha (imprimindo ou
   cancelando), o modal do recibo no sistema também fecha.
 
