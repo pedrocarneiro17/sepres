@@ -295,6 +295,7 @@
                                 <option value="finalizado">Finalizado</option>
                             </select>
                         </div>
+                        <button class="btn-secondary shrink-0" onclick="abrirRecibosLote()" title="Gera os recibos de um mês, por tipo de recibo, contrato e empresa, numa só impressão"><i class="fas fa-print"></i> Recibos em lote</button>
                         <button class="btn-secondary shrink-0" onclick="finalizarTodosLancamentos()" title="Finaliza todos os lançamentos em aberto do mês escolhido no filtro">Finalizar todos</button>
                         <button class="btn-success shrink-0" onclick="abrirExportarCSV()" title="Exportar um mês"><i class="fas fa-file-export"></i> Exportar</button>
                     </div>
@@ -327,22 +328,7 @@
                 <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalRecibo')"><i class="fas fa-times"></i></button>
             </div>
             <div class="px-6 py-5">
-                <div id="reciboConteudo" style="border: 2px solid #000; padding: 18px; font-family: 'Metropolis', sans-serif; font-size: 13px; max-width: 480px; margin: 0 auto;">
-                    <img src="/static/img/logo-sepres.jpeg" class="recibo-logo" style="max-width: 160px; display: block; margin: 0 auto 12px;" onerror="this.remove()" alt="SEPRES">
-                    <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO EM ESPÉCIE</h4></div>
-                    <p><strong>Nome:</strong> <span id="reciboNome"></span></p>
-                    <p><strong>CPF:</strong> <span id="reciboCPF"></span></p>
-                    <p><strong id="reciboRotuloValor">Valor líquido:</strong> R$ <span id="reciboValor"></span></p>
-                    <p><strong>Data:</strong> <span id="reciboData"></span></p>
-                    <p><strong>Mês:</strong> <span id="reciboMes"></span></p>
-                    <hr>
-                    <p>Recebi da empresa o valor acima descrito referente ao pagamento de serviços prestados.</p>
-                    <br><br>
-                    <div class="text-center">
-                        <p>_______________________________________</p>
-                        <p>Assinatura do Colaborador</p>
-                    </div>
-                </div>
+                <div id="reciboConteudo" style="border: 2px solid #000; padding: 18px; font-family: 'Metropolis', sans-serif; font-size: 13px; max-width: 480px; margin: 0 auto;"></div>
             </div>
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
                 <button type="button" class="btn-primary" onclick="imprimirRecibo('reciboConteudo')"><i class="fas fa-print"></i> Imprimir</button>
@@ -377,6 +363,56 @@
         </div>
     </div>
 
+    <!-- Modal: recibos em lote (um mês, tipo de recibo, contrato e empresa) -->
+    <div id="modalRecibosLote" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-print text-sepres-600"></i> Recibos em lote</h3>
+                <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalRecibosLote')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-4 px-6 py-5">
+                <div>
+                    <label class="label">Mês/Ano</label>
+                    <input type="month" class="input mes-ptbr" id="reciboLoteMes" onchange="atualizarPrevisaoRecibosLote()">
+                </div>
+                <div>
+                    <label class="label">Recibo</label>
+                    <select class="input" id="reciboLoteTipo" onchange="atualizarPrevisaoRecibosLote()">
+                        <option value="pagamento">Pagamento (CLT: espécie; Mensalista/Diarista: líquido)</option>
+                        <option value="eva">Prêmio / EVA (somente CLT)</option>
+                        <option value="autonomo">Pagamento de autônomo (Mensalista e Diarista)</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="label">Contrato</label>
+                        <select class="input" id="reciboLoteContrato" onchange="atualizarPrevisaoRecibosLote()">
+                            <option value="todos">Todos</option>
+                            <option value="CLT">CLT</option>
+                            <option value="Mensalista">Mensalista</option>
+                            <option value="Diarista">Diarista</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label">Empresa</label>
+                        <select class="input" id="reciboLoteEmpresa" onchange="atualizarPrevisaoRecibosLote()">
+                            <option value="todas">Todas</option>
+                            <option value="Engenharia">Engenharia (Construtora)</option>
+                            <option value="Gerenciadora">Gerenciadora</option>
+                        </select>
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" id="reciboLoteZerados" onchange="atualizarPrevisaoRecibosLote()"> Incluir recibos com valor zerado
+                </label>
+                <p class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600" id="reciboLotePrevisao"></p>
+            </div>
+            <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
+                <button type="button" class="btn-primary" id="btnGerarRecibosLote" onclick="gerarRecibosLote()"><i class="fas fa-print"></i> Gerar recibos</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Exportar planilha: pede o mês só na hora de exportar -->
     <div id="modalExportarCSV" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
         <div class="w-full max-w-sm rounded-2xl bg-white shadow-xl">
@@ -394,6 +430,12 @@
                     <option value="clt">Somente CLT</option>
                     <option value="contrato">Somente Contrato (Mensalista e Diarista)</option>
                     <option value="eva">EVA (somente CLT)</option>
+                </select>
+                <label class="label mt-4">Empresa</label>
+                <select class="input" id="exportarEmpresa">
+                    <option value="todas">Todas (uma planilha só)</option>
+                    <option value="Engenharia">Engenharia (Construtora)</option>
+                    <option value="Gerenciadora">Gerenciadora</option>
                 </select>
             </div>
             <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">

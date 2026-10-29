@@ -905,9 +905,15 @@ def exportar_eva():
     mes = request.args.get('mes', '')
     if len(mes) != 7:
         return jsonify({'erro': 'Informe o mês (YYYY-MM).'}), 400
-    linhas = (db.session.query(Lancamento, Colaborador)
-              .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
-              .filter(Lancamento.mes == mes, Colaborador.contratacao == 'CLT').all())
+    empresa = request.args.get('empresa', 'todas')  # todas | Engenharia | Gerenciadora
+    if empresa not in ('todas', 'Engenharia', 'Gerenciadora'):
+        return jsonify({'erro': 'Empresa inválida.'}), 400
+    consulta = (db.session.query(Lancamento, Colaborador)
+                .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
+                .filter(Lancamento.mes == mes, Colaborador.contratacao == 'CLT'))
+    if empresa != 'todas':
+        consulta = consulta.filter(Colaborador.empresa == empresa)
+    linhas = consulta.all()
     registros = []
     for l, c in linhas:
         premio, assiduidade, extras = l.bonificacao or 0, l.assiduidade or 0, l.horasExtras or 0
@@ -926,7 +932,7 @@ def exportar_eva():
                ('EVA (total)', 'eva', 1, 0, 16), ('Cartão Alimentação', 'alimentacao', 1, 0, 20)]
     wb, estilo = _novo_workbook()
     _preencher_aba(wb, estilo, 'EVA', colunas, registros)
-    return _enviar_xlsx(wb, f'eva_{mes[5:]}-{mes[:4]}.xlsx')
+    return _enviar_xlsx(wb, f'eva_{mes[5:]}-{mes[:4]}{"" if empresa == "todas" else "_" + empresa.lower()}.xlsx')
 
 
 @app.route('/api/exportar-planilha', methods=['GET'])
@@ -942,6 +948,9 @@ def exportar_planilha():
     tipo = request.args.get('tipo', 'todos')
     if tipo not in ('todos', 'clt', 'contrato'):
         return jsonify({'erro': 'Tipo inválido.'}), 400
+    empresa = request.args.get('empresa', 'todas')  # todas | Engenharia | Gerenciadora
+    if empresa not in ('todas', 'Engenharia', 'Gerenciadora'):
+        return jsonify({'erro': 'Empresa inválida.'}), 400
 
     consulta = (db.session.query(Lancamento, Colaborador)
                 .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
@@ -953,9 +962,11 @@ def exportar_planilha():
         consulta = consulta.filter(Colaborador.contratacao == 'CLT')
     elif tipo == 'contrato':
         consulta = consulta.filter(Colaborador.contratacao != 'CLT')
+    if empresa != 'todas':
+        consulta = consulta.filter(Colaborador.empresa == empresa)
     linhas = consulta.all()
     if not linhas:
-        return jsonify({'erro': 'Não há pagamentos lançados para o mês e a categoria selecionados.'}), 404
+        return jsonify({'erro': 'Não há pagamentos lançados para o mês, a categoria e a empresa selecionados.'}), 404
 
     registros = sorted(
         ({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
@@ -970,7 +981,8 @@ def exportar_planilha():
     wb, estilo = _novo_workbook()
     _preencher_aba(wb, estilo, 'Pagamentos', colunas, registros)
     return _enviar_xlsx(
-        wb, f'pagamentos_{mes[5:]}-{mes[:4]}{"" if tipo == "todos" else "_" + tipo}.xlsx')
+        wb, f'pagamentos_{mes[5:]}-{mes[:4]}{"" if tipo == "todos" else "_" + tipo}'
+            f'{"" if empresa == "todas" else "_" + empresa.lower()}.xlsx')
 
 
 @app.route('/api/lancamentos', methods=['GET'])

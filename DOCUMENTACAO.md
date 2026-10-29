@@ -309,6 +309,12 @@ combustível; o **Cartão Alimentação aparece só como informação** e não e
 Entram **todos os CLT com lançamento no mês, inclusive os zerados** (para conferir quem ainda
 está sem EVA); Mensalista e Diarista ficam de fora.
 
+**Separar por empresa:** o modal **Exportar** tem o seletor **Empresa** (*Todas*, *Engenharia
+(Construtora)* ou *Gerenciadora*), que vale para a planilha de pagamentos e para a do EVA
+(`&empresa=Engenharia|Gerenciadora`). Cada empresa gera um arquivo próprio, com o sufixo
+`_engenharia` ou `_gerenciadora` no nome. A planilha de **colaboradores** já traz uma aba por
+empresa.
+
 ### 5.10 Recibos
 
 - Disponíveis **a qualquer momento**, com o lançamento em aberto ou finalizado (não é
@@ -323,6 +329,12 @@ está sem EVA); Mensalista e Diarista ficam de fora.
   **recibo de pagamento de autônomo**; o valor é o líquido salvo no momento **em módulo**: se
   estiver negativo (adiantamento já lançado), o recibo mostra o valor positivo que foi pago.
   Se o lançamento for editado, gere o recibo de novo.
+- **Recibos em lote** (botão na lista de Lançamentos): escolhe-se o **mês**, o **tipo de
+  recibo** (*Pagamento*, *Prêmio/EVA — só CLT* ou *Autônomo — só Mensalista/Diarista*), o
+  **contrato** e a **empresa**, e o sistema imprime todos de uma vez, em ordem alfabética, com
+  duas ou três caixas por página. Uma prévia mostra quantos recibos serão gerados. Recibos com
+  **valor zerado** ficam de fora, a menos que se marque "Incluir recibos com valor zerado";
+  lançamentos de férias não entram. O texto de cada recibo é o mesmo dos recibos individuais.
 - Ao imprimir, abre a janela de impressão do navegador; quando ela fecha (imprimindo ou
   cancelando), o modal do recibo no sistema também fecha.
 

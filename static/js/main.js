@@ -2077,33 +2077,46 @@ function atualizarSelectColaboradores() {
     if (lista.some(c => c.id === valorAtual)) select.value = valorAtual;
 }
 
+// Recibo de pagamento (HTML interno). CLT: só o Pagamento em espécie; Mensalista/Diarista:
+// o líquido em módulo (pode estar negativo na tela por causa do adiantamento já lançado).
+function reciboPagamentoHtml(l, c) {
+    const clt = c.contratacao === 'CLT';
+    const rotulo = clt ? 'Pagamento em espécie:' : 'Valor líquido:';
+    const valor = clt ? numeroBR(l.pagamentoEspecie || 0) : numeroBR(Math.abs(l.liquidoTotal || 0));
+    return `
+        ${logoReciboHtml()}
+        <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO EM ESPÉCIE</h4></div>
+        <p><strong>Nome:</strong> ${esc(c.nome)}</p>
+        <p><strong>CPF:</strong> ${esc(c.cpf)}</p>
+        <p><strong>${rotulo}</strong> R$ ${valor}</p>
+        <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+        <p><strong>Mês:</strong> ${formatarMesAno(l.mes)}</p>
+        <hr>
+        <p>Recebi da empresa o valor acima descrito referente ao pagamento de serviços prestados.</p>
+        <br><br>
+        <div class="text-center">
+            <p>_______________________________________</p>
+            <p>Assinatura do Colaborador</p>
+        </div>`;
+}
+
 function gerarRecibo(id) {
     const l = lancamentos.find(lanc => lanc.id === id);
     if (!l) return;
     const c = colaboradores.find(co => co.id === l.colaboradorId);
     if (!c) return;
 
-    document.getElementById('reciboNome').textContent = c.nome;
-    document.getElementById('reciboCPF').textContent = c.cpf;
-    if (c.contratacao === 'CLT') {
-        // CLT: o recibo mostra só o Pagamento em espécie (não o líquido).
-        document.getElementById('reciboRotuloValor').textContent = 'Pagamento em espécie:';
-        document.getElementById('reciboValor').textContent = numeroBR(l.pagamentoEspecie || 0);
-    } else {
-        // Recibo em módulo: o líquido pode ficar negativo na tela (adiantamento já lançado),
-        // mas o recibo mostra o valor positivo que foi efetivamente pago.
-        document.getElementById('reciboRotuloValor').textContent = 'Valor líquido:';
-        document.getElementById('reciboValor').textContent = numeroBR(Math.abs(l.liquidoTotal || 0));
-    }
-    document.getElementById('reciboData').textContent = new Date().toLocaleDateString('pt-BR');
-    document.getElementById('reciboMes').textContent = formatarMesAno(l.mes);
-
+    document.getElementById('reciboConteudo').innerHTML = reciboPagamentoHtml(l, c);
     abrirModal('modalRecibo');
 }
 
-function imprimirRecibo(elementId) {
-    const conteudo = document.getElementById(elementId || 'reciboConteudo').innerHTML;
+// Abre a janela de impressão com o HTML dos recibos já em caixas (uma ou várias).
+function abrirJanelaImpressao(corpo) {
     const janela = window.open('', '', 'width=800,height=600');
+    if (!janela) {
+        notificar('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente de novo.', 'info');
+        return null;
+    }
     janela.document.write(`
         <!DOCTYPE html>
         <html>
@@ -2118,12 +2131,11 @@ function imprimirRecibo(elementId) {
                 p { margin: 6px 0; }
                 hr { border: 1px solid #000; margin: 12px 0; }
                 img.recibo-logo { max-width: 160px; display: block; margin: 0 auto 12px; }
+                .recibo-caixa { border: 2px solid #000; padding: 18px; max-width: 480px; margin: 0 auto 24px; page-break-inside: avoid; }
             </style>
         </head>
         <body>
-            <div style="border: 2px solid #000; padding: 18px; max-width: 480px; margin: 0 auto;">
-                ${conteudo}
-            </div>
+            ${corpo}
             <script>
                 window.onload = function() {
                     window.print();
@@ -2134,11 +2146,18 @@ function imprimirRecibo(elementId) {
         </html>
     `);
     janela.document.close();
+    return janela;
+}
+
+function imprimirRecibo(elementId) {
+    const conteudo = document.getElementById(elementId || 'reciboConteudo').innerHTML;
+    const janela = abrirJanelaImpressao(`<div class="recibo-caixa">${conteudo}</div>`);
+    if (!janela) return;
 
     // Quando a janela de impressão se fecha (depois de imprimir ou cancelar), fecha
     // também o modal do recibo no sistema.
     const modal = document.getElementById(elementId || 'reciboConteudo')?.closest('[id^="modal"]');
-    if (modal && janela) {
+    if (modal) {
         const vigia = setInterval(() => {
             if (janela.closed) {
                 clearInterval(vigia);
@@ -2169,21 +2188,13 @@ function formatarDataExtenso(data) {
     return `${data.getDate()} de ${meses[data.getMonth()]} de ${data.getFullYear()}`;
 }
 
-function gerarReciboPremio(id) {
-    const l = lancamentos.find(lanc => lanc.id === id);
-    if (!l) return;
-    const c = colaboradores.find(co => co.id === l.colaboradorId);
-    if (!c) return;
-
-    // Recibo do EVA (modelo do cliente): assiduidade, "prestação de serviços" (= horas extras),
-    // prêmios e vale combustível (o cartão alimentação não entra).
+// Recibo de prêmio/EVA do CLT (HTML interno), no modelo do cliente.
+function reciboPremioHtml(l, c) {
     const assiduidade = l.assiduidade || 0, servicos = l.horasExtras || 0, premios = l.bonificacao || 0;
     const combustivel = l.combustivel || 0;
     const total = numeroBR(assiduidade + servicos + premios + combustivel);
     const dataExtenso = formatarDataExtenso(new Date());
-
-    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Prêmio (EVA)';
-    document.getElementById('reciboEvaConteudo').innerHTML = `
+    return `
         ${logoReciboHtml()}
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PRÊMIO</h4></div>
         <p>Eu, <strong>${esc(c.nome)}</strong>, declaro que recebi nesta data, a quantia de
@@ -2199,23 +2210,24 @@ function gerarReciboPremio(id) {
             <p>ASSINATURA</p>
         </div>
     `;
-
-    abrirModal('modalReciboEva');
 }
 
-function gerarReciboAutonomo(id) {
+function gerarReciboPremio(id) {
     const l = lancamentos.find(lanc => lanc.id === id);
     if (!l) return;
     const c = colaboradores.find(co => co.id === l.colaboradorId);
     if (!c) return;
 
-    // Diarista/Mensalista: o valor do recibo é o líquido do lançamento (para o
-    // diarista já é a soma dos dias trabalhados no mês).
-    const valor = numeroBR(Math.abs(l.liquidoTotal || 0)); // em módulo (ver gerarRecibo)
-    const dataExtenso = formatarDataExtenso(new Date());
+    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Prêmio (EVA)';
+    document.getElementById('reciboEvaConteudo').innerHTML = reciboPremioHtml(l, c);
+    abrirModal('modalReciboEva');
+}
 
-    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Pagamento de Autônomo';
-    document.getElementById('reciboEvaConteudo').innerHTML = `
+// Recibo de pagamento de autônomo do Mensalista/Diarista (HTML interno): valor líquido em módulo.
+function reciboAutonomoHtml(l, c) {
+    const valor = numeroBR(Math.abs(l.liquidoTotal || 0));
+    const dataExtenso = formatarDataExtenso(new Date());
+    return `
         ${logoReciboHtml()}
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO DE AUTÔNOMO</h4></div>
         <p>Eu, <strong>${esc(c.nome)}</strong>, inscrito no CPF: ${esc(c.cpf)}, declaro ter recebido nesta data, da
@@ -2230,7 +2242,16 @@ function gerarReciboAutonomo(id) {
             <p>${esc(c.nome.toUpperCase())}</p>
         </div>
     `;
+}
 
+function gerarReciboAutonomo(id) {
+    const l = lancamentos.find(lanc => lanc.id === id);
+    if (!l) return;
+    const c = colaboradores.find(co => co.id === l.colaboradorId);
+    if (!c) return;
+
+    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Pagamento de Autônomo';
+    document.getElementById('reciboEvaConteudo').innerHTML = reciboAutonomoHtml(l, c);
     abrirModal('modalReciboEva');
 }
 
@@ -2584,7 +2605,8 @@ async function exportarPlanilha() {
     if (document.getElementById('exportarTipo')?.value === 'eva') return exportarEva();
     try {
         const tipo = document.getElementById('exportarTipo')?.value || 'todos';
-        const resp = await fetch('/api/exportar-planilha?mes=' + encodeURIComponent(mesFiltro) + '&tipo=' + encodeURIComponent(tipo));
+        const empresa = document.getElementById('exportarEmpresa')?.value || 'todas';
+        const resp = await fetch('/api/exportar-planilha?mes=' + encodeURIComponent(mesFiltro) + '&tipo=' + encodeURIComponent(tipo) + '&empresa=' + encodeURIComponent(empresa));
         if (!resp.ok) {
             const erro = await resp.json().catch(() => ({}));
             notificar(erro.erro || 'Erro ao gerar a planilha.', 'info');
@@ -2594,7 +2616,7 @@ async function exportarPlanilha() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `pagamentos_${formatarMesAno(mesFiltro).replace('/', '-')}${tipo === 'todos' ? '' : '_' + tipo}.xlsx`;
+        link.download = `pagamentos_${formatarMesAno(mesFiltro).replace('/', '-')}${tipo === 'todos' ? '' : '_' + tipo}${empresa === 'todas' ? '' : '_' + empresa.toLowerCase()}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -2606,6 +2628,75 @@ async function exportarPlanilha() {
     }
 }
 
+// ==================== RECIBOS EM LOTE ====================
+// Escolhe mês, tipo de recibo, contrato e empresa e imprime todos os recibos de uma vez.
+
+function valorReciboLote(tipo, l, c) {
+    if (tipo === 'eva') return (l.bonificacao || 0) + (l.assiduidade || 0) + (l.horasExtras || 0) + (l.combustivel || 0);
+    if (tipo === 'pagamento' && c.contratacao === 'CLT') return l.pagamentoEspecie || 0;
+    return Math.abs(l.liquidoTotal || 0);
+}
+
+// Lançamentos do mês que entram no lote, conforme os filtros do modal.
+function selecionarRecibosLote() {
+    const mes = document.getElementById('reciboLoteMes').value;
+    const tipo = document.getElementById('reciboLoteTipo').value;
+    const contrato = document.getElementById('reciboLoteContrato').value;
+    const empresa = document.getElementById('reciboLoteEmpresa').value;
+    const incluirZerados = document.getElementById('reciboLoteZerados').checked;
+    const itens = []; let zerados = 0;
+    lancamentos.forEach(l => {
+        if (l.mes !== mes || l.ferias === 'Férias') return;
+        const c = colaboradores.find(co => co.id === l.colaboradorId);
+        if (!c) return;
+        if (tipo === 'eva' && c.contratacao !== 'CLT') return;        // EVA: só CLT
+        if (tipo === 'autonomo' && c.contratacao === 'CLT') return;   // autônomo: só Mensalista/Diarista
+        if (contrato !== 'todos' && c.contratacao !== contrato) return;
+        if (empresa !== 'todas' && c.empresa !== empresa) return;
+        const valor = valorReciboLote(tipo, l, c);
+        if (valor === 0 && !incluirZerados) { zerados++; return; }
+        itens.push({ l, c });
+    });
+    itens.sort((a, b) => (a.c.nome || '').localeCompare(b.c.nome || '', 'pt-BR', { sensitivity: 'base' }));
+    return { itens, zerados, mes };
+}
+
+function atualizarPrevisaoRecibosLote() {
+    const { itens, zerados, mes } = selecionarRecibosLote();
+    const el = document.getElementById('reciboLotePrevisao');
+    const btn = document.getElementById('btnGerarRecibosLote');
+    if (!mes) { el.textContent = 'Escolha o mês.'; btn.disabled = true; return; }
+    let txt = `${itens.length} recibo(s) serão gerados em ${formatarMesAno(mes)}.`;
+    if (zerados > 0) txt += ` ${zerados} ignorado(s) por estarem zerados (marque "Incluir recibos com valor zerado" para vê-los).`;
+    el.textContent = txt;
+    btn.disabled = itens.length === 0;
+}
+
+function abrirRecibosLote() {
+    // O mês sempre abre igual ao filtro da lista (dá para trocar no modal).
+    const mes = document.getElementById('reciboLoteMes');
+    if (mes) {
+        mes.value = document.getElementById('filtroPeriodoLanc')?.value || new Date().toISOString().substring(0, 7);
+        mes.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    atualizarPrevisaoRecibosLote();
+    abrirModal('modalRecibosLote');
+}
+
+function gerarRecibosLote() {
+    const { itens } = selecionarRecibosLote();
+    if (itens.length === 0) return;
+    const tipo = document.getElementById('reciboLoteTipo').value;
+    const construtor = { pagamento: reciboPagamentoHtml, eva: reciboPremioHtml, autonomo: reciboAutonomoHtml }[tipo];
+    const corpo = itens.map(({ l, c }) => `<div class="recibo-caixa">${construtor(l, c)}</div>`).join('');
+    const janela = abrirJanelaImpressao(corpo);
+    if (!janela) return;
+    // Fecha o modal do lote quando a janela de impressão for fechada (imprimindo ou cancelando).
+    const vigia = setInterval(() => {
+        if (janela.closed) { clearInterval(vigia); fecharModal('modalRecibosLote'); }
+    }, 400);
+}
+
 // Planilha .xlsx do EVA do mês (somente CLT): Prêmio + Assiduidade + Horas Extras.
 async function exportarEva() {
     const mesFiltro = document.getElementById('exportarCSVMes').value;
@@ -2614,7 +2705,8 @@ async function exportarEva() {
         return;
     }
     try {
-        const resp = await fetch('/api/exportar-eva?mes=' + encodeURIComponent(mesFiltro));
+        const empresa = document.getElementById('exportarEmpresa')?.value || 'todas';
+        const resp = await fetch('/api/exportar-eva?mes=' + encodeURIComponent(mesFiltro) + '&empresa=' + encodeURIComponent(empresa));
         if (!resp.ok) {
             const erro = await resp.json().catch(() => ({}));
             notificar(erro.erro || 'Erro ao gerar a planilha do EVA.', 'info');
@@ -2624,7 +2716,7 @@ async function exportarEva() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `eva_${formatarMesAno(mesFiltro).replace('/', '-')}.xlsx`;
+        link.download = `eva_${formatarMesAno(mesFiltro).replace('/', '-')}${empresa === 'todas' ? '' : '_' + empresa.toLowerCase()}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
