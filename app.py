@@ -972,12 +972,17 @@ def exportar_planilha():
         ({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
           # CLT: o Vale Transporte entra junto do Pagamento em Espécie (dinheiro)
           'especie': (l.pagamentoEspecie or 0) + ((l.valeTransporte or 0) if c.contratacao == 'CLT' else 0),
-          'conta': l.pagamentoContab or 0}
+          'conta': l.pagamentoContab or 0,
+          'liquido': l.liquidoTotal or 0}
          for l, c in linhas),
         key=lambda r: r['nome'].lower())
     colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
                ('Pagamento em Espécie', 'especie', 1, 0, 22),
                ('Pagamento em Conta', 'conta', 1, 0, 22)]
+    # Nas planilhas por empresa (Construtora/Gerenciadora) entra também o Líquido Total salvo
+    # no lançamento (pode ser negativo enquanto só o adiantamento foi lançado).
+    if empresa != 'todas':
+        colunas.append(('Líquido Total', 'liquido', 1, 0, 18))
     wb, estilo = _novo_workbook()
     _preencher_aba(wb, estilo, 'Pagamentos', colunas, registros)
     return _enviar_xlsx(
