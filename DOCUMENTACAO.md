@@ -313,9 +313,9 @@ está sem EVA); Mensalista e Diarista ficam de fora.
 **"Somente Engenharia"** e **"Somente Gerenciadora"**, no mesmo padrão da planilha
 de pagamentos (Nome, Empresa, Pagamento em Espécie e em Conta; `&empresa=Engenharia|Gerenciadora`).
 Cada uma gera um arquivo próprio, com o sufixo `_engenharia` ou `_gerenciadora` no nome. **Nessas
-duas planilhas por empresa entra também a coluna "Líquido Total"** (o valor salvo no lançamento,
-sem módulo: pode ser negativo enquanto só o adiantamento foi lançado). As demais categorias
-(Todos, CLT, Contrato) não têm essa coluna. A planilha de **colaboradores** já traz uma aba por
+duas planilhas por empresa, e também na categoria "Somente CLT", entra a coluna "Líquido
+Total"** (o valor salvo no lançamento, sem módulo: pode ser negativo enquanto só o adiantamento
+foi lançado). As categorias "Todos" e "Somente Contrato" não têm essa coluna. A planilha de **colaboradores** já traz uma aba por
 empresa.
 
 ### 5.10 Recibos

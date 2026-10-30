@@ -979,9 +979,9 @@ def exportar_planilha():
     colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
                ('Pagamento em Espécie', 'especie', 1, 0, 22),
                ('Pagamento em Conta', 'conta', 1, 0, 22)]
-    # Nas planilhas por empresa (Engenharia/Gerenciadora) entra também o Líquido Total salvo
-    # no lançamento (pode ser negativo enquanto só o adiantamento foi lançado).
-    if empresa != 'todas':
+    # Nas planilhas por empresa (Engenharia/Gerenciadora) e na de CLT entra também o Líquido
+    # Total salvo no lançamento (pode ser negativo enquanto só o adiantamento foi lançado).
+    if empresa != 'todas' or tipo == 'clt':
         colunas.append(('Líquido Total', 'liquido', 1, 0, 18))
     wb, estilo = _novo_workbook()
     _preencher_aba(wb, estilo, 'Pagamentos', colunas, registros)
