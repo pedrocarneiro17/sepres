@@ -289,17 +289,18 @@ do cadastro (no Diarista, o **valor da diária**); **Bonificação/Bonus** = pr�
 **Admissão** = admissão; **Inicio de contrato** = início do primeiro período de contrato (ou
 a admissão, se não houver períodos), só para quem não é CLT.
 
-**b) Planilha de PAGAMENTOS do mês** — **Lançamentos → Exportar**
-(`/api/exportar-planilha?mes=YYYY-MM&tipo=todos|clt|contrato`, arquivo
-`pagamentos_MM-AAAA.xlsx`, com sufixo `_clt` ou `_contrato` quando filtrada). Uma única aba
-**Pagamentos** com as colunas **Nome, Empresa, Pagamento em Espécie, Pagamento em Conta**,
-em ordem alfabética. **Só entra quem tem valor em pelo menos um dos dois pagamentos** no
-mês; quem não tem nenhum fica de fora. O modal permite filtrar a categoria (Todos, Somente
-CLT, Somente Contrato = Mensalista + Diarista). Sem nenhum pagamento no mês/categoria, o
-sistema avisa e não baixa arquivo. "Pagamento em Conta" é o campo Pagamento Contab. (CLT) /
-Pagamento em conta (Mensalista e Diarista). **Todas as planilhas de pagamentos
-têm a coluna "Vale Transporte"** (o Pagamento em Espécie sai só com o valor lançado em espécie),
-e um CLT só com Vale Transporte também entra na planilha.
+**b) Planilha de PAGAMENTOS do mês** — **Lançamentos → Exportar**, escolhendo a categoria
+**Engenharia** ou **Gerenciadora** (`/api/exportar-planilha?mes=YYYY-MM&empresa=Engenharia|Gerenciadora`,
+arquivo `pagamentos_MM-AAAA_engenharia.xlsx` ou `_gerenciadora.xlsx`). Não há mais as categorias
+"Todos", "Somente CLT" e "Somente Contrato" na tela (a rota ainda aceita `tipo=`, mas o sistema
+não a usa). Uma única aba **Pagamentos** com **Nome, Empresa, Pagamento em Espécie, Pagamento em
+Conta, Vale Transporte e Líquido Total**, em ordem alfabética. **Só entra quem tem valor em pelo
+menos um dos dois pagamentos** no mês (o CLT também entra só com Vale Transporte); quem não tem
+nenhum fica de fora. Sem nenhum pagamento no mês/empresa, o sistema avisa e não baixa arquivo.
+"Pagamento em Conta" é o campo Pagamento Contab. (CLT) / Pagamento em conta (Mensalista e
+Diarista). O Pagamento em Espécie sai só com o valor lançado em espécie (o vale transporte tem
+coluna própria) e o **Líquido Total** é o valor salvo no lançamento, sem módulo (pode ser
+negativo enquanto só o adiantamento foi lançado). Cada coluna é uma cópia do campo do lançamento.
 
 **c) Planilha do EVA do mês (somente CLT)** — no modal de **Lançamentos → Exportar**, basta
 escolher a categoria **"EVA (somente CLT)"** (`/api/exportar-eva?mes=YYYY-MM`, arquivo
@@ -310,14 +311,7 @@ combustível; o **Cartão Alimentação aparece só como informação** e não e
 Entram **todos os CLT com lançamento no mês, inclusive os zerados** (para conferir quem ainda
 está sem EVA); Mensalista e Diarista ficam de fora.
 
-**Separar por empresa:** no modal **Exportar**, a **categoria** também tem as opções
-**"Somente Engenharia"** e **"Somente Gerenciadora"**, no mesmo padrão da planilha
-de pagamentos (Nome, Empresa, Pagamento em Espécie e em Conta; `&empresa=Engenharia|Gerenciadora`).
-Cada uma gera um arquivo próprio, com o sufixo `_engenharia` ou `_gerenciadora` no nome. **Nessas
-duas planilhas por empresa, e também na categoria "Somente CLT", entra a coluna "Líquido
-Total"** (o valor salvo no lançamento, sem módulo: pode ser negativo enquanto só o adiantamento
-foi lançado). As categorias "Todos" e "Somente Contrato" não têm essa coluna. A planilha de **colaboradores** já traz uma aba por
-empresa.
+**Colaboradores:** a planilha de colaboradores já traz uma aba por empresa.
 
 ### 5.10 Recibos
 
