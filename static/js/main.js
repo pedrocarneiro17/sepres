@@ -2081,14 +2081,19 @@ function atualizarSelectColaboradores() {
 // o líquido em módulo (pode estar negativo na tela por causa do adiantamento já lançado).
 function reciboPagamentoHtml(l, c) {
     const clt = c.contratacao === 'CLT';
-    const rotulo = clt ? 'Pagamento em espécie:' : 'Valor líquido:';
-    const valor = clt ? numeroBR(l.pagamentoEspecie || 0) : numeroBR(Math.abs(l.liquidoTotal || 0));
+    // CLT: Pagamento em espécie + Vale transporte (e o total recebido). Demais: valor líquido.
+    const especie = l.pagamentoEspecie || 0, vt = l.valeTransporte || 0;
+    const linhasValor = clt
+        ? `<p><strong>Pagamento em espécie:</strong> R$ ${numeroBR(especie)}</p>
+        <p><strong>Vale transporte:</strong> R$ ${numeroBR(vt)}</p>
+        <p><strong>Total recebido:</strong> R$ ${numeroBR(especie + vt)}</p>`
+        : `<p><strong>Valor líquido:</strong> R$ ${numeroBR(Math.abs(l.liquidoTotal || 0))}</p>`;
     return `
         ${logoReciboHtml()}
         <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO EM ESPÉCIE</h4></div>
         <p><strong>Nome:</strong> ${esc(c.nome)}</p>
         <p><strong>CPF:</strong> ${esc(c.cpf)}</p>
-        <p><strong>${rotulo}</strong> R$ ${valor}</p>
+        ${linhasValor}
         <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
         <p><strong>Mês:</strong> ${formatarMesAno(l.mes)}</p>
         <hr>
@@ -2642,7 +2647,7 @@ async function exportarPlanilha() {
 
 function valorReciboLote(tipo, l, c) {
     if (tipo === 'eva') return (l.bonificacao || 0) + (l.assiduidade || 0) + (l.horasExtras || 0) + (l.combustivel || 0);
-    if (tipo === 'pagamento' && c.contratacao === 'CLT') return l.pagamentoEspecie || 0;
+    if (tipo === 'pagamento' && c.contratacao === 'CLT') return (l.pagamentoEspecie || 0) + (l.valeTransporte || 0);
     return Math.abs(l.liquidoTotal || 0);
 }
 

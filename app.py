@@ -938,8 +938,8 @@ def exportar_eva():
 @app.route('/api/exportar-planilha', methods=['GET'])
 def exportar_planilha():
     """Planilha de PAGAMENTOS do mês: Nome, Empresa, Pagamento em Espécie e Pagamento em
-    Conta. Só entra quem tem valor em pelo menos um dos dois pagamentos. No CLT, o Vale
-    Transporte é somado ao Pagamento em Espécie (dinheiro)."""
+    Conta e Vale Transporte. Só entra quem tem valor em pelo menos um dos dois pagamentos
+    (o CLT também entra só com Vale Transporte)."""
     from sqlalchemy import or_, and_
     mes = request.args.get('mes', '')
     if len(mes) != 7:
@@ -956,7 +956,7 @@ def exportar_planilha():
                 .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
                 .filter(Lancamento.mes == mes)
                 .filter(or_(Lancamento.pagamentoEspecie > 0, Lancamento.pagamentoContab > 0,
-                            # Vale Transporte do CLT sai como pagamento em dinheiro
+                            # CLT só com Vale Transporte também entra
                             and_(Colaborador.contratacao == 'CLT', Lancamento.valeTransporte > 0))))
     if tipo == 'clt':
         consulta = consulta.filter(Colaborador.contratacao == 'CLT')
@@ -970,15 +970,16 @@ def exportar_planilha():
 
     registros = sorted(
         ({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
-          # CLT: o Vale Transporte entra junto do Pagamento em Espécie (dinheiro)
-          'especie': (l.pagamentoEspecie or 0) + ((l.valeTransporte or 0) if c.contratacao == 'CLT' else 0),
+          'especie': l.pagamentoEspecie or 0,
           'conta': l.pagamentoContab or 0,
+          'vt': l.valeTransporte or 0,
           'liquido': l.liquidoTotal or 0}
          for l, c in linhas),
         key=lambda r: r['nome'].lower())
     colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
                ('Pagamento em Espécie', 'especie', 1, 0, 22),
-               ('Pagamento em Conta', 'conta', 1, 0, 22)]
+               ('Pagamento em Conta', 'conta', 1, 0, 22),
+               ('Vale Transporte', 'vt', 1, 0, 18)]
     # Nas planilhas por empresa (Engenharia/Gerenciadora) e na de CLT entra também o Líquido
     # Total salvo no lançamento (pode ser negativo enquanto só o adiantamento foi lançado).
     if empresa != 'todas' or tipo == 'clt':

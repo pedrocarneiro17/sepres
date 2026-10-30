@@ -297,8 +297,9 @@ em ordem alfabética. **Só entra quem tem valor em pelo menos um dos dois pagam
 mês; quem não tem nenhum fica de fora. O modal permite filtrar a categoria (Todos, Somente
 CLT, Somente Contrato = Mensalista + Diarista). Sem nenhum pagamento no mês/categoria, o
 sistema avisa e não baixa arquivo. "Pagamento em Conta" é o campo Pagamento Contab. (CLT) /
-Pagamento em conta (Mensalista e Diarista). **No CLT, o Vale Transporte sai somado ao
-"Pagamento em Espécie"** (dinheiro), e um CLT só com Vale Transporte também entra na planilha.
+Pagamento em conta (Mensalista e Diarista). **Todas as planilhas de pagamentos
+têm a coluna "Vale Transporte"** (o Pagamento em Espécie sai só com o valor lançado em espécie),
+e um CLT só com Vale Transporte também entra na planilha.
 
 **c) Planilha do EVA do mês (somente CLT)** — no modal de **Lançamentos → Exportar**, basta
 escolher a categoria **"EVA (somente CLT)"** (`/api/exportar-eva?mes=YYYY-MM`, arquivo
@@ -326,9 +327,9 @@ empresa.
   que recebi nesta data a quantia de R$ X referente a **assiduidade**, R$ Y referente a
   **prestação de serviços** (= horas extras), R$ Z referente a **prêmios** e R$ W referente a
   **vale combustível**…", com o total e a linha de assinatura (valores zerados também
-  aparecem). O cartão alimentação não entra. No **recibo de pagamento do CLT** o valor é
-  só o **Pagamento em espécie** (rótulo "Pagamento em espécie"; não inclui contab. nem vale
-  transporte). Mensalista/Diarista: **recibo de pagamento** (rótulo "Valor líquido") e
+  aparecem). O cartão alimentação não entra. No **recibo de pagamento do CLT** constam
+  o **Pagamento em espécie**, o **Vale transporte** e o **Total recebido** (espécie + vale
+  transporte); não inclui o pagamento da contabilidade. Mensalista/Diarista: **recibo de pagamento** (rótulo "Valor líquido") e
   **recibo de pagamento de autônomo**; o valor é o líquido salvo no momento **em módulo**: se
   estiver negativo (adiantamento já lançado), o recibo mostra o valor positivo que foi pago.
   Se o lançamento for editado, gere o recibo de novo.
