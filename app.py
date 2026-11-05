@@ -381,6 +381,8 @@ def cabecalhos_seguranca(resp):
     resp.headers['X-Frame-Options'] = 'DENY'
     resp.headers['Referrer-Policy'] = 'same-origin'
     resp.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    # Sistema interno: pede aos buscadores que não indexem nada (a proteção real é o login).
+    resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
     if request.is_secure:
         resp.headers['Strict-Transport-Security'] = 'max-age=31536000'
     # Dados de folha/CPF: nada de cache de páginas e da API (arquivos estáticos podem).
@@ -439,7 +441,7 @@ MAX_RESET_IP = 10               # pedidos por IP
 @app.before_request
 def exigir_login():
     """Exige login para tudo, exceto a tela de login e os arquivos estáticos."""
-    if request.endpoint in ('login', 'static', 'esqueci_senha', 'redefinir_senha'):
+    if request.endpoint in ('login', 'static', 'esqueci_senha', 'redefinir_senha', 'robots_txt'):
         return
     if not current_user.is_authenticated:
         if request.path.startswith('/api/'):
@@ -602,6 +604,12 @@ def conta():
             db.session.commit()
             msg = 'Dados atualizados.'
     return render_template('conta.html', msg=msg, erro=erro), (400 if erro else 200)
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    """Pede aos buscadores que não rastreiem o sistema (pública, sem login)."""
+    return app.response_class('User-agent: *\nDisallow: /\n', mimetype='text/plain')
 
 
 @app.route('/logout')

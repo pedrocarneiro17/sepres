@@ -69,6 +69,9 @@ diárias e recibos), com dashboard de indicadores e gráficos.
   `Permissions-Policy`, HSTS (em HTTPS) e `Cache-Control: no-store` nas páginas e na API.
   O CSP ainda permite scripts inline (o front-end usa `onclick` e blocos de script).
 - **CORS**: removido (o front-end é servido pela própria origem).
+- **Buscadores**: todas as páginas têm `<meta name="robots" content="noindex, nofollow">`, todas as
+  respostas levam o cabeçalho `X-Robots-Tag: noindex, nofollow`, e `/robots.txt` (pública) pede
+  `Disallow: /`. Isso só orienta os buscadores a não indexar; quem protege o sistema é o login.
 - **SQL injection**: não há ponto de injeção conhecido — consultas via ORM; o único SQL
   manual são as migrações de coluna, com texto fixo.
 
@@ -144,6 +147,7 @@ Pagamento mensal de um colaborador (um por colaborador/mês).
 |---|---|---|---|
 | `/login` | GET/POST | pública | Login por e-mail. |
 | `/esqueci-senha` | GET/POST | pública | Pede o link de redefinição. |
+| `/robots.txt` | GET | pública | Pede aos buscadores que não rastreiem o sistema. |
 | `/redefinir-senha/<token>` | GET/POST | pública (token) | Define a nova senha. |
 | `/conta` | GET/POST | logado | Minha conta (e-mail e senha). |
 | `/logout` | GET | logado | Encerra a sessão. |
