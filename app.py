@@ -149,6 +149,7 @@ class Colaborador(db.Model):
     # Relacionamentos
     lancamentos_rel = db.relationship('Lancamento', backref='colaborador', lazy=True, cascade="all, delete-orphan")
     emprestimos_rel = db.relationship('Emprestimo', backref='colaborador', lazy=True, cascade="all, delete-orphan")
+    ferias_rel = db.relationship('Ferias', backref='colaborador', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         """Converte objeto Colaborador para dicionário (incluindo empréstimos)"""
@@ -199,6 +200,23 @@ class Emprestimo(db.Model):
             "inicio": self.inicio,
             "descricao": self.descricao,
             "colaboradorId": self.colaborador_id
+        }
+
+class Ferias(db.Model):
+    # Períodos de férias dos colaboradores (controle de quem sai e em quais dias)
+    id = db.Column(db.String(50), primary_key=True)
+    colaborador_id = db.Column(db.String(50), db.ForeignKey('colaborador.id'), nullable=False)
+    inicio = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD
+    fim = db.Column(db.String(10), nullable=False)     # YYYY-MM-DD
+    observacoes = db.Column(db.String(255))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "colaboradorId": self.colaborador_id,
+            "inicio": self.inicio,
+            "fim": self.fim,
+            "observacoes": self.observacoes
         }
 
 class Lancamento(db.Model):
@@ -636,6 +654,11 @@ def pagina_lancamentos():
     """Página de lançamentos mensais."""
     return render_template('lancamentos.html')
 
+@app.route('/ferias')
+def pagina_ferias():
+    """Página de controle de férias dos colaboradores."""
+    return render_template('ferias.html')
+
 # Compatibilidade: redireciona as URLs antigas com .html para as URLs limpas.
 @app.route('/index.html')
 def redir_index():
@@ -659,7 +682,8 @@ def obter_dados():
     
     return jsonify({
         'colaboradores': [c.to_dict() for c in colaboradores_list],
-        'lancamentos': [l.to_dict() for l in lancamentos_list]
+        'lancamentos': [l.to_dict() for l in lancamentos_list],
+        'ferias': [f.to_dict() for f in Ferias.query.all()]
     })
 
 @app.route('/api/colaboradores', methods=['GET'])
@@ -1116,6 +1140,57 @@ def reabrir_lancamento(id):
     db.session.commit()
     return jsonify({'mensagem': 'Lançamento reaberto'}), 200
 
+# ==================== FÉRIAS ====================
+
+def _data_valida(txt):
+    try:
+        datetime.strptime(txt or '', '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
+
+@app.route('/api/ferias', methods=['POST'])
+def salvar_ferias():
+    """Cria ou atualiza um período de férias."""
+    data = request.get_json(silent=True) or {}
+    colaborador_id = data.get('colaboradorId')
+    inicio, fim = data.get('inicio'), data.get('fim')
+    if not Colaborador.query.get(colaborador_id or ''):
+        return jsonify({'erro': 'Colaborador não encontrado'}), 400
+    if not _data_valida(inicio) or not _data_valida(fim):
+        return jsonify({'erro': 'Informe datas válidas'}), 400
+    if fim < inicio:
+        return jsonify({'erro': 'A data final não pode ser anterior à inicial'}), 400
+    try:
+        ferias = Ferias.query.get(data.get('id')) if data.get('id') else None
+        if not ferias:
+            ferias = Ferias(id=secrets.token_hex(8))
+            db.session.add(ferias)
+        ferias.colaborador_id = colaborador_id
+        ferias.inicio = inicio
+        ferias.fim = fim
+        ferias.observacoes = (data.get('observacoes') or '')[:255]
+        db.session.commit()
+        return jsonify(ferias.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO SALVAR FÉRIAS: {e}")
+        return jsonify({'erro': 'Erro interno ao salvar férias'}), 500
+
+@app.route('/api/ferias/<id>', methods=['DELETE'])
+def excluir_ferias(id):
+    ferias = Ferias.query.get(id)
+    if not ferias:
+        return jsonify({'erro': 'Férias não encontradas'}), 404
+    try:
+        db.session.delete(ferias)
+        db.session.commit()
+        return jsonify({'mensagem': 'Férias excluídas'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO EXCLUIR FÉRIAS: {e}")
+        return jsonify({'erro': 'Erro interno ao excluir férias'}), 500
+
 # ==================== BACKUP (somente leitura) ====================
 
 @app.route('/api/backup', methods=['GET'])
@@ -1126,7 +1201,8 @@ def fazer_backup():
     
     return jsonify({
         'colaboradores': [c.to_dict() for c in colaboradores_list],
-        'lancamentos': [l.to_dict() for l in lancamentos_list]
+        'lancamentos': [l.to_dict() for l in lancamentos_list],
+        'ferias': [f.to_dict() for f in Ferias.query.all()]
     })
 
 if __name__ == '__main__':

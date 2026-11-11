@@ -15,6 +15,7 @@ window.fetch = function (...args) {
 
 let colaboradores = [];
 let lancamentos = [];
+let feriasLista = [];
 let colabIdToDelete = null;
 
 // ==================== HELPERS DE MÁSCARA / MOEDA ====================
@@ -461,11 +462,19 @@ function confirmar(mensagem, opcoes = {}) {
 
 // Após um form.reset(), atualiza os rótulos dos controles customizados (selects e
 // seletores de mês), pois o reset nativo não dispara o setter interceptado.
+let refrescandoControles = false;
 function refrescarControlesCustom(container) {
-    if (!container) return;
-    container.querySelectorAll('select[data-cs], input[data-mp]').forEach(el => {
-        el.dispatchEvent(new Event('change', { bubbles: false }));
-    });
+    // Trava de reentrada: alguns 'change' reagem chamando esta função de novo (ex.: troca do
+    // mês no lançamento), o que antes gerava recursão infinita.
+    if (!container || refrescandoControles) return;
+    refrescandoControles = true;
+    try {
+        container.querySelectorAll('select[data-cs], input[data-mp]').forEach(el => {
+            el.dispatchEvent(new Event('change', { bubbles: false }));
+        });
+    } finally {
+        refrescandoControles = false;
+    }
 }
 
 // Impede que a tecla Enter dentro de um formulário salve os dados.
@@ -495,6 +504,7 @@ async function carregarDados() {
         const dados = await response.json();
         colaboradores = Array.isArray(dados.colaboradores) ? dados.colaboradores : [];
         lancamentos = Array.isArray(dados.lancamentos) ? dados.lancamentos : [];
+        feriasLista = Array.isArray(dados.ferias) ? dados.ferias : [];
 
         // Ordena por nome (A-Z) uma única vez aqui, para que toda tela que lista
         // colaboradores (selects, tabelas, filtros) já receba em ordem alfabética.
@@ -542,21 +552,6 @@ function configurarEventos() {
                     colaboradorField.value = selecionadoAntes;
                 }
                 refrescarControlesCustom(document.getElementById('formLancamento'));
-            });
-        }
-
-        const feriasField = document.getElementById('lancFerias');
-        if (feriasField) {
-            feriasField.addEventListener('change', function () {
-                const divDados = document.getElementById('divDadosLancamento');
-                const divMensagem = document.getElementById('divMensagemFerias');
-                if (this.value === 'Férias') {
-                    divDados.style.display = 'none';
-                    divMensagem.style.display = 'block';
-                } else {
-                    divDados.style.display = 'block';
-                    divMensagem.style.display = 'none';
-                }
             });
         }
 
@@ -617,6 +612,8 @@ function renderizar() {
             window.history.replaceState({}, document.title, window.location.pathname);
             setTimeout(() => editarColaborador(editarId), 300);
         }
+    } else if (pathname.includes('ferias')) {
+        renderizarFerias();
     } else if (pathname.includes('lancamentos')) {
         // Carrega sempre o mês vigente por padrão — evita renderizar a listagem
         // inteira de uma vez. O usuário troca ou limpa o período se quiser ver outro.
@@ -1323,58 +1320,35 @@ async function salvarLancamento(e) {
     e.preventDefault();
 
     const editId = document.getElementById('lancEditId').value;
-    const ferias = document.getElementById('lancFerias').value;
 
-    let dados;
-    if (ferias === 'Férias') {
-        dados = {
-            id: editId || '',
-            colaboradorId: document.getElementById('lancColaborador').value,
-            mes: document.getElementById('lancMes').value,
-            ferias: 'Férias',
-            diasFerias: parseInt(document.getElementById('lancDiasFerias').value) || 30,
-            diasTrabalhados: 0,
-            remuneracao: 0, bonificacao: 0, totalRecebido: 0,
-            assiduidade: 0, combustivel: 0, cartaoAlimentacao: 0,
-            adiantamentoEspecie: 0, adiantamentoContab: 0, horasExtras: 0,
-            valeTransporte: 0, emprestimo: 0, outros: 0, liquidoTotal: 0,
-            pagamentoContab: 0, pagamentoEspecie: 0,
-            formaPagamento: document.getElementById('lancFormaPagamento').value,
-            emprestimosPagos: [],
-            faltas: [],
-            atestados: [],
-            status: editId ? (lancamentos.find(l => l.id === editId)?.status || 'aberto') : 'aberto'
-        };
-    } else {
-        dados = {
-            id: editId || '',
-            colaboradorId: document.getElementById('lancColaborador').value,
-            mes: document.getElementById('lancMes').value,
-            ferias: ferias,
-            diasFerias: 0,
-            diasTrabalhados: parseInt(document.getElementById('lancDiasTrabalhados').value) || 0,
-            remuneracao: lerMoeda(document.getElementById('lancRemuneracao')),
-            bonificacao: lerMoeda(document.getElementById('lancBonificacao')),
-            totalRecebido: lerMoeda(document.getElementById('lancTotalRecebido')),
-            assiduidade: lerMoeda(document.getElementById('lancAssiduidade')),
-            combustivel: lerMoeda(document.getElementById('lancCombustivel')),
-            cartaoAlimentacao: lerMoeda(document.getElementById('lancCartaoAlimentacao')),
-            adiantamentoEspecie: lerMoeda(document.getElementById('lancAdiantamentoEspecie')),
-            adiantamentoContab: lerMoeda(document.getElementById('lancAdiantamentoContab')),
-            horasExtras: lerMoeda(document.getElementById('lancHorasExtras')),
-            valeTransporte: lerMoeda(document.getElementById('lancValeTransporte')),
-            emprestimo: lerMoeda(document.getElementById('lancEmprestimo')),
-            outros: lerMoeda(document.getElementById('lancOutros')),
-            liquidoTotal: lerMoeda(document.getElementById('lancLiquidoTotal')),
-            pagamentoContab: lerMoeda(document.getElementById('lancPagamentoContab')),
-            pagamentoEspecie: lerMoeda(document.getElementById('lancPagamentoEspecie')),
-            formaPagamento: document.getElementById('lancFormaPagamento').value,
-            emprestimosPagos: coletarEmprestimosPagos(),
-            faltas: coletarFaltas(),
-            atestados: coletarAtestados(),
-            status: editId ? (lancamentos.find(l => l.id === editId)?.status || 'aberto') : 'aberto'
-        };
-    }
+    const dados = {
+        id: editId || '',
+        colaboradorId: document.getElementById('lancColaborador').value,
+        mes: document.getElementById('lancMes').value,
+        ferias: 'Normal',
+        diasFerias: 0,
+        diasTrabalhados: parseInt(document.getElementById('lancDiasTrabalhados').value) || 0,
+        remuneracao: lerMoeda(document.getElementById('lancRemuneracao')),
+        bonificacao: lerMoeda(document.getElementById('lancBonificacao')),
+        totalRecebido: lerMoeda(document.getElementById('lancTotalRecebido')),
+        assiduidade: lerMoeda(document.getElementById('lancAssiduidade')),
+        combustivel: lerMoeda(document.getElementById('lancCombustivel')),
+        cartaoAlimentacao: lerMoeda(document.getElementById('lancCartaoAlimentacao')),
+        adiantamentoEspecie: lerMoeda(document.getElementById('lancAdiantamentoEspecie')),
+        adiantamentoContab: lerMoeda(document.getElementById('lancAdiantamentoContab')),
+        horasExtras: lerMoeda(document.getElementById('lancHorasExtras')),
+        valeTransporte: lerMoeda(document.getElementById('lancValeTransporte')),
+        emprestimo: lerMoeda(document.getElementById('lancEmprestimo')),
+        outros: lerMoeda(document.getElementById('lancOutros')),
+        liquidoTotal: lerMoeda(document.getElementById('lancLiquidoTotal')),
+        pagamentoContab: lerMoeda(document.getElementById('lancPagamentoContab')),
+        pagamentoEspecie: lerMoeda(document.getElementById('lancPagamentoEspecie')),
+        formaPagamento: document.getElementById('lancFormaPagamento').value,
+        emprestimosPagos: coletarEmprestimosPagos(),
+        faltas: coletarFaltas(),
+        atestados: coletarAtestados(),
+        status: editId ? (lancamentos.find(l => l.id === editId)?.status || 'aberto') : 'aberto'
+    };
 
     try {
         const response = await fetch(`${API_URL}/lancamentos`, {
@@ -1384,7 +1358,7 @@ async function salvarLancamento(e) {
         });
 
         if (response.ok) {
-            notificar(ferias === 'Férias' ? 'Lançamento de férias salvo com sucesso!' : 'Lançamento salvo com sucesso!', 'success');
+            notificar('Lançamento salvo com sucesso!', 'success');
             limparFormLancamento();
             await carregarDados();
 
@@ -1413,9 +1387,8 @@ function limparFormLancamento() {
     document.getElementById('lancEditId').value = '';
     document.getElementById('formLancTitle').textContent = 'Novo Lançamento';
     document.getElementById('divDadosLancamento').style.display = 'block';
-    document.getElementById('divMensagemFerias').style.display = 'none';
 
-    ['lancColaborador','lancMes','lancFerias','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
+    ['lancColaborador','lancMes','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
      'lancAssiduidade','lancCombustivel','lancCartaoAlimentacao',
      'lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancPagamentoContab','lancPagamentoEspecie'].forEach(id => {
@@ -1448,7 +1421,6 @@ function limparFormLancamento() {
     document.getElementById('divDiaria').style.display = 'none';
     document.getElementById('lancDiasTrabalhados').value = 0;
     setMoeda(document.getElementById('lancValorDiaria'), 0);
-    document.getElementById('lancDiasFerias').value = 30;
     refrescarControlesCustom(document.getElementById('formLancamento'));
 
     const btnSalvar = document.querySelector('#formLancamento button[type="submit"]');
@@ -1606,7 +1578,7 @@ function pagamentoLancado(l) {
 }
 
 function pagamentoPendente(l) {
-    return l.ferias !== 'Férias' && !pagamentoLancado(l);
+    return !pagamentoLancado(l);
 }
 
 // Lançamentos que passam pelos filtros da listagem (busca por nome, período, contrato, status e pagamento).
@@ -1778,6 +1750,10 @@ async function novoLancamentoPara(colaboradorId, mes) {
 
     // Garante que o tipo do colaborador está ativo nos chips do formulário
     filtroContratoLancamento.add(c.contratacao);
+    if (filtroSoAdiantamentoLancamento && c.temAdiantamento !== 'Sim') {
+        filtroSoAdiantamentoLancamento = false;
+        document.getElementById('lancFiltroAdiantamento')?.classList.remove('ativo');
+    }
     document.querySelectorAll('#lancFiltroContratoChips .filtro-chip').forEach(chip =>
         chip.classList.toggle('ativo', filtroContratoLancamento.has(chip.dataset.tipo)));
     atualizarSelectColaboradores();
@@ -1824,6 +1800,10 @@ function renderizarLancamentos() {
         } else {
             recibos += botaoAcao(`gerarReciboAutonomo('${l.id}')`, 'autonomo', 'fa-file-contract', 'Gerar recibo de pagamento de autônomo');
         }
+        // Parcela de empréstimo paga no mês: recibo próprio.
+        if ((l.emprestimo || 0) > 0) {
+            recibos += botaoAcao(`gerarReciboEmprestimo('${l.id}')`, 'recibo', 'fa-hand-holding-dollar', 'Gerar recibo de pagamento de empréstimo');
+        }
 
         let acoes;
         if (l.status === 'aberto') {
@@ -1866,7 +1846,6 @@ function editarLancamento(id) {
     document.getElementById('lancEditId').value = l.id;
     document.getElementById('lancColaborador').value = l.colaboradorId;
     document.getElementById('lancMes').value = l.mes;
-    document.getElementById('lancFerias').value = l.ferias;
     document.getElementById('lancFormaPagamento').value = l.formaPagamento || 'Depósito';
 
     // Badge de tipo de contrato + bloco EVA (somente CLT)
@@ -1879,7 +1858,6 @@ function editarLancamento(id) {
     if (divDiariaEdit) divDiariaEdit.style.display = ehDiaristaEdit ? 'block' : 'none';
     if (ehDiaristaEdit) setMoeda(document.getElementById('lancValorDiaria'), colabDoLanc.valorDiaria || 0);
     document.getElementById('lancDiasTrabalhados').value = l.diasTrabalhados || 0;
-    document.getElementById('lancDiasFerias').value = l.diasFerias || 30;
 
     setMoeda(document.getElementById('lancRemuneracao'), l.remuneracao || 0);
     setMoeda(document.getElementById('lancBonificacao'), l.bonificacao || 0);
@@ -1939,13 +1917,7 @@ function editarLancamento(id) {
     contadorAtestados = 0;
     (l.atestados || []).forEach(a => adicionarAtestado(a));
 
-    if (l.ferias === 'Férias') {
-        document.getElementById('divDadosLancamento').style.display = 'none';
-        document.getElementById('divMensagemFerias').style.display = 'block';
-    } else {
-        document.getElementById('divDadosLancamento').style.display = 'block';
-        document.getElementById('divMensagemFerias').style.display = 'none';
-    }
+    document.getElementById('divDadosLancamento').style.display = 'block';
 
     document.getElementById('formLancTitle').textContent = 'Editar Lançamento';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1957,7 +1929,7 @@ function visualizarLancamento(id) {
 
     editarLancamento(id);
 
-    ['lancColaborador','lancMes','lancFerias','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
+    ['lancColaborador','lancMes','lancFormaPagamento','lancDiasTrabalhados','lancRemuneracao','lancBonificacao',
      'lancAssiduidade','lancCombustivel','lancCartaoAlimentacao',
      'lancAdiantamentoEspecie','lancAdiantamentoContab','lancHorasExtras','lancValeTransporte',
      'lancEmprestimo','lancOutros','lancPagamentoContab','lancPagamentoEspecie'].forEach(idc => {
@@ -2027,8 +1999,28 @@ async function excluirLancamento(id) {
 
 // Tipos de contratação ativos no filtro do select de Colaborador (padrão: todos)
 let filtroContratoLancamento = new Set(['CLT', 'Diarista', 'Mensalista']);
+// Filtro extra (somado ao de contratação): só quem tem adiantamento no cadastro.
+let filtroSoAdiantamentoLancamento = false;
+
+function configurarFiltroAdiantamentoLancamento() {
+    const chip = document.getElementById('lancFiltroAdiantamento');
+    if (!chip) return;
+    chip.addEventListener('click', function () {
+        filtroSoAdiantamentoLancamento = !filtroSoAdiantamentoLancamento;
+        this.classList.toggle('ativo', filtroSoAdiantamentoLancamento);
+        const select = document.getElementById('lancColaborador');
+        const antes = select.value;
+        atualizarSelectColaboradores();
+        if (antes && !Array.from(select.options).some(o => o.value === antes)) {
+            select.value = '';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        refrescarControlesCustom(document.getElementById('formLancamento'));
+    });
+}
 
 function configurarFiltroContratoLancamento() {
+    configurarFiltroAdiantamentoLancamento();
     const container = document.getElementById('lancFiltroContratoChips');
     if (!container) return;
 
@@ -2070,7 +2062,8 @@ function atualizarSelectColaboradores() {
     // (CLT e quem não tem períodos cadastrados sempre aparecem). Meses passados em que
     // ele estava contratado continuam disponíveis, preservando o histórico.
     const lista = colaboradores.filter(c =>
-        filtroContratoLancamento.has(c.contratacao) && colaboradorAtivoNoMes(c, mes));
+        filtroContratoLancamento.has(c.contratacao) && colaboradorAtivoNoMes(c, mes) &&
+        (!filtroSoAdiantamentoLancamento || c.temAdiantamento === 'Sim'));
 
     const options = lista.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
     select.innerHTML = '<option value="">Selecione</option>' + options;
@@ -2228,6 +2221,52 @@ function gerarReciboPremio(id) {
     abrirModal('modalReciboEva');
 }
 
+// Empresa que figura no recibo de empréstimo, conforme a empresa do colaborador.
+const EMPRESAS_RECIBO_EMPRESTIMO = {
+    Gerenciadora: { nome: 'SEPRES Gerenciadora Ltda', cnpj: '63.670.882/0001-76' },
+    Engenharia: { nome: 'SEPRES Engenharia Ltda', cnpj: '00.601.780.0001-25' }
+};
+
+// Mês por extenso (ex.: "outubro de 2026") a partir de 'YYYY-MM'.
+function mesPorExtenso(mes) {
+    const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
+                   'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const [ano, m] = String(mes).split('-');
+    return `${meses[(parseInt(m, 10) || 1) - 1]} de ${ano}`;
+}
+
+// Recibo de pagamento de empréstimo (HTML interno): a empresa declara o recebimento da
+// parcela do mês (valor = soma das parcelas de empréstimo pagas no lançamento).
+function reciboEmprestimoHtml(l, c) {
+    const empresa = EMPRESAS_RECIBO_EMPRESTIMO[c.empresa] || EMPRESAS_RECIBO_EMPRESTIMO.Engenharia;
+    const valor = numeroBR(l.emprestimo || 0);
+    return `
+        ${logoReciboHtml()}
+        <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO DE EMPRÉSTIMO</h4></div>
+        <p style="text-align: justify;">A ${empresa.nome}, pessoa jurídica de direito privado, situada na cidade de Ouro Preto,
+        na Rua Anibal Cotta, n°25, Bairro Jardim Itacolomi, CEP: 35400-520, inscrita no CNPJ sob o número ${empresa.cnpj},
+        vem através deste termo declarar recebimento, no valor de R$ ${valor} de <strong>${esc(c.nome)}</strong>,
+        inscrito no CPF ${esc(c.cpf)}, referente ao Pagamento de parcela do empréstimo do mês ${mesPorExtenso(l.mes)}.</p>
+        <br>
+        <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
+        <br><br>
+        <div class="text-center">
+            <div style="width: 70%; max-width: 100%; margin: 0 auto 4px; border-top: 1px solid #000;"></div>
+            <p>${empresa.nome}</p>
+        </div>`;
+}
+
+function gerarReciboEmprestimo(id) {
+    const l = lancamentos.find(lanc => lanc.id === id);
+    if (!l) return;
+    const c = colaboradores.find(co => co.id === l.colaboradorId);
+    if (!c) return;
+
+    document.getElementById('reciboEvaTitulo').textContent = 'Recibo de Pagamento de Empréstimo';
+    document.getElementById('reciboEvaConteudo').innerHTML = reciboEmprestimoHtml(l, c);
+    abrirModal('modalReciboEva');
+}
+
 // Recibo de pagamento de autônomo do Mensalista/Diarista (HTML interno): valor líquido em módulo.
 function reciboAutonomoHtml(l, c) {
     const valor = numeroBR(Math.abs(l.liquidoTotal || 0));
@@ -2326,6 +2365,7 @@ function aplicarFiltrosDashboard() {
 
     const fatia = fatiaDashboard();
     atualizarCardsDashboard(fatia);
+    renderizarPainelFerias(fatia);
     renderizarGraficos(fatia);
 }
 
@@ -2523,23 +2563,6 @@ function renderizarGraficos(fatia) {
     colabs.forEach(c => { const k = c.contratacao || 'Não informado'; headcount[k] = (headcount[k] || 0) + 1; });
     graficoBarras('chartHeadcount', Object.keys(headcount), Object.values(headcount), { moeda: false });
 
-    // 5. Quantidade de férias por mês (mesma leitura da evolução: todos os meses,
-    //    com o mês filtrado destacado)
-    const feriasPorMes = {};
-    lancsTodosMeses.forEach(l => {
-        if (l.ferias === 'Férias') feriasPorMes[l.mes] = (feriasPorMes[l.mes] || 0) + 1;
-    });
-    graficoBarras('chartFerias', meses.map(formatarMesAno), meses.map(m => feriasPorMes[m] || 0),
-        { moeda: false, cores: coresMes });
-
-    // Legenda: quem teve férias no período filtrado e quantos dias
-    const itensFerias = lancs.filter(l => l.ferias === 'Férias').map(l => {
-        const c = doColab(l.colaboradorId);
-        return { nome: c.nome || 'Desconhecido', mes: formatarMesAno(l.mes), dias: l.diasFerias || 30 };
-    }).sort((a, b) => a.nome.localeCompare(b.nome));
-    montarLegendaLista('legendaFerias', itensFerias, i =>
-        `<div class="legenda-linha"><span class="text-slate-600">${esc(i.nome)} <span class="text-slate-400">· ${esc(i.mes)}</span></span><span class="font-medium text-slate-800">${i.dias} dia(s)</span></div>`);
-
     // 6. Faltas por mês (mesmo padrão: todos os meses, mês filtrado destacado)
     const faltasPorMes = {};
     achatarFaltas(lancsTodosMeses).forEach(f => { faltasPorMes[f.mes] = (faltasPorMes[f.mes] || 0) + 1; });
@@ -2643,6 +2666,7 @@ async function exportarPlanilha() {
 // Escolhe mês, tipo de recibo, contrato e empresa e imprime todos os recibos de uma vez.
 
 function valorReciboLote(tipo, l, c) {
+    if (tipo === 'emprestimo') return l.emprestimo || 0;
     if (tipo === 'eva') return (l.bonificacao || 0) + (l.assiduidade || 0) + (l.horasExtras || 0) + (l.combustivel || 0);
     if (tipo === 'pagamento' && c.contratacao === 'CLT') return (l.pagamentoEspecie || 0) + (l.valeTransporte || 0);
     return Math.abs(l.liquidoTotal || 0);
@@ -2657,7 +2681,7 @@ function selecionarRecibosLote() {
     const incluirZerados = document.getElementById('reciboLoteZerados').checked;
     const itens = []; let zerados = 0;
     lancamentos.forEach(l => {
-        if (l.mes !== mes || l.ferias === 'Férias') return;
+        if (l.mes !== mes) return;
         const c = colaboradores.find(co => co.id === l.colaboradorId);
         if (!c) return;
         if (tipo === 'eva' && c.contratacao !== 'CLT') return;        // EVA: só CLT
@@ -2676,7 +2700,8 @@ function atualizarPrevisaoRecibosLote() {
     const dicas = {
         pagamento: 'CLT: valor em espécie. Mensalista e Diarista: valor líquido.',
         eva: 'Somente CLT: assiduidade, prestação de serviços (horas extras), prêmios e vale combustível.',
-        autonomo: 'Somente Mensalista e Diarista: valor líquido.'
+        autonomo: 'Somente Mensalista e Diarista: valor líquido.',
+        emprestimo: 'Quem pagou parcela de empréstimo no mês: valor da parcela paga.'
     };
     const dica = document.getElementById('reciboLoteDica');
     if (dica) dica.textContent = dicas[document.getElementById('reciboLoteTipo').value] || '';
@@ -2705,7 +2730,7 @@ function gerarRecibosLote() {
     const { itens } = selecionarRecibosLote();
     if (itens.length === 0) return;
     const tipo = document.getElementById('reciboLoteTipo').value;
-    const construtor = { pagamento: reciboPagamentoHtml, eva: reciboPremioHtml, autonomo: reciboAutonomoHtml }[tipo];
+    const construtor = { pagamento: reciboPagamentoHtml, eva: reciboPremioHtml, autonomo: reciboAutonomoHtml, emprestimo: reciboEmprestimoHtml }[tipo];
     const corpo = itens.map(({ l, c }) => `<div class="recibo-caixa">${construtor(l, c)}</div>`).join('');
     const janela = abrirJanelaImpressao(corpo);
     if (!janela) return;
@@ -2786,4 +2811,167 @@ function formatarData(data) {
     if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return '-';
     const [ano, mes, dia] = data.split('-');
     return `${dia}/${mes}/${ano}`;
+}
+
+
+// ==================== FÉRIAS ====================
+
+function dataBR(iso) {
+    const [a, m, d] = String(iso).split('-');
+    return `${d}/${m}/${a}`;
+}
+
+// Número de dias corridos do período (inclusive início e fim).
+function diasDeFerias(f) {
+    return Math.round((new Date(f.fim + 'T00:00:00') - new Date(f.inicio + 'T00:00:00')) / 86400000) + 1;
+}
+
+// O período de férias toca o mês 'YYYY-MM'?
+function feriasNoMes(f, mes) {
+    return f.inicio <= `${mes}-31` && f.fim >= `${mes}-01`;
+}
+
+// "10/11 a 25/11" (com o ano quando o período atravessa a virada do ano).
+function periodoFeriasTexto(f) {
+    const mesmoAno = f.inicio.substring(0, 4) === f.fim.substring(0, 4);
+    const curta = iso => dataBR(iso).substring(0, 5);
+    return mesmoAno ? `${curta(f.inicio)} a ${curta(f.fim)}` : `${dataBR(f.inicio)} a ${dataBR(f.fim)}`;
+}
+
+function situacaoFerias(f) {
+    const hoje = new Date().toLocaleDateString('sv-SE');
+    if (f.fim < hoje) return { texto: 'Concluídas', cor: 'bg-slate-100 text-slate-600' };
+    if (f.inicio > hoje) return { texto: 'Agendadas', cor: 'bg-sky-100 text-sky-700' };
+    return { texto: 'Em andamento', cor: 'bg-amber-100 text-amber-700' };
+}
+
+// Painel do Dashboard: quem tem férias na competência escolhida (respeita contrato/empresa).
+function renderizarPainelFerias(fatia) {
+    const painel = document.getElementById('painelFeriasMes');
+    if (!painel) return;
+    if (fatia.comp === 'todos') { painel.style.display = 'none'; return; }
+
+    const ids = new Set(fatia.colabs.map(c => c.id));
+    const itens = feriasLista
+        .filter(f => ids.has(f.colaboradorId) && feriasNoMes(f, fatia.comp))
+        .sort((x, y) => x.inicio.localeCompare(y.inicio));
+
+    document.getElementById('feriasMesTitulo').textContent = `Férias em ${formatarMesAno(fatia.comp)}`;
+    document.getElementById('feriasMesQtd').textContent = itens.length ? `${itens.length} ${itens.length === 1 ? 'colaborador' : 'colaboradores'}` : '';
+    const lista = document.getElementById('feriasMesLista');
+    lista.innerHTML = itens.length ? itens.map(f => {
+        const c = colaboradores.find(co => co.id === f.colaboradorId) || {};
+        const sit = situacaoFerias(f);
+        return `<div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm">
+            <span class="min-w-[10rem] font-medium text-slate-800">${esc(c.nome || 'Desconhecido')}</span>
+            <span class="text-slate-600"><i class="fas fa-calendar-days mr-1 text-slate-400"></i>de ${esc(dataBR(f.inicio))} até ${esc(dataBR(f.fim))}</span>
+            <span class="text-slate-400">${diasDeFerias(f)} dia(s)</span>
+            <span class="ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${sit.cor}">${sit.texto}</span>
+        </div>`;
+    }).join('') : '<div class="px-5 py-4 text-sm text-slate-400">Ninguém com férias registradas nesta competência.</div>';
+    painel.style.display = 'block';
+}
+
+// ---- Página Férias ----
+
+function renderizarFerias() {
+    const sel = document.getElementById('feriasColaborador');
+    if (!sel) return;
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Selecione</option>' +
+        colaboradores.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
+    sel.value = atual;
+    refrescarControlesCustom(document.getElementById('formFerias'));
+
+    const filtro = document.getElementById('feriasFiltroSituacao').value;
+    const mes = document.getElementById('feriasFiltroMes').value;
+    const itens = feriasLista
+        .filter(f => !filtro || situacaoFerias(f).texto === filtro)
+        .filter(f => !mes || feriasNoMes(f, mes))
+        .sort((x, y) => y.inicio.localeCompare(x.inicio));
+
+    const corpo = document.getElementById('feriasTabela');
+    corpo.innerHTML = itens.length ? itens.map(f => {
+        const c = colaboradores.find(co => co.id === f.colaboradorId) || {};
+        const sit = situacaoFerias(f);
+        return `<tr class="border-t border-slate-100">
+            <td class="px-4 py-3 font-medium text-slate-800">${esc(c.nome || 'Desconhecido')}<div class="text-xs font-normal text-slate-400">${esc(c.contratacao || '')}${c.empresa ? ' · ' + esc(c.empresa) : ''}</div></td>
+            <td class="px-4 py-3 text-slate-700">${esc(dataBR(f.inicio))} a ${esc(dataBR(f.fim))}</td>
+            <td class="px-4 py-3 text-slate-600">${diasDeFerias(f)}</td>
+            <td class="px-4 py-3"><span class="rounded-full px-2.5 py-0.5 text-xs font-medium ${sit.cor}">${sit.texto}</span></td>
+            <td class="px-4 py-3 text-slate-500">${esc(f.observacoes || '')}</td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">${botaoAcao(`editarFerias('${esc(f.id)}')`, 'edit', 'fa-pen', 'Editar')}${botaoAcao(`excluirFerias('${esc(f.id)}')`, 'delete', 'fa-trash', 'Excluir')}</td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-400">Nenhuma férias registrada.</td></tr>';
+}
+
+function limparFormFerias() {
+    document.getElementById('formFerias').reset();
+    document.getElementById('feriasEditId').value = '';
+    document.getElementById('formFeriasTitulo').textContent = 'Registrar férias';
+    refrescarControlesCustom(document.getElementById('formFerias'));
+}
+
+function editarFerias(id) {
+    const f = feriasLista.find(x => x.id === id);
+    if (!f) return;
+    document.getElementById('feriasEditId').value = f.id;
+    document.getElementById('feriasColaborador').value = f.colaboradorId;
+    document.getElementById('feriasInicio').value = f.inicio;
+    document.getElementById('feriasFim').value = f.fim;
+    document.getElementById('feriasObs').value = f.observacoes || '';
+    document.getElementById('formFeriasTitulo').textContent = 'Editar férias';
+    refrescarControlesCustom(document.getElementById('formFerias'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function salvarFerias(e) {
+    e.preventDefault();
+    const dados = {
+        id: document.getElementById('feriasEditId').value,
+        colaboradorId: document.getElementById('feriasColaborador').value,
+        inicio: document.getElementById('feriasInicio').value,
+        fim: document.getElementById('feriasFim').value,
+        observacoes: document.getElementById('feriasObs').value.trim()
+    };
+    if (!dados.colaboradorId || !dados.inicio || !dados.fim) {
+        notificar('Informe o colaborador e as datas de início e fim.', 'error');
+        return;
+    }
+    if (dados.fim < dados.inicio) {
+        notificar('A data final não pode ser anterior à inicial.', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(`${API_URL}/ferias`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        });
+        if (response.ok) {
+            notificar('Férias salvas com sucesso!', 'success');
+            limparFormFerias();
+            await carregarDados();
+        } else {
+            const erro = await response.json().catch(() => ({}));
+            notificar(erro.erro || 'Erro ao salvar férias', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao salvar férias', 'error');
+    }
+}
+
+async function excluirFerias(id) {
+    if (!await confirmar('Excluir este período de férias?', { titulo: 'Excluir férias', perigo: true, confirmar: 'Excluir' })) return;
+    try {
+        const response = await fetch(`${API_URL}/ferias/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            notificar('Férias excluídas!', 'success');
+            await carregarDados();
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao excluir férias', 'error');
+    }
 }

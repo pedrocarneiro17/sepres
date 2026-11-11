@@ -24,6 +24,7 @@
             <a href="/" class="side-link active" title="Dashboard"><i class="fas fa-chart-line w-5 shrink-0 text-center"></i><span class="side-label">Dashboard</span></a>
             <a href="/colaboradores" class="side-link" title="Colaboradores"><i class="fas fa-users w-5 shrink-0 text-center"></i><span class="side-label">Colaboradores</span></a>
             <a href="/lancamentos" class="side-link" title="Lançamentos"><i class="fas fa-dollar-sign w-5 shrink-0 text-center"></i><span class="side-label">Lançamentos</span></a>
+            <a href="/ferias" class="side-link" title="Férias"><i class="fas fa-umbrella-beach w-5 shrink-0 text-center"></i><span class="side-label">Férias</span></a>
         </nav>
         <div class="border-t border-slate-100 p-3">
             <a href="/conta" class="side-link" title="Minha conta"><i class="fas fa-user-gear w-5 shrink-0 text-center"></i><span class="side-label">Minha conta</span></a>
@@ -129,6 +130,15 @@
                 </div>
             </div>
 
+            <!-- Férias da competência: só aparece quando há uma competência (mês) escolhida -->
+            <div class="card mb-6 overflow-hidden" id="painelFeriasMes" style="display: none;">
+                <div class="flex items-center gap-2 border-b border-slate-200 px-5 py-3 font-heading text-sm font-semibold text-slate-700">
+                    <i class="fas fa-umbrella-beach text-sepres-600"></i> <span id="feriasMesTitulo">Férias</span>
+                    <span class="ml-auto text-xs font-normal text-slate-400" id="feriasMesQtd"></span>
+                </div>
+                <div class="divide-y divide-slate-100" id="feriasMesLista"></div>
+            </div>
+
             <!-- Gráficos -->
             <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div class="card p-5">
@@ -175,20 +185,6 @@
                         <canvas id="chartHeadcount"></canvas>
                         <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Nenhum colaborador</div>
                     </div>
-                </div>
-
-                <div class="card p-5">
-                    <h3 class="text-sm font-semibold text-slate-700">Férias por mês</h3>
-                    <p class="mb-3 text-xs text-slate-400">Colaboradores em férias · o mês filtrado aparece destacado</p>
-                    <div class="relative h-64">
-                        <canvas id="chartFerias"></canvas>
-                        <div class="chart-vazio absolute inset-0 hidden items-center justify-center text-sm text-slate-400">Nenhuma férias registrada</div>
-                    </div>
-                    <button type="button" class="legenda-toggle" onclick="toggleLegendaChart(this)" data-painel="legendaFerias">
-                        <span><i class="fas fa-list-ul mr-1"></i> Ver quem teve férias e quantos dias</span>
-                        <i class="fas fa-chevron-down legenda-chevron"></i>
-                    </button>
-                    <div id="legendaFerias" class="legenda-painel hidden"></div>
                 </div>
 
                 <div class="card p-5">

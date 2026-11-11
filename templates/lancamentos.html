@@ -25,6 +25,7 @@
             <a href="/" class="side-link" title="Dashboard"><i class="fas fa-chart-line w-5 shrink-0 text-center"></i><span class="side-label">Dashboard</span></a>
             <a href="/colaboradores" class="side-link" title="Colaboradores"><i class="fas fa-users w-5 shrink-0 text-center"></i><span class="side-label">Colaboradores</span></a>
             <a href="/lancamentos" class="side-link active" title="Lançamentos"><i class="fas fa-dollar-sign w-5 shrink-0 text-center"></i><span class="side-label">Lançamentos</span></a>
+            <a href="/ferias" class="side-link" title="Férias"><i class="fas fa-umbrella-beach w-5 shrink-0 text-center"></i><span class="side-label">Férias</span></a>
         </nav>
         <div class="border-t border-slate-100 p-3">
             <a href="/conta" class="side-link" title="Minha conta"><i class="fas fa-user-gear w-5 shrink-0 text-center"></i><span class="side-label">Minha conta</span></a>
@@ -66,14 +67,17 @@
 
                         <div class="mb-4">
                             <label class="label">Filtrar Colaborador por Contratação</label>
-                            <div class="flex flex-wrap gap-2" id="lancFiltroContratoChips">
-                                <button type="button" class="filtro-chip" data-tipo="CLT">CLT</button>
-                                <button type="button" class="filtro-chip" data-tipo="Diarista">Diarista</button>
-                                <button type="button" class="filtro-chip" data-tipo="Mensalista">Mensalista</button>
+                            <div class="flex flex-wrap gap-2">
+                                <div class="flex flex-wrap gap-2" id="lancFiltroContratoChips">
+                                    <button type="button" class="filtro-chip" data-tipo="CLT">CLT</button>
+                                    <button type="button" class="filtro-chip" data-tipo="Diarista">Diarista</button>
+                                    <button type="button" class="filtro-chip" data-tipo="Mensalista">Mensalista</button>
+                                </div>
+                                <button type="button" class="filtro-chip" id="lancFiltroAdiantamento" title="Mostrar só colaboradores com adiantamento no cadastro">Com adiantamento</button>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
                                 <label class="label">Colaborador *</label>
                                 <select class="input" id="lancColaborador" required><option value="">Selecione</option></select>
@@ -82,10 +86,6 @@
                             <div>
                                 <label class="label">Mês/Ano *</label>
                                 <input type="month" class="input mes-ptbr" id="lancMes" required>
-                            </div>
-                            <div>
-                                <label class="label">Status do Mês</label>
-                                <select class="input" id="lancFerias" onchange="toggleFerias()"><option value="Normal">Normal</option><option value="Férias">Férias</option></select>
                             </div>
                         </div>
 
@@ -241,19 +241,6 @@
                             </div>
                         </div>
 
-                        <!-- Mensagem de Férias -->
-                        <div id="divMensagemFerias" style="display: none;" class="mt-6">
-                            <div class="rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
-                                <div class="mb-2 flex justify-center"><span class="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-600"><i class="fas fa-umbrella-beach text-lg"></i></span></div>
-                                <h5 class="font-semibold text-amber-800">Colaborador em Férias</h5>
-                                <p class="mt-1 text-sm text-amber-700">Todos os valores são automaticamente zerados e os campos ficam desabilitados neste período.</p>
-                                <div class="mx-auto mt-4 max-w-xs text-left">
-                                    <label class="label">Quantidade de Dias de Férias</label>
-                                    <input type="number" min="1" max="30" class="input" id="lancDiasFerias" value="30">
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="mt-6 flex justify-end gap-3">
                             <button type="button" class="btn-secondary" id="btnCancelarLanc"><i class="fas fa-times"></i> Cancelar</button>
                             <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar Lançamento</button>
@@ -382,6 +369,7 @@
                         <option value="pagamento">Pagamento</option>
                         <option value="eva">Prêmio / EVA (CLT)</option>
                         <option value="autonomo">Autônomo (Mensalista e Diarista)</option>
+                        <option value="emprestimo">Empréstimo (parcela do mês)</option>
                     </select>
                     <p class="mt-1.5 text-xs text-slate-500" id="reciboLoteDica"></p>
                 </div>
@@ -441,26 +429,6 @@
 
     <script src="/static/js/main.js"></script>
     <script>
-        function toggleFerias() {
-            const ferias = document.getElementById('lancFerias').value;
-            const divDados = document.getElementById('divDadosLancamento');
-            const divMensagem = document.getElementById('divMensagemFerias');
-
-            if (ferias === 'Férias') {
-                divDados.style.display = 'none';
-                divMensagem.style.display = 'block';
-                ['lancRemuneracao','lancBonificacao','lancAssiduidade','lancCombustivel','lancCartaoAlimentacao',
-                 'lancAdiantamentoEspecie','lancAdiantamentoContab',
-                 'lancHorasExtras','lancValeTransporte','lancEmprestimo','lancOutros',
-                 'lancPagamentoContab','lancPagamentoEspecie'].forEach(id => setMoeda(document.getElementById(id), 0));
-                calcularTotalRecebido();
-                calcularLiquidoTotal();
-            } else {
-                divDados.style.display = 'block';
-                divMensagem.style.display = 'none';
-            }
-        }
-
         // ==================== FALTAS ====================
         let contadorFaltas = 0;
 
