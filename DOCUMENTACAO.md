@@ -97,7 +97,7 @@ diárias e recibos), com dashboard de indicadores e gráficos.
 | `nome`, `cpf` | Obrigatórios; **CPF único** (validado antes de salvar). |
 | `endereco`, `funcao` | Livres (`funcao` = cargo). |
 | `empresa` | `Engenharia` ou `Gerenciadora`. Define as contratações disponíveis (ver 5.1). |
-| `contratacao` | `CLT`, `Diarista` ou `Mensalista` (Engenharia); só `CLT` (Gerenciadora). |
+| `contratacao` | `CLT`, `Diarista` ou `Mensalista` (Engenharia); só `CLT` na Gerenciadora, com a exceção descrita em 5.1. |
 | `admissao` | `YYYY-MM-DD`. |
 | `remuneracao` | Remuneração bruta/base (CLT e Mensalista). |
 | `premio` | Prêmio fixo (existe para CLT e Mensalista; Diarista não tem). |
@@ -106,8 +106,9 @@ diárias e recibos), com dashboard de indicadores e gráficos.
 | `valeRefeicao`, `valeTransporte`, `seguroVida`, `planoOdonto`, `dependentes` | Informativos; não entram em cálculo. |
 | `temAdiantamento`, `valorAdiantamento`, `tipoAdiantamento` | Adiantamento **padrão** do colaborador (ver 5.4). `tipoAdiantamento` = `Espécie` ou `Depósito` (Depósito só para CLT). |
 | `contratos` | Lista de **períodos de contrato** (Mensalista/Diarista), guardada em `contratosJson`. Ver 5.2. |
+| `demitidoEm` | Data de demissão (`YYYY-MM-DD`); vazio = ativo. **Não exclui nada**: ver 5.12. |
 | `observacoes` | Texto livre. |
-| `emprestimos`, `lancamentos` | Relações 1:N, excluídas em cascata. |
+| `emprestimos`, `lancamentos`, `ferias`, `afastamentos` | Relações 1:N, excluídas em cascata. |
 
 As colunas antigas `fimContrato` e `desligado` continuam no banco só por compatibilidade:
 no primeiro boot, quem tinha Fim de Contrato foi convertido em um período
@@ -128,7 +129,7 @@ Pagamento mensal de um colaborador (um por colaborador/mês).
 | Campo | Regra |
 |---|---|
 | `colaboradorId`, `mes` | Obrigatórios (`mes` = `YYYY-MM`). |
-| `ferias` | `Normal` ou `Férias` (Férias zera os valores). |
+| `ferias`, `diasFerias` | **Legado**: antes marcavam o mês como férias e zeravam os valores. Hoje o lançamento é sempre `Normal`; as férias são registradas no menu Férias (3.4). Lançamentos antigos marcados como `Férias` são tratados como normais. |
 | `diasTrabalhados` | Só Diarista: multiplica `valorDiaria` para formar a remuneração. |
 | `remuneracao`, `bonificacao` | Vêm do cadastro (ou diária × dias), editáveis. |
 | `assiduidade`, `combustivel`, `cartaoAlimentacao`, `horasExtras` | Valores do mês. Assiduidade, Combustível e Horas Extras compõem o EVA do CLT (com o prêmio). |
@@ -141,6 +142,21 @@ Pagamento mensal de um colaborador (um por colaborador/mês).
 | `formaPagamento` | `Depósito`, `Espécie` ou `Depósito + Espécie`. |
 | `status` | `aberto` (padrão) ou `finalizado`. |
 
+### 3.4 Férias (`Ferias`)
+
+Período de férias de um colaborador (pode haver vários): `colaborador_id`, `inicio` e `fim`
+(`YYYY-MM-DD`) e `observacoes` (opcional). É só **controle** de quem sai e em quais dias:
+não altera lançamentos, cálculos nem pagamentos. Excluir o colaborador exclui as férias dele.
+A tabela é criada sozinha no primeiro boot (`db.create_all`).
+
+### 3.5 Afastamento (`Afastamento`)
+
+Atestado ou afastamento pelo INSS de um colaborador: `colaborador_id`, `tipo` (`Atestado` ou
+`INSS`), `inicio` e `fim` (`YYYY-MM-DD`), `acidenteTrabalho` (sim/não) e `observacoes`
+(até 500 caracteres). Só **controle** de datas: não altera lançamentos nem cálculos, e é
+independente do campo de atestados dentro do lançamento. A tabela é criada sozinha no
+primeiro boot.
+
 ## 4. Rotas
 
 | Rota | Método | Auth | Função |
@@ -151,14 +167,18 @@ Pagamento mensal de um colaborador (um por colaborador/mês).
 | `/redefinir-senha/<token>` | GET/POST | pública (token) | Define a nova senha. |
 | `/conta` | GET/POST | logado | Minha conta (e-mail e senha). |
 | `/logout` | GET | logado | Encerra a sessão. |
-| `/`, `/colaboradores`, `/lancamentos` | GET | logado | Páginas (as `.html` antigas redirecionam). |
-| `/api/dados` | GET | logado | Colaboradores + lançamentos. |
+| `/`, `/colaboradores`, `/lancamentos`, `/ferias`, `/afastamentos` | GET | logado | Páginas (as `.html` antigas redirecionam). |
+| `/api/dados` | GET | logado | Colaboradores + lançamentos + férias + afastamentos. |
 | `/api/colaboradores` | GET/POST | logado | Lista / cria-edita (valida CPF único e períodos de contrato). |
 | `/api/colaboradores/<id>` | DELETE | logado | Exclui (cascata). |
 | `/api/lancamentos` | GET/POST | logado | Lista / cria-edita. |
 | `/api/lancamentos/<id>` | DELETE | logado | Exclui. |
 | `/api/lancamentos/<id>/finalizar` | PUT | logado | Status → `finalizado`. |
 | `/api/lancamentos/<id>/reabrir` | PUT | logado | Status → `aberto`. |
+| `/api/ferias` | POST | logado | Cria/edita um período (valida colaborador, datas e fim ≥ início). |
+| `/api/ferias/<id>` | DELETE | logado | Exclui um período de férias. |
+| `/api/afastamentos` | POST | logado | Cria/edita (valida colaborador, tipo, datas e fim ≥ início). |
+| `/api/afastamentos/<id>` | DELETE | logado | Exclui um afastamento. |
 | `/api/lancamentos/finalizar-todos` | POST | logado | Finaliza em lote os `ids` enviados que estão em aberto. |
 | `/api/exportar-planilha?mes=YYYY-MM&tipo=` | GET | logado | Planilha Excel de pagamentos do mês (ver 5.9). |
 | `/api/exportar-colaboradores` | GET | logado | Planilha Excel de colaboradores (ver 5.9). |
@@ -171,7 +191,10 @@ Não existe rota de restauração/reset de dados. Rota inexistente retorna `404`
 ### 5.1 Empresa define a contratação disponível
 
 - **Engenharia**: `CLT`, `Diarista` ou `Mensalista`.
-- **Gerenciadora**: somente `CLT`.
+- **Gerenciadora**: somente `CLT` em **cadastro novo**.
+- **Exceção ao editar**: um colaborador da Gerenciadora **que já não é CLT** (sem tipo,
+  Mensalista ou Diarista) pode ser editado com as três opções, para poder ser corrigido e
+  mantido (há mensalistas na Gerenciadora). Quem é CLT na Gerenciadora continua só com CLT.
 
 O campo "Tipo de Contratação" é reconstruído ao trocar a empresa.
 
@@ -268,9 +291,13 @@ se **aberto**, carrega para edição. Essa validação existe só na tela, não 
 
 ### 5.8 Férias, CPF único e exclusão
 
-- "Férias" zera os valores e desabilita a edição, mas grava o lançamento (histórico e
-  indicador de férias).
-- CPF duplicado retorna `400`. Excluir colaborador remove lançamentos e empréstimos.
+- **Férias não bloqueiam mais o lançamento**: o campo "Status do Mês" foi removido; quem está
+  de férias é lançado normalmente. O registro das datas é feito no menu **Férias** (5.13).
+- CPF duplicado retorna `400`. Excluir colaborador remove lançamentos, empréstimos e férias.
+- **Onde excluir**: os botões **Excluir colaborador** e **Excluir lançamento** ficam
+  **dentro da edição** (rodapé do formulário, à esquerda), não mais na linha da tabela. Excluir
+  lançamento só existe com o lançamento **em aberto** (finalizado: reabrir antes). Depois de
+  excluir, o formulário fecha e volta para a lista.
 
 ### 5.9 Exportação para planilha Excel
 
@@ -299,8 +326,9 @@ arquivo `pagamentos_MM-AAAA_engenharia.xlsx` ou `_gerenciadora.xlsx`). Não há 
 "Todos", "Somente CLT" e "Somente Contrato" na tela (a rota ainda aceita `tipo=`, mas o sistema
 não a usa). Uma única aba **Pagamentos** com **Nome, Empresa, Pagamento em Espécie, Pagamento em
 Conta, Vale Transporte e Líquido Total**, em ordem alfabética. **Só entra quem tem valor em pelo
-menos um dos dois pagamentos** no mês (o CLT também entra só com Vale Transporte); quem não tem
-nenhum fica de fora. Sem nenhum pagamento no mês/empresa, o sistema avisa e não baixa arquivo.
+menos um dos dois pagamentos** no mês (o CLT também entra só com Vale Transporte); o
+**Diarista entra sempre que tem lançamento no mês**, mesmo sem pagamento lançado (os
+pagamentos saem 0,00); os demais sem pagamento ficam de fora. Sem nenhum pagamento no mês/empresa, o sistema avisa e não baixa arquivo.
 "Pagamento em Conta" é o campo Pagamento Contab. (CLT) / Pagamento em conta (Mensalista e
 Diarista). O Pagamento em Espécie sai só com o valor lançado em espécie (o vale transporte tem
 coluna própria) e o **Líquido Total** é o valor salvo no lançamento, sem módulo (pode ser
@@ -331,12 +359,17 @@ está sem EVA); Mensalista e Diarista ficam de fora.
   **recibo de pagamento de autônomo**; o valor é o líquido salvo no momento **em módulo**: se
   estiver negativo (adiantamento já lançado), o recibo mostra o valor positivo que foi pago.
   Se o lançamento for editado, gere o recibo de novo.
+- **Recibo de pagamento de empréstimo**: botão na linha do lançamento que tem **parcela de
+  empréstimo paga no mês** (valor = `emprestimo` do lançamento). Texto: a empresa do
+  colaborador (**SEPRES Gerenciadora Ltda**, CNPJ 63.670.882/0001-76, ou **SEPRES Engenharia
+  Ltda**, CNPJ 00.601.780.0001-25) declara o recebimento do valor, de *nome*, CPF, referente à
+  parcela do empréstimo do mês *mês por extenso*, com data de hoje e linha de assinatura.
 - **Recibos em lote** (botão na lista de Lançamentos): escolhe-se o **mês**, o **tipo de
-  recibo** (*Pagamento*, *Prêmio/EVA — só CLT* ou *Autônomo — só Mensalista/Diarista*), o
+  recibo** (*Pagamento*, *Prêmio/EVA — só CLT*, *Autônomo — só Mensalista/Diarista* ou *Empréstimo — parcela do mês*), o
   **contrato** e a **empresa**, e o sistema imprime todos de uma vez, em ordem alfabética, com
-  duas ou três caixas por página. Uma prévia mostra quantos recibos serão gerados. Recibos com
+  duas ou três caixas por página (o de **empréstimo** sai sempre **2 por folha**). Uma prévia mostra quantos recibos serão gerados. Recibos com
   **valor zerado** ficam de fora, a menos que se marque "Incluir recibos com valor zerado";
-  lançamentos de férias não entram. O texto de cada recibo é o mesmo dos recibos individuais.
+  o tipo Empréstimo só inclui quem pagou parcela no mês. O texto de cada recibo é o mesmo dos recibos individuais.
 - Ao imprimir, abre a janela de impressão do navegador; quando ela fecha (imprimindo ou
   cancelando), o modal do recibo no sistema também fecha.
 
@@ -346,6 +379,41 @@ O botão **Finalizar todos** (lista de Lançamentos) finaliza todos os lançamen
 aberto do mês escolhido no filtro de período**. Exige um mês selecionado, ignora a busca
 por nome e pede confirmação com a quantidade. Reabrir continua sendo individual.
 
+### 5.12 Demissão (não exclui)
+
+- Campo **Data de demissão** no cadastro (seção "Demissão"), para qualquer contratação,
+  inclusive CLT. Apagar a data **reativa** o colaborador.
+- O colaborador e todo o histórico (lançamentos, empréstimos, férias, recibos) **continuam no
+  sistema**. A data só define **até quando ele aparece**: no select de novo lançamento e no
+  Dashboard ele vale **até o mês da demissão** (demissão em 15/10 → aparece em outubro e antes,
+  não em novembro). Se já houver lançamento num mês depois da saída, o Dashboard continua o
+  contando nesse mês.
+- Demitido (data já passada) é tratado como "encerrado": **some da lista de Colaboradores**
+  (aparece com "Mostrar encerrados e demitidos", com a etiqueta "Demitido em dd/mm/aaaa") e da
+  **exportação de colaboradores**. Com o Dashboard em "Todos os meses" ele ainda entra nas
+  contagens gerais.
+- **Excluir colaborador** continua existindo, separado, e apaga todos os registros dele.
+
+### 5.13 Férias (controle de datas)
+
+- Menu **Férias** (`/ferias`): formulário (colaborador, início, fim, observações) e lista dos
+  períodos com **dias**, **situação** (Agendadas / Em andamento / Concluídas), filtros por mês
+  e situação, editar e excluir.
+- No **Dashboard**, com uma competência (mês) escolhida, um painel **"Férias em Mês/AAAA"**
+  (entre os indicadores e os gráficos) lista quem tem férias nela, "de dd/mm/aaaa até
+  dd/mm/aaaa" e a quantidade de dias, respeitando os filtros de contrato e empresa. Um período
+  que cruza dois meses aparece nos dois. Em "Todos os meses" o painel fica oculto.
+- O antigo gráfico "Férias por mês" foi removido.
+
+### 5.14 Afastamentos (atestado e INSS)
+
+- Menu **Afastamentos** (`/afastamentos`, abaixo de Férias): formulário com colaborador,
+  **tipo** (Atestado ou Afastamento INSS), **de/até** (início e fim), **acidente de trabalho?**
+  (Não/Sim, para os dois tipos) e **observações**.
+- Lista com **dias**, situação (Agendado / Em andamento / Concluído), filtros por mês e por
+  tipo. O botão **Excluir afastamento** fica dentro da edição (como em 5.8).
+- Não aparece no Dashboard e não interfere em lançamentos, cálculos ou pagamentos.
+
 ## 6. Páginas
 
 ### 6.1 Dashboard (`/`)
@@ -354,9 +422,10 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   indicadores e gráficos; o botão "Limpar" tem a mesma altura (40 px) dos campos.
 - **6 indicadores**: Colaboradores, Líquido Pago, Adiantamentos, Empréstimos, Faltas,
   Atestados.
-- **7 gráficos** (Chart.js, cada um com legenda expansível): líquido por empresa,
+- **Painel de férias** da competência escolhida (5.13), entre os indicadores e os gráficos.
+- **6 gráficos** (Chart.js, cada um com legenda expansível): líquido por empresa,
   evolução mensal do líquido, líquido por tipo de contrato, colaboradores por tipo de
-  contrato, férias por mês, faltas por mês e atestados por mês.
+  contrato, faltas por mês e atestados por mês.
 - A antiga tabela de "Detalhamento" foi removida: as legendas dos gráficos mostram os
   mesmos dados.
 
@@ -366,10 +435,11 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   confirmação se já houver dados preenchidos). Um único botão **Voltar** fecha o
   formulário ou, estando na lista, volta ao Dashboard.
 - Lista com busca por nome, chips de tipo (CLT/Diarista/Mensalista), "Mostrar
-  encerrados" (ver 5.2) e o botão **Exportar** (planilha de colaboradores, ver 5.9).
+  encerrados e demitidos" (ver 5.2 e 5.12) e o botão **Exportar** (planilha de colaboradores, ver 5.9).
 - Formulário: Dados Pessoais, Dados Profissionais (empresa, contratação, admissão,
   **períodos de contrato**), Remuneração (com diária quando aplicável), Benefícios,
-  Adiantamento, Empréstimos e Observações. Máscaras de CPF e dinheiro (R$).
+  Adiantamento, Empréstimos, **Demissão** e Observações. O botão **Excluir colaborador** fica no
+  rodapé do formulário, ao editar (5.8). Máscaras de CPF e dinheiro (R$).
 - Enter não salva (só o botão). Ao salvar, o colaborador permanece em edição.
 
 ### 6.3 Lançamentos (`/lancamentos`)
@@ -384,7 +454,7 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
 - **Controle de pagamento do mês**: considera-se **pagamento lançado** quando o lançamento
   tem **Pagamento Espécie e/ou Pagamento Contab. (em conta)** com valor — vale para CLT,
   Mensalista e Diarista (mesmos campos). Lançamento só com adiantamento continua
-  **pendente**; lançamento de férias não conta como pendente. Uma faixa acima da tabela mostra,
+  **pendente**; Uma faixa acima da tabela mostra,
   para o mês e o contrato filtrados, quantos lançamentos estão sem pagamento e quantos
   colaboradores ativos (pelos períodos de contrato) **ainda não têm lançamento** no mês.
   Cada link **"ver nomes"** abre a **sua lista** — *Sem pagamento lançado* ou *Sem
@@ -397,8 +467,10 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   **edição** volta para a lista.
 - O select de colaboradores respeita os períodos de contrato do mês (5.2) e tem chips de
   tipo de contratação.
-- Em cada linha: Editar/Visualizar, recibos, Finalizar/Reabrir e Excluir; etiqueta de
-  adiantamento (5.4). Se reabrir falhar, a tela mostra o motivo do erro.
+- Além dos chips de contratação, um chip **"Com adiantamento"** mostra só colaboradores com
+  adiantamento no cadastro (soma com o filtro de contratação; só na hora do novo lançamento).
+- Em cada linha: Editar/Visualizar, recibos (inclusive o de empréstimo quando há parcela paga),
+  Finalizar/Reabrir; etiqueta de adiantamento (5.4). **Excluir** fica dentro da edição (5.8). Se reabrir falhar, a tela mostra o motivo do erro.
 - O formulário mostra só os campos do tipo: **Adiantamento Contab.** aparece apenas para
   CLT; EVA só para CLT; bloco de Diária só para Diarista. O campo ao lado de **Pagamento
   Espécie** chama-se **Pagamento Contab.** (CLT) ou **Pagamento em conta** (Mensalista e

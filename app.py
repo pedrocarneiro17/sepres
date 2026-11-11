@@ -151,6 +151,7 @@ class Colaborador(db.Model):
     lancamentos_rel = db.relationship('Lancamento', backref='colaborador', lazy=True, cascade="all, delete-orphan")
     emprestimos_rel = db.relationship('Emprestimo', backref='colaborador', lazy=True, cascade="all, delete-orphan")
     ferias_rel = db.relationship('Ferias', backref='colaborador', lazy=True, cascade="all, delete-orphan")
+    afastamentos_rel = db.relationship('Afastamento', backref='colaborador', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         """Converte objeto Colaborador para dicionário (incluindo empréstimos)"""
@@ -202,6 +203,27 @@ class Emprestimo(db.Model):
             "inicio": self.inicio,
             "descricao": self.descricao,
             "colaboradorId": self.colaborador_id
+        }
+
+class Afastamento(db.Model):
+    # Atestados e afastamentos pelo INSS (controle de datas; não altera lançamentos)
+    id = db.Column(db.String(50), primary_key=True)
+    colaborador_id = db.Column(db.String(50), db.ForeignKey('colaborador.id'), nullable=False)
+    tipo = db.Column(db.String(20), nullable=False)  # 'Atestado' ou 'INSS'
+    inicio = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD
+    fim = db.Column(db.String(10), nullable=False)     # YYYY-MM-DD
+    acidenteTrabalho = db.Column(db.Boolean, default=False)
+    observacoes = db.Column(db.String(500))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "colaboradorId": self.colaborador_id,
+            "tipo": self.tipo,
+            "inicio": self.inicio,
+            "fim": self.fim,
+            "acidenteTrabalho": bool(self.acidenteTrabalho),
+            "observacoes": self.observacoes
         }
 
 class Ferias(db.Model):
@@ -660,6 +682,11 @@ def pagina_lancamentos():
     """Página de lançamentos mensais."""
     return render_template('lancamentos.html')
 
+@app.route('/afastamentos')
+def pagina_afastamentos():
+    """Página de atestados e afastamentos (INSS)."""
+    return render_template('afastamentos.html')
+
 @app.route('/ferias')
 def pagina_ferias():
     """Página de controle de férias dos colaboradores."""
@@ -689,7 +716,8 @@ def obter_dados():
     return jsonify({
         'colaboradores': [c.to_dict() for c in colaboradores_list],
         'lancamentos': [l.to_dict() for l in lancamentos_list],
-        'ferias': [f.to_dict() for f in Ferias.query.all()]
+        'ferias': [f.to_dict() for f in Ferias.query.all()],
+        'afastamentos': [a.to_dict() for a in Afastamento.query.all()]
     })
 
 @app.route('/api/colaboradores', methods=['GET'])
@@ -1203,6 +1231,55 @@ def excluir_ferias(id):
         print(f"ERRO AO EXCLUIR FÉRIAS: {e}")
         return jsonify({'erro': 'Erro interno ao excluir férias'}), 500
 
+# ==================== AFASTAMENTOS ====================
+
+@app.route('/api/afastamentos', methods=['POST'])
+def salvar_afastamento():
+    """Cria ou atualiza um atestado / afastamento INSS."""
+    data = request.get_json(silent=True) or {}
+    colaborador_id = data.get('colaboradorId')
+    tipo = data.get('tipo')
+    inicio, fim = data.get('inicio'), data.get('fim')
+    if not Colaborador.query.get(colaborador_id or ''):
+        return jsonify({'erro': 'Colaborador não encontrado'}), 400
+    if tipo not in ('Atestado', 'INSS'):
+        return jsonify({'erro': 'Tipo inválido'}), 400
+    if not _data_valida(inicio) or not _data_valida(fim):
+        return jsonify({'erro': 'Informe datas válidas'}), 400
+    if fim < inicio:
+        return jsonify({'erro': 'A data final não pode ser anterior à inicial'}), 400
+    try:
+        afastamento = Afastamento.query.get(data.get('id')) if data.get('id') else None
+        if not afastamento:
+            afastamento = Afastamento(id=secrets.token_hex(8))
+            db.session.add(afastamento)
+        afastamento.colaborador_id = colaborador_id
+        afastamento.tipo = tipo
+        afastamento.inicio = inicio
+        afastamento.fim = fim
+        afastamento.acidenteTrabalho = bool(data.get('acidenteTrabalho'))
+        afastamento.observacoes = (data.get('observacoes') or '')[:500]
+        db.session.commit()
+        return jsonify(afastamento.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO SALVAR AFASTAMENTO: {e}")
+        return jsonify({'erro': 'Erro interno ao salvar afastamento'}), 500
+
+@app.route('/api/afastamentos/<id>', methods=['DELETE'])
+def excluir_afastamento(id):
+    afastamento = Afastamento.query.get(id)
+    if not afastamento:
+        return jsonify({'erro': 'Afastamento não encontrado'}), 404
+    try:
+        db.session.delete(afastamento)
+        db.session.commit()
+        return jsonify({'mensagem': 'Afastamento excluído'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO EXCLUIR AFASTAMENTO: {e}")
+        return jsonify({'erro': 'Erro interno ao excluir afastamento'}), 500
+
 # ==================== BACKUP (somente leitura) ====================
 
 @app.route('/api/backup', methods=['GET'])
@@ -1214,7 +1291,8 @@ def fazer_backup():
     return jsonify({
         'colaboradores': [c.to_dict() for c in colaboradores_list],
         'lancamentos': [l.to_dict() for l in lancamentos_list],
-        'ferias': [f.to_dict() for f in Ferias.query.all()]
+        'ferias': [f.to_dict() for f in Ferias.query.all()],
+        'afastamentos': [a.to_dict() for a in Afastamento.query.all()]
     })
 
 if __name__ == '__main__':

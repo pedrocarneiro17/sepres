@@ -16,6 +16,7 @@ window.fetch = function (...args) {
 let colaboradores = [];
 let lancamentos = [];
 let feriasLista = [];
+let afastamentosLista = [];
 let colabIdToDelete = null;
 
 // ==================== HELPERS DE MÁSCARA / MOEDA ====================
@@ -505,6 +506,7 @@ async function carregarDados() {
         colaboradores = Array.isArray(dados.colaboradores) ? dados.colaboradores : [];
         lancamentos = Array.isArray(dados.lancamentos) ? dados.lancamentos : [];
         feriasLista = Array.isArray(dados.ferias) ? dados.ferias : [];
+        afastamentosLista = Array.isArray(dados.afastamentos) ? dados.afastamentos : [];
 
         // Ordena por nome (A-Z) uma única vez aqui, para que toda tela que lista
         // colaboradores (selects, tabelas, filtros) já receba em ordem alfabética.
@@ -612,6 +614,8 @@ function renderizar() {
             window.history.replaceState({}, document.title, window.location.pathname);
             setTimeout(() => editarColaborador(editarId), 300);
         }
+    } else if (pathname.includes('afastamentos')) {
+        renderizarAfastamentos();
     } else if (pathname.includes('ferias')) {
         renderizarFerias();
     } else if (pathname.includes('lancamentos')) {
@@ -2994,5 +2998,127 @@ async function excluirFerias(id) {
     } catch (error) {
         console.error('Erro:', error);
         notificar('Erro ao excluir férias', 'error');
+    }
+}
+
+
+// ==================== AFASTAMENTOS (atestado / INSS) ====================
+
+const TIPOS_AFASTAMENTO = { Atestado: 'Atestado', INSS: 'Afastamento INSS' };
+
+function situacaoAfastamento(a) {
+    const hoje = new Date().toLocaleDateString('sv-SE');
+    if (a.fim < hoje) return { texto: 'Concluído', cor: 'bg-slate-100 text-slate-600' };
+    if (a.inicio > hoje) return { texto: 'Agendado', cor: 'bg-sky-100 text-sky-700' };
+    return { texto: 'Em andamento', cor: 'bg-amber-100 text-amber-700' };
+}
+
+function renderizarAfastamentos() {
+    const sel = document.getElementById('afastColaborador');
+    if (!sel) return;
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Selecione</option>' +
+        colaboradores.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
+    sel.value = atual;
+    refrescarControlesCustom(document.getElementById('formAfastamento'));
+
+    const tipo = document.getElementById('afastFiltroTipo').value;
+    const mes = document.getElementById('afastFiltroMes').value;
+    const itens = afastamentosLista
+        .filter(a => !tipo || a.tipo === tipo)
+        .filter(a => !mes || feriasNoMes(a, mes))
+        .sort((x, y) => y.inicio.localeCompare(x.inicio));
+
+    document.getElementById('afastTabela').innerHTML = itens.length ? itens.map(a => {
+        const c = colaboradores.find(co => co.id === a.colaboradorId) || {};
+        const sit = situacaoAfastamento(a);
+        return `<tr class="border-t border-slate-100">
+            <td class="px-4 py-3 font-medium text-slate-800">${esc(c.nome || 'Desconhecido')}<div class="text-xs font-normal text-slate-400">${esc(c.contratacao || '')}${c.empresa ? ' · ' + esc(c.empresa) : ''}</div></td>
+            <td class="px-4 py-3 text-slate-700">${esc(TIPOS_AFASTAMENTO[a.tipo] || a.tipo)}</td>
+            <td class="px-4 py-3 text-slate-700 whitespace-nowrap">${esc(dataBR(a.inicio))} a ${esc(dataBR(a.fim))}</td>
+            <td class="px-4 py-3 text-slate-600">${diasDeFerias(a)}</td>
+            <td class="px-4 py-3 text-slate-600">${a.acidenteTrabalho ? '<span class="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20">Sim</span>' : 'Não'}</td>
+            <td class="px-4 py-3"><span class="rounded-full px-2.5 py-0.5 text-xs font-medium ${sit.cor}">${sit.texto}</span></td>
+            <td class="px-4 py-3 text-slate-500">${esc(a.observacoes || '')}</td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">${botaoAcao(`editarAfastamento('${esc(a.id)}')`, 'edit', 'fa-pen', 'Editar')}</td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-sm text-slate-400">Nenhum afastamento registrado.</td></tr>';
+}
+
+function limparFormAfastamento() {
+    document.getElementById('formAfastamento').reset();
+    document.getElementById('afastEditId').value = '';
+    document.getElementById('formAfastTitulo').textContent = 'Registrar afastamento';
+    document.getElementById('btnExcluirAfastForm').style.display = 'none';
+    refrescarControlesCustom(document.getElementById('formAfastamento'));
+}
+
+function editarAfastamento(id) {
+    const a = afastamentosLista.find(x => x.id === id);
+    if (!a) return;
+    document.getElementById('afastEditId').value = a.id;
+    document.getElementById('afastColaborador').value = a.colaboradorId;
+    document.getElementById('afastTipo').value = a.tipo;
+    document.getElementById('afastAcidente').value = a.acidenteTrabalho ? 'sim' : 'nao';
+    document.getElementById('afastInicio').value = a.inicio;
+    document.getElementById('afastFim').value = a.fim;
+    document.getElementById('afastObs').value = a.observacoes || '';
+    document.getElementById('formAfastTitulo').textContent = 'Editar afastamento';
+    document.getElementById('btnExcluirAfastForm').style.display = '';
+    refrescarControlesCustom(document.getElementById('formAfastamento'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function salvarAfastamento(e) {
+    e.preventDefault();
+    const dados = {
+        id: document.getElementById('afastEditId').value,
+        colaboradorId: document.getElementById('afastColaborador').value,
+        tipo: document.getElementById('afastTipo').value,
+        inicio: document.getElementById('afastInicio').value,
+        fim: document.getElementById('afastFim').value,
+        acidenteTrabalho: document.getElementById('afastAcidente').value === 'sim',
+        observacoes: document.getElementById('afastObs').value.trim()
+    };
+    if (!dados.colaboradorId || !dados.inicio || !dados.fim) {
+        notificar('Informe o colaborador e as datas de início e fim.', 'error');
+        return;
+    }
+    if (dados.fim < dados.inicio) {
+        notificar('A data final não pode ser anterior à inicial.', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(`${API_URL}/afastamentos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        });
+        if (response.ok) {
+            notificar('Afastamento salvo com sucesso!', 'success');
+            limparFormAfastamento();
+            await carregarDados();
+        } else {
+            const erro = await response.json().catch(() => ({}));
+            notificar(erro.erro || 'Erro ao salvar afastamento', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao salvar afastamento', 'error');
+    }
+}
+
+async function excluirAfastamento(id) {
+    if (!await confirmar('Excluir este afastamento?', { titulo: 'Excluir afastamento', perigo: true, confirmar: 'Excluir' })) return;
+    try {
+        const response = await fetch(`${API_URL}/afastamentos/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            notificar('Afastamento excluído!', 'success');
+            if (document.getElementById('afastEditId').value === id) limparFormAfastamento();
+            await carregarDados();
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao excluir afastamento', 'error');
     }
 }
