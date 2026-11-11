@@ -203,6 +203,16 @@
                             <i class="fas fa-plus text-emerald-600"></i> Adicionar Empréstimo
                         </button>
 
+                        <!-- Demissão: não exclui nada, só tira o colaborador dos novos lançamentos -->
+                        <h5 class="section-title"><i class="fas fa-user-slash"></i> Demissão</h5>
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                            <div>
+                                <label class="label">Data de demissão</label>
+                                <input type="date" class="input" id="colabDemitidoEm">
+                            </div>
+                            <p class="self-end pb-2 text-xs text-slate-500 md:col-span-3">Preencha para marcar como demitido: o histórico é mantido, mas ele deixa de aparecer em novos lançamentos depois do mês da saída. Apague a data para reativar. Excluir o colaborador (lixeira) apaga todos os registros dele.</p>
+                        </div>
+
                         <!-- Observações -->
                         <h5 class="section-title"><i class="fas fa-clipboard"></i> Observações</h5>
                         <textarea class="input" id="colabObservacoes" rows="3"></textarea>
@@ -231,7 +241,7 @@
                             <input type="text" class="input pl-9" id="filtroNome" placeholder="Buscar por nome..." onkeyup="filtrarColaboradores()">
                         </div>
                         <label class="flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-500">
-                            <input type="checkbox" id="checkMostrarEncerrados" onchange="toggleMostrarEncerrados()"> Mostrar encerrados
+                            <input type="checkbox" id="checkMostrarEncerrados" onchange="toggleMostrarEncerrados()"> Mostrar encerrados e demitidos
                         </label>
                         <button type="button" class="btn-success shrink-0" onclick="exportarColaboradores()" title="Exporta os colaboradores (sem contratos encerrados) em planilha Excel"><i class="fas fa-file-export"></i> Exportar</button>
                     </div>
@@ -293,7 +303,10 @@
             const sel = document.getElementById('colabContratacao');
             const atual = sel.value;
             // Gerenciadora: apenas CLT fixo. Engenharia: CLT, Diarista, Mensalista.
-            const opcoes = empresa === 'Gerenciadora' ? ['CLT'] : ['CLT', 'Diarista', 'Mensalista'];
+            // Gerenciadora é só CLT. Exceção: colaborador já cadastrado que NÃO é CLT (sem tipo ou
+            // Mensalista/Diarista, ex.: os mensalistas da Gerenciadora) pode ser editado e mantido.
+            const excecao = contratacaoSalva !== null && contratacaoSalva !== 'CLT';
+            const opcoes = (empresa === 'Gerenciadora' && !excecao) ? ['CLT'] : ['CLT', 'Diarista', 'Mensalista'];
             sel.innerHTML = opcoes.map(o => `<option value="${o}">${o}</option>`).join('');
             if (opcoes.includes(atual)) sel.value = atual;
             toggleDiaria();

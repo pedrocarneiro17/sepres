@@ -130,6 +130,7 @@ class Colaborador(db.Model):
     # Períodos de contrato (Mensalista/Diarista): JSON [{"inicio": "YYYY-MM-DD", "fim": "YYYY-MM-DD"|""}].
     # Lista vazia = sem controle de vigência (sempre disponível para lançamentos).
     contratosJson = db.Column(db.Text)
+    demitidoEm = db.Column(db.String(10)) # Data YYYY-MM-DD da demissão; vazio = ativo. Não exclui nada: só deixa de aparecer em novos lançamentos.
     remuneracao = db.Column(db.Float)
     premio = db.Column(db.Float)
     valorDiaria = db.Column(db.Float) # usado quando contratacao = 'Diarista'
@@ -179,6 +180,7 @@ class Colaborador(db.Model):
             "valorAdiantamento": self.valorAdiantamento,
             "tipoAdiantamento": self.tipoAdiantamento,
             "observacoes": self.observacoes,
+            "demitidoEm": self.demitidoEm,
             "emprestimos": emprestimos_data # Adiciona os empréstimos
         }
 
@@ -326,6 +328,10 @@ with app.app_context():
         for c in Colaborador.query.filter(Colaborador.fimContrato.isnot(None),
                                           Colaborador.fimContrato != '').all():
             c.contratosJson = json.dumps([{'inicio': c.admissao or '', 'fim': c.fimContrato}])
+
+    if 'demitidoEm' not in colunas_colaborador:
+        db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "demitidoEm" VARCHAR(10)'))
+        db.session.commit()
 
     # Corrige colunas antigas criadas pequenas demais (ex.: seguroVida guardava
     # "Ativo"/"Inativo" em VARCHAR(3)). SQLite não enforce isso e não suporta
@@ -754,7 +760,8 @@ def adicionar_colaborador():
                 temAdiantamento=data.get('temAdiantamento'),
                 valorAdiantamento=data.get('valorAdiantamento', 0),
                 tipoAdiantamento=data.get('tipoAdiantamento'),
-                observacoes=data.get('observacoes')
+                observacoes=data.get('observacoes'),
+                demitidoEm=data.get('demitidoEm') or None
             )
             db.session.add(colaborador)
             db.session.flush() # Obtem o ID antes do commit
@@ -863,6 +870,9 @@ def _enviar_xlsx(wb, nome_arquivo):
 def _contrato_encerrado(colab):
     """Mensalista/Diarista cujos períodos de contrato já terminaram todos (sem período
     vigente nem futuro). CLT e quem não tem períodos cadastrados nunca está encerrado."""
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    if colab.demitidoEm and colab.demitidoEm <= hoje:
+        return True  # demitido: tratado como encerrado (some das listas/exportação, mas não é excluído)
     if colab.contratacao == 'CLT' or not colab.contratosJson:
         return False
     periodos = json.loads(colab.contratosJson)

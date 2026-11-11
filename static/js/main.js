@@ -727,7 +727,8 @@ async function salvarColaborador(e) {
         valorAdiantamento: lerMoeda(document.getElementById('colabValorAdiantamento')),
         tipoAdiantamento: document.getElementById('colabTipoAdiantamento')?.value || 'Espécie',
         emprestimos: emprestimos,
-        observacoes: document.getElementById('colabObservacoes').value
+        observacoes: document.getElementById('colabObservacoes').value,
+        demitidoEm: document.getElementById('colabDemitidoEm').value || null
     };
 
     // Remover/encurtar um período não apaga lançamentos, mas deixa meses já lançados
@@ -772,7 +773,11 @@ async function salvarColaborador(e) {
     }
 }
 
+// Tipo de contratação já salvo do colaborador em edição ('' = sem tipo; null = cadastro novo).
+let contratacaoSalva = null;
+
 function limparFormColaborador() {
+    contratacaoSalva = null;
     document.getElementById('formColaborador').reset();
     document.getElementById('colabEditId').value = '';
     document.getElementById('formColabTitle').textContent = 'Cadastrar Colaborador';
@@ -846,6 +851,8 @@ function periodoCobreMes(p, mes) {
 
 // CLT e quem não tem períodos cadastrados não têm controle de vigência (sempre disponíveis).
 function colaboradorAtivoNoMes(c, mes) {
+    // Demitido: só aparece até o mês da saída (o histórico dele continua intacto).
+    if (c.demitidoEm && mes && mes > c.demitidoEm.substring(0, 7)) return false;
     if (c.contratacao === 'CLT' || !c.contratos || c.contratos.length === 0 || !mes) return true;
     return c.contratos.some(p => periodoCobreMes(p, mes));
 }
@@ -853,6 +860,7 @@ function colaboradorAtivoNoMes(c, mes) {
 // Situação hoje: 'vigente' | 'intervalo' (fora do contrato, mas há período futuro)
 // | 'encerrado' (todos os períodos já terminaram) | null (sem controle).
 function situacaoContrato(c) {
+    if (c.demitidoEm && c.demitidoEm <= new Date().toLocaleDateString('sv-SE')) return 'demitido';
     if (c.contratacao === 'CLT' || !c.contratos || c.contratos.length === 0) return null;
     const hoje = new Date().toISOString().substring(0, 10);
     if (c.contratos.some(p => (!p.inicio || p.inicio <= hoje) && (!p.fim || hoje <= p.fim))) return 'vigente';
@@ -910,6 +918,7 @@ function toggleMostrarEncerrados() {
 
 function badgeSituacaoContrato(c) {
     const situacao = situacaoContrato(c);
+    if (situacao === 'demitido') return ` <span class="ml-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/20">Demitido em ${esc(dataBR(c.demitidoEm))}</span>`;
     if (situacao === 'encerrado') return ' <span class="ml-1 inline-flex rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20">Contrato encerrado</span>';
     if (situacao === 'intervalo') return ' <span class="ml-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">Fora do contrato</span>';
     return '';
@@ -919,7 +928,7 @@ function renderizarColaboradores() {
     const tbody = document.getElementById('tabelaColaboradores');
     if (!tbody) return;
 
-    const lista = mostrarColabEncerrados ? colaboradores : colaboradores.filter(c => situacaoContrato(c) !== 'encerrado');
+    const lista = mostrarColabEncerrados ? colaboradores : colaboradores.filter(c => !['encerrado', 'demitido'].includes(situacaoContrato(c)));
 
     if (lista.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400"><i class="fas fa-users-slash mb-2 block text-2xl"></i>Nenhum colaborador cadastrado</td></tr>`;
@@ -954,6 +963,8 @@ function editarColaborador(id) {
     if (painelLista) painelLista.style.display = 'none';
 
     document.getElementById('colabEditId').value = c.id;
+    // Tipo salvo do colaborador em edição (usado na exceção da Gerenciadora; ver atualizarContratacao).
+    contratacaoSalva = c.contratacao || '';
     document.getElementById('colabNome').value = c.nome;
     document.getElementById('colabCPF').value = c.cpf;
     document.getElementById('colabEndereco').value = c.endereco || '';
@@ -990,6 +1001,7 @@ function editarColaborador(id) {
         document.getElementById('colabTipoAdiantamento').value = c.tipoAdiantamento || 'Espécie';
     }
     document.getElementById('colabObservacoes').value = c.observacoes || '';
+    document.getElementById('colabDemitidoEm').value = c.demitidoEm || '';
 
     // Reaplica visibilidade condicional
     if (typeof toggleDependentes === 'function') toggleDependentes();
