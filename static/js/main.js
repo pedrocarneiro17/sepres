@@ -2109,7 +2109,7 @@ function gerarRecibo(id) {
 }
 
 // Abre a janela de impressão com o HTML dos recibos já em caixas (uma ou várias).
-function abrirJanelaImpressao(corpo) {
+function abrirJanelaImpressao(corpo, opcoes = {}) {
     const janela = window.open('', '', 'width=800,height=600');
     if (!janela) {
         notificar('O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente de novo.', 'info');
@@ -2130,6 +2130,7 @@ function abrirJanelaImpressao(corpo) {
                 hr { border: 1px solid #000; margin: 12px 0; }
                 img.recibo-logo { max-width: 160px; display: block; margin: 0 auto 12px; }
                 .recibo-caixa { border: 2px solid #000; padding: 18px; max-width: 480px; margin: 0 auto 24px; page-break-inside: avoid; }
+                ${opcoes.doisPorFolha ? '.recibo-caixa:nth-of-type(2n) { page-break-after: always; break-after: page; }' : ''}
             </style>
         </head>
         <body>
@@ -2732,7 +2733,8 @@ function gerarRecibosLote() {
     const tipo = document.getElementById('reciboLoteTipo').value;
     const construtor = { pagamento: reciboPagamentoHtml, eva: reciboPremioHtml, autonomo: reciboAutonomoHtml, emprestimo: reciboEmprestimoHtml }[tipo];
     const corpo = itens.map(({ l, c }) => `<div class="recibo-caixa">${construtor(l, c)}</div>`).join('');
-    const janela = abrirJanelaImpressao(corpo);
+    // Recibo de empréstimo é mais longo: força exatamente 2 por folha (quebra após cada par).
+    const janela = abrirJanelaImpressao(corpo, { doisPorFolha: tipo === 'emprestimo' });
     if (!janela) return;
     // Fecha o modal do lote quando a janela de impressão for fechada (imprimindo ou cancelando).
     const vigia = setInterval(() => {
