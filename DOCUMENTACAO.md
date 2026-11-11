@@ -63,8 +63,10 @@ diárias e recibos), com dashboard de indicadores e gráficos.
   10 por IP por hora (acima disso responde igual, mas não envia).
 - **XSS**: todo texto vindo de dados (nome, cargo, CPF, observações, descrições) é
   escapado (`esc()` em `main.js`) antes de entrar em `innerHTML`.
-- **Cookies**: `HttpOnly`, `SameSite=Lax` e `Secure` em produção; "lembrar de mim" dura
-  7 dias.
+- **Cookies**: `HttpOnly`, `SameSite=Lax` e `Secure` em produção.
+- **Sessão**: expira após **30 minutos de inatividade** (o prazo é renovado a cada
+  requisição) e, de qualquer forma, **12 horas depois do login**. Não existe "lembrar de mim"
+  (o cookie antigo de 7 dias foi desativado). Ao expirar, qualquer requisição leva ao login.
 - **Cabeçalhos**: CSP, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`,
   `Permissions-Policy`, HSTS (em HTTPS) e `Cache-Control: no-store` nas páginas e na API.
   O CSP ainda permite scripts inline (o front-end usa `onclick` e blocos de script).

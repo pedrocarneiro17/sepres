@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template, redirect, url_for
+from flask import Flask, jsonify, request, render_template, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          current_user)
@@ -42,12 +42,18 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=EM_PRODUCAO,
-    # "Lembrar de mim": 7 dias (o padrão do Flask-Login é 365).
-    REMEMBER_COOKIE_DURATION=timedelta(days=7),
+    # Sessão: expira após 30 min de INATIVIDADE (a cada requisição o prazo é renovado) e,
+    # além disso, após 12 h do login, mesmo com uso (ver exigir_login).
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
+    SESSION_REFRESH_EACH_REQUEST=True,
+    # Não existe mais "lembrar de mim". O nome do cookie foi trocado de propósito: um cookie
+    # 'remember_token' antigo (7 dias) deixa de logar automaticamente (e é apagado abaixo).
+    REMEMBER_COOKIE_NAME='sepres_remember_desativado',
     REMEMBER_COOKIE_HTTPONLY=True,
     REMEMBER_COOKIE_SAMESITE='Lax',
     REMEMBER_COOKIE_SECURE=EM_PRODUCAO,
 )
+SESSAO_DURACAO_MAXIMA = timedelta(hours=12)
 
 # --- Banco de dados ---
 # Em produção usa o PostgreSQL do Railway (variável DATABASE_URL).
@@ -489,10 +495,28 @@ def exigir_login():
     """Exige login para tudo, exceto a tela de login e os arquivos estáticos."""
     if request.endpoint in ('login', 'static', 'esqueci_senha', 'redefinir_senha', 'robots_txt'):
         return
+    # Duração máxima da sessão: 12 h desde o login (sessões sem carimbo, de antes desta regra,
+    # também pedem login de novo uma vez).
+    if current_user.is_authenticated:
+        try:
+            inicio = datetime.fromtimestamp(float(session.get('login_em', 0)))
+        except (TypeError, ValueError, OSError):
+            inicio = datetime.fromtimestamp(0)
+        if datetime.now() - inicio > SESSAO_DURACAO_MAXIMA:
+            logout_user()
+            session.clear()
     if not current_user.is_authenticated:
         if request.path.startswith('/api/'):
             return jsonify({'erro': 'Não autenticado'}), 401
         return redirect(url_for('login', next=request.path))
+
+
+@app.after_request
+def apagar_cookie_lembrar_antigo(resp):
+    """Remove o cookie 'remember_token' de logins antigos (o "lembrar de mim" foi desativado)."""
+    if 'remember_token' in request.cookies:
+        resp.delete_cookie('remember_token')
+    return resp
 
 
 def _url_interna_segura(destino):
@@ -520,7 +544,9 @@ def login():
                    if email else None)
         if usuario and usuario.confere_senha(password):
             limpar_tentativas(chave_email)
-            login_user(usuario, remember=True)
+            login_user(usuario, remember=False)
+            session.permanent = True  # vale o prazo de 30 min de inatividade
+            session['login_em'] = datetime.now().timestamp()  # início, para o limite de 12 h
             destino = _url_interna_segura(request.args.get('next')) or url_for('index')
             return redirect(destino)
         registrar_tentativa(chave_ip, JANELA_LOGIN)
