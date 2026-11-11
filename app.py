@@ -971,7 +971,7 @@ def exportar_eva():
 def exportar_planilha():
     """Planilha de PAGAMENTOS do mês: Nome, Empresa, Pagamento em Espécie e Pagamento em
     Conta e Vale Transporte. Só entra quem tem valor em pelo menos um dos dois pagamentos
-    (o CLT também entra só com Vale Transporte)."""
+    (o CLT também entra só com Vale Transporte; o Diarista entra sempre que tem lançamento no mês)."""
     from sqlalchemy import or_, and_
     mes = request.args.get('mes', '')
     if len(mes) != 7:
@@ -989,7 +989,9 @@ def exportar_planilha():
                 .filter(Lancamento.mes == mes)
                 .filter(or_(Lancamento.pagamentoEspecie > 0, Lancamento.pagamentoContab > 0,
                             # CLT só com Vale Transporte também entra
-                            and_(Colaborador.contratacao == 'CLT', Lancamento.valeTransporte > 0))))
+                            and_(Colaborador.contratacao == 'CLT', Lancamento.valeTransporte > 0),
+                            # Diarista entra sempre que tem lançamento no mês, mesmo sem pagamento lançado
+                            Colaborador.contratacao == 'Diarista')))
     if tipo == 'clt':
         consulta = consulta.filter(Colaborador.contratacao == 'CLT')
     elif tipo == 'contrato':
