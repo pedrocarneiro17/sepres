@@ -412,7 +412,11 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   (Não/Sim, para os dois tipos) e **observações**.
 - Lista com **dias**, situação (Agendado / Em andamento / Concluído), filtros por mês e por
   tipo. O botão **Excluir afastamento** fica dentro da edição (como em 5.8).
-- Não aparece no Dashboard e não interfere em lançamentos, cálculos ou pagamentos.
+- No **Dashboard**, com uma competência (mês) escolhida, um painel **"Afastamentos em Mês/AAAA"**
+  (logo abaixo do de férias) lista atestados e afastamentos INSS do período: nome, tipo, "de ... até
+  ...", dias, etiqueta de acidente de trabalho e situação, respeitando os filtros de contrato e
+  empresa. Em "Todos os meses" fica oculto.
+- Não interfere em lançamentos, cálculos ou pagamentos.
 
 ## 6. Páginas
 
@@ -422,7 +426,8 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   indicadores e gráficos; o botão "Limpar" tem a mesma altura (40 px) dos campos.
 - **6 indicadores**: Colaboradores, Líquido Pago, Adiantamentos, Empréstimos, Faltas,
   Atestados.
-- **Painel de férias** da competência escolhida (5.13), entre os indicadores e os gráficos.
+- **Painéis de férias** (5.13) e de **afastamentos** (5.14) da competência escolhida, entre os
+  indicadores e os gráficos.
 - **6 gráficos** (Chart.js, cada um com legenda expansível): líquido por empresa,
   evolução mensal do líquido, líquido por tipo de contrato, colaboradores por tipo de
   contrato, faltas por mês e atestados por mês.

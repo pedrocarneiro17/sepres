@@ -2390,6 +2390,7 @@ function aplicarFiltrosDashboard() {
     const fatia = fatiaDashboard();
     atualizarCardsDashboard(fatia);
     renderizarPainelFerias(fatia);
+    renderizarPainelAfastamentos(fatia);
     renderizarGraficos(fatia);
 }
 
@@ -2894,6 +2895,35 @@ function renderizarPainelFerias(fatia) {
             <span class="ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${sit.cor}">${sit.texto}</span>
         </div>`;
     }).join('') : '<div class="px-5 py-4 text-sm text-slate-400">Ninguém com férias registradas nesta competência.</div>';
+    painel.style.display = 'block';
+}
+
+// Painel do Dashboard: atestados e afastamentos INSS que tocam a competência escolhida.
+function renderizarPainelAfastamentos(fatia) {
+    const painel = document.getElementById('painelAfastMes');
+    if (!painel) return;
+    if (fatia.comp === 'todos') { painel.style.display = 'none'; return; }
+
+    const ids = new Set(fatia.colabs.map(c => c.id));
+    const itens = afastamentosLista
+        .filter(a => ids.has(a.colaboradorId) && feriasNoMes(a, fatia.comp))
+        .sort((x, y) => x.inicio.localeCompare(y.inicio));
+
+    document.getElementById('afastMesTitulo').textContent = `Afastamentos em ${formatarMesAno(fatia.comp)}`;
+    document.getElementById('afastMesQtd').textContent = itens.length ? `${itens.length} ${itens.length === 1 ? 'registro' : 'registros'}` : '';
+    document.getElementById('afastMesLista').innerHTML = itens.length ? itens.map(a => {
+        const c = colaboradores.find(co => co.id === a.colaboradorId) || {};
+        const sit = situacaoAfastamento(a);
+        const acidente = a.acidenteTrabalho ? '<span class="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20">Acidente de trabalho</span>' : '';
+        return `<div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm">
+            <span class="min-w-[10rem] font-medium text-slate-800">${esc(c.nome || 'Desconhecido')}</span>
+            <span class="text-slate-600">${esc(TIPOS_AFASTAMENTO[a.tipo] || a.tipo)}</span>
+            <span class="text-slate-600"><i class="fas fa-calendar-days mr-1 text-slate-400"></i>de ${esc(dataBR(a.inicio))} até ${esc(dataBR(a.fim))}</span>
+            <span class="text-slate-400">${diasDeFerias(a)} dia(s)</span>
+            ${acidente}
+            <span class="ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${sit.cor}">${sit.texto}</span>
+        </div>`;
+    }).join('') : '<div class="px-5 py-4 text-sm text-slate-400">Nenhum atestado ou afastamento nesta competência.</div>';
     painel.style.display = 'block';
 }
 
