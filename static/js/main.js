@@ -778,6 +778,7 @@ let contratacaoSalva = null;
 
 function limparFormColaborador() {
     contratacaoSalva = null;
+    document.getElementById('btnExcluirColabForm').style.display = 'none';
     document.getElementById('formColaborador').reset();
     document.getElementById('colabEditId').value = '';
     document.getElementById('formColabTitle').textContent = 'Cadastrar Colaborador';
@@ -945,7 +946,6 @@ function renderizarColaboradores() {
             <td class="px-4 py-3">
                 <div class="flex items-center justify-center gap-1">
                     ${botaoAcao(`editarColaborador('${c.id}')`, 'edit', 'fa-pen', 'Editar colaborador')}
-                    ${botaoAcao(`abrirModalExcluir('${c.id}')`, 'delete', 'fa-trash', 'Excluir colaborador')}
                 </div>
             </td>
         </tr>
@@ -965,6 +965,7 @@ function editarColaborador(id) {
     document.getElementById('colabEditId').value = c.id;
     // Tipo salvo do colaborador em edição (usado na exceção da Gerenciadora; ver atualizarContratacao).
     contratacaoSalva = c.contratacao || '';
+    document.getElementById('btnExcluirColabForm').style.display = '';
     document.getElementById('colabNome').value = c.nome;
     document.getElementById('colabCPF').value = c.cpf;
     document.getElementById('colabEndereco').value = c.endereco || '';
@@ -1035,6 +1036,8 @@ async function confirmarExclusaoColaborador() {
         if (response.ok) {
             notificar('Colaborador excluído com sucesso!', 'success');
             fecharModal('modalExcluirColab');
+            // Se a exclusão veio de dentro da edição, fecha o formulário e volta para a lista.
+            if (document.getElementById('colabEditId').value === colabIdToDelete) limparFormColaborador();
             await carregarDados();
         } else {
             notificar('Erro ao excluir colaborador', 'error');
@@ -1395,6 +1398,7 @@ async function salvarLancamento(e) {
 }
 
 function limparFormLancamento() {
+    document.getElementById('btnExcluirLancForm').style.display = 'none';
     document.getElementById('formLancamento').reset();
     document.getElementById('lancEditId').value = '';
     document.getElementById('formLancTitle').textContent = 'Novo Lançamento';
@@ -1821,8 +1825,7 @@ function renderizarLancamentos() {
         if (l.status === 'aberto') {
             acoes = botaoAcao(`editarLancamento('${l.id}')`, 'edit', 'fa-pen', 'Editar lançamento') +
                     recibos +
-                    botaoAcao(`finalizarLancamento('${l.id}')`, 'finalize', 'fa-check', 'Finalizar lançamento') +
-                    botaoAcao(`excluirLancamento('${l.id}')`, 'delete', 'fa-trash', 'Excluir lançamento');
+                    botaoAcao(`finalizarLancamento('${l.id}')`, 'finalize', 'fa-check', 'Finalizar lançamento');
         } else {
             acoes = botaoAcao(`visualizarLancamento('${l.id}')`, 'view', 'fa-eye', 'Visualizar (somente leitura)') +
                     recibos +
@@ -1932,6 +1935,8 @@ function editarLancamento(id) {
     document.getElementById('divDadosLancamento').style.display = 'block';
 
     document.getElementById('formLancTitle').textContent = 'Editar Lançamento';
+    // Excluir fica dentro da edição (e só em lançamento aberto).
+    document.getElementById('btnExcluirLancForm').style.display = l.status === 'aberto' ? '' : 'none';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2001,6 +2006,8 @@ async function excluirLancamento(id) {
         const response = await fetch(`${API_URL}/lancamentos/${id}`, { method: 'DELETE' });
         if (response.ok) {
             notificar('Lançamento excluído!', 'success');
+            // Se veio de dentro da edição, fecha o formulário.
+            if (document.getElementById('lancEditId').value === id) limparFormLancamento();
             await carregarDados();
         }
     } catch (error) {

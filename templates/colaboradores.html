@@ -210,7 +210,7 @@
                                 <label class="label">Data de demissão</label>
                                 <input type="date" class="input" id="colabDemitidoEm">
                             </div>
-                            <p class="self-end pb-2 text-xs text-slate-500 md:col-span-3">Preencha para marcar como demitido: o histórico é mantido, mas ele deixa de aparecer em novos lançamentos depois do mês da saída. Apague a data para reativar. Excluir o colaborador (lixeira) apaga todos os registros dele.</p>
+                            <p class="self-end pb-2 text-xs text-slate-500 md:col-span-3">Preencha para marcar como demitido: o histórico é mantido, mas ele deixa de aparecer em novos lançamentos depois do mês da saída. Apague a data para reativar. O botão Excluir colaborador (no fim deste formulário) apaga todos os registros dele.</p>
                         </div>
 
                         <!-- Observações -->
@@ -219,6 +219,7 @@
 
                         <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
                             <!-- Só aparece editando um colaborador existente. Desligar exige Fim de Contrato preenchido. -->
+                            <button type="button" id="btnExcluirColabForm" style="display: none;" class="btn-secondary mr-auto !border-rose-200 !text-rose-600 hover:!bg-rose-50" onclick="abrirModalExcluir(document.getElementById('colabEditId').value)"><i class="fas fa-trash"></i> Excluir colaborador</button>
                             <button type="button" class="btn-secondary" id="btnCancelarColab"><i class="fas fa-times"></i> Cancelar</button>
                             <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar Colaborador</button>
                         </div>
