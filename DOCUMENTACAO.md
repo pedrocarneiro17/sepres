@@ -334,7 +334,11 @@ pagamentos saem 0,00); os demais sem pagamento ficam de fora. Sem nenhum pagamen
 "Pagamento em Conta" é o campo Pagamento Contab. (CLT) / Pagamento em conta (Mensalista e
 Diarista). O Pagamento em Espécie sai só com o valor lançado em espécie (o vale transporte tem
 coluna própria) e o **Líquido Total** é o valor salvo no lançamento, sem módulo (pode ser
-negativo enquanto só o adiantamento foi lançado). Cada coluna é uma cópia do campo do lançamento.
+negativo enquanto só o adiantamento foi lançado). O **Pagamento em Espécie** da planilha soma o **adiantamento em espécie** do lançamento ao
+pagamento em espécie (quem só tem adiantamento também entra). O adiantamento por contabilidade
+(CLT) não é somado. No fim da aba, depois de uma linha em branco, há uma linha **TOTAL** com a
+soma (fórmula `SUM`) de cada coluna de valor que tenha valores; ela fica fora do filtro. As demais
+colunas são cópia do campo do lançamento.
 
 **c) Planilha do EVA do mês (somente CLT)** — no modal de **Lançamentos → Exportar**, basta
 escolher a categoria **"EVA (somente CLT)"** (`/api/exportar-eva?mes=YYYY-MM`, arquivo

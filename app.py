@@ -892,8 +892,9 @@ def _novo_workbook():
     return wb, estilo
 
 
-def _preencher_aba(wb, estilo, nome_aba, colunas, registros):
-    """colunas: lista de (título, chave, é moeda, é data, largura)."""
+def _preencher_aba(wb, estilo, nome_aba, colunas, registros, totais=False):
+    """colunas: lista de (título, chave, é moeda, é data, largura). Com totais=True, uma linha
+    TOTAL (fórmulas SUM, fora do filtro) fecha a aba nas colunas de moeda que têm valores."""
     from openpyxl.utils import get_column_letter
     ws = wb.create_sheet(nome_aba)
     for i, (titulo, chave, moeda, data, largura) in enumerate(colunas, start=1):
@@ -909,6 +910,17 @@ def _preencher_aba(wb, estilo, nome_aba, colunas, registros):
                 c.number_format = 'dd/mm/yyyy'
     ws.freeze_panes = 'A2'
     ws.auto_filter.ref = f'A1:{get_column_letter(len(colunas))}{max(1, len(registros) + 1)}'
+    if totais and registros:
+        from openpyxl.styles import Font
+        linha_total = len(registros) + 3  # uma linha em branco separa os dados do total
+        ultimo = len(registros) + 1
+        ws.cell(row=linha_total, column=1, value='TOTAL').font = Font(bold=True)
+        for i, (_, chave, moeda, _, _) in enumerate(colunas, start=1):
+            if moeda and any(reg[chave] for reg in registros):
+                letra = get_column_letter(i)
+                c = ws.cell(row=linha_total, column=i, value=f'=SUM({letra}2:{letra}{ultimo})')
+                c.number_format = '"R$" #,##0.00'
+                c.font = Font(bold=True)
 
 
 def _enviar_xlsx(wb, nome_arquivo):
@@ -1052,6 +1064,8 @@ def exportar_planilha():
                 .join(Colaborador, Lancamento.colaboradorId == Colaborador.id)
                 .filter(Lancamento.mes == mes)
                 .filter(or_(Lancamento.pagamentoEspecie > 0, Lancamento.pagamentoContab > 0,
+                            # adiantamento em espécie entra no Pagamento em Espécie da planilha
+                            Lancamento.adiantamentoEspecie > 0,
                             # CLT só com Vale Transporte também entra
                             and_(Colaborador.contratacao == 'CLT', Lancamento.valeTransporte > 0),
                             # Diarista entra sempre que tem lançamento no mês, mesmo sem pagamento lançado
@@ -1068,7 +1082,7 @@ def exportar_planilha():
 
     registros = sorted(
         ({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
-          'especie': l.pagamentoEspecie or 0,
+          'especie': (l.pagamentoEspecie or 0) + (l.adiantamentoEspecie or 0),
           'conta': l.pagamentoContab or 0,
           'vt': l.valeTransporte or 0,
           'liquido': l.liquidoTotal or 0}
@@ -1083,7 +1097,7 @@ def exportar_planilha():
     if empresa != 'todas' or tipo == 'clt':
         colunas.append(('Líquido Total', 'liquido', 1, 0, 18))
     wb, estilo = _novo_workbook()
-    _preencher_aba(wb, estilo, 'Pagamentos', colunas, registros)
+    _preencher_aba(wb, estilo, 'Pagamentos', colunas, registros, totais=True)
     return _enviar_xlsx(
         wb, f'pagamentos_{mes[5:]}-{mes[:4]}{"" if tipo == "todos" else "_" + tipo}'
             f'{"" if empresa == "todas" else "_" + empresa.lower()}.xlsx')
