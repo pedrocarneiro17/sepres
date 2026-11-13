@@ -333,10 +333,12 @@ menos um dos dois pagamentos** no mês (o CLT também entra só com Vale Transpo
 pagamentos saem 0,00); os demais sem pagamento ficam de fora. Sem nenhum pagamento no mês/empresa, o sistema avisa e não baixa arquivo.
 "Pagamento em Conta" é o campo Pagamento Contab. (CLT) / Pagamento em conta (Mensalista e
 Diarista). O Pagamento em Espécie sai só com o valor lançado em espécie (o vale transporte tem
-coluna própria) e o **Líquido Total** é o valor salvo no lançamento, sem módulo (pode ser
-negativo enquanto só o adiantamento foi lançado). O **Pagamento em Espécie** da planilha soma o **adiantamento em espécie** do lançamento ao
-pagamento em espécie (quem só tem adiantamento também entra). O adiantamento por contabilidade
-(CLT) não é somado. No fim da aba, depois de uma linha em branco, há uma linha **TOTAL** com a
+coluna própria) e o **Líquido Total** é o valor salvo no lançamento, **em módulo** (saldo negativo,
+quando só o adiantamento foi lançado, sai positivo na planilha). O **Pagamento em Espécie** da planilha soma o **adiantamento em espécie** do lançamento ao
+pagamento em espécie **enquanto o pagamento do mês ainda não foi lançado**: no **CLT**, até
+preencher o *Pagamento Contab.*; no **Mensalista/Diarista**, até preencher o *Pagamento em
+Espécie*. Depois disso a planilha traz só o pagamento em espécie (já líquido do adiantamento).
+Quem só tem adiantamento também entra. O adiantamento por contabilidade (CLT) não é somado. No fim da aba, depois de uma linha em branco, há uma linha **TOTAL** com a
 soma (fórmula `SUM`) de cada coluna de valor que tenha valores; ela fica fora do filtro. As demais
 colunas são cópia do campo do lançamento.
 

@@ -1080,12 +1080,20 @@ def exportar_planilha():
     if not linhas:
         return jsonify({'erro': 'Não há pagamentos lançados para o mês, a categoria e a empresa selecionados.'}), 404
 
+    def _especie(l, c):
+        """Pagamento em Espécie da planilha: soma o adiantamento em espécie enquanto o pagamento
+        do mês ainda não foi lançado (CLT: Pagamento Contab.; Mensalista/Diarista: Pagamento em
+        Espécie). Depois que ele é lançado, o pagamento já vem líquido do adiantamento."""
+        especie = l.pagamentoEspecie or 0
+        pagamento_lancado = ((l.pagamentoContab or 0) > 0) if c.contratacao == 'CLT' else (especie > 0)
+        return especie if pagamento_lancado else especie + (l.adiantamentoEspecie or 0)
+
     registros = sorted(
         ({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
-          'especie': (l.pagamentoEspecie or 0) + (l.adiantamentoEspecie or 0),
+          'especie': _especie(l, c),
           'conta': l.pagamentoContab or 0,
           'vt': l.valeTransporte or 0,
-          'liquido': l.liquidoTotal or 0}
+          'liquido': abs(l.liquidoTotal or 0)}  # saldo negativo (só adiantamento) sai em módulo
          for l, c in linhas),
         key=lambda r: r['nome'].lower())
     colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
@@ -1093,7 +1101,7 @@ def exportar_planilha():
                ('Pagamento em Conta', 'conta', 1, 0, 22),
                ('Vale Transporte', 'vt', 1, 0, 18)]
     # Nas planilhas por empresa (Engenharia/Gerenciadora) e na de CLT entra também o Líquido
-    # Total salvo no lançamento (pode ser negativo enquanto só o adiantamento foi lançado).
+    # Total salvo no lançamento, em módulo (negativo vira positivo).
     if empresa != 'todas' or tipo == 'clt':
         colunas.append(('Líquido Total', 'liquido', 1, 0, 18))
     wb, estilo = _novo_workbook()
