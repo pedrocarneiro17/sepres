@@ -424,7 +424,8 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   dd/mm/aaaa" e a quantidade de dias, respeitando os filtros de contrato e empresa. Um período
   que cruza dois meses aparece nos dois. Em "Todos os meses" o painel fica oculto.
 - O antigo gráfico "Férias por mês" foi removido.
-- **Valor pago de férias**: cada período tem **Data do pagamento**, **Pago em conta** e **Pago em
+- **Valor pago de férias**: cada linha do painel de férias do Dashboard mostra também o valor pago
+  (conta, espécie e total) além do nome e do período. Cada período tem **Data do pagamento**, **Pago em conta** e **Pago em
   espécie** (opcionais; a lista mostra a coluna "Valor pago"). No Dashboard, o painel de férias
   ganha, quando há valor, a linha **"Pago de férias no mês"** (em conta, em espécie e total),
   somando os períodos cujo **mês de pagamento** é a competência (sem data de pagamento, vale o mês
@@ -463,8 +464,9 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   Conta**, todas as empresas juntas, em ordem alfabética, com linha **TOTAL** (fórmula `SUM`).
   Só entra quem tem valor em pelo menos um dos dois.
 - No **Dashboard**, em **novembro** (1ª parcela) e **dezembro** (2ª), um painel **"13º salário em
-  Mês/AAAA"** lista cada colaborador com conta, espécie e total, e o rodapé **"Pago de 13º no mês"**
-  (conta, espécie e total), respeitando os filtros de contrato e empresa.
+  Mês/AAAA"** mostra só os **totais** (sem lista por colaborador): total da **Gerenciadora**, total
+  da **Engenharia**, **pago na contabilidade**, **pago em espécie** e **total geral**, respeitando
+  os filtros de contrato e empresa.
 
 ## 6. Páginas
 

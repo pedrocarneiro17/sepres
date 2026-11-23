@@ -2897,6 +2897,7 @@ function renderizarPainelFerias(fatia) {
             <span class="min-w-[10rem] font-medium text-slate-800">${esc(c.nome || 'Desconhecido')}</span>
             <span class="text-slate-600"><i class="fas fa-calendar-days mr-1 text-slate-400"></i>de ${esc(dataBR(f.inicio))} até ${esc(dataBR(f.fim))}</span>
             <span class="text-slate-400">${diasDeFerias(f)} dia(s)</span>
+            ${(f.valorConta || 0) + (f.valorEspecie || 0) > 0 ? `<span class="text-slate-600">Conta ${esc(formatarMoeda(f.valorConta))} · Espécie ${esc(formatarMoeda(f.valorEspecie))} · <strong class="text-slate-800">${esc(formatarMoeda((f.valorConta || 0) + (f.valorEspecie || 0)))}</strong></span>` : ''}
             <span class="ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${sit.cor}">${sit.texto}</span>
         </div>`;
     }).join('') : '<div class="px-5 py-4 text-sm text-slate-400">Ninguém com férias registradas nesta competência.</div>';
@@ -3414,28 +3415,23 @@ function renderizarPainelDecimo(fatia) {
     const ids = new Set(fatia.colabs.map(c => c.id));
     const itens = decimoLista
         .filter(d => d.mes === fatia.comp && ids.has(d.colaboradorId))
-        .map(d => ({ d, c: colaboradores.find(co => co.id === d.colaboradorId) || { nome: 'Desconhecido' } }))
-        .sort((x, y) => (x.c.nome || '').localeCompare(y.c.nome || '', 'pt-BR', { sensitivity: 'base' }));
+        .map(d => ({ d, c: colaboradores.find(co => co.id === d.colaboradorId) || {} }));
+    const soma = (lista, campo) => lista.reduce((t, { d }) => t + (d[campo] || 0), 0);
+    const total = lista => soma(lista, 'pagamentoContab') + soma(lista, 'pagamentoEspecie');
 
     document.getElementById('decimoMesTitulo').textContent =
         `13º salário em ${formatarMesAno(fatia.comp)} · ${mesNum === '11' ? '1ª' : '2ª'} parcela`;
     document.getElementById('decimoMesQtd').textContent = itens.length ? `${itens.length} ${itens.length === 1 ? 'colaborador' : 'colaboradores'}` : '';
-    document.getElementById('decimoMesLista').innerHTML = itens.length ? itens.map(({ d, c }) => `
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm">
-            <span class="min-w-[10rem] font-medium text-slate-800">${esc(c.nome)}</span>
-            <span class="text-slate-600">Conta ${esc(formatarMoeda(d.pagamentoContab))}</span>
-            <span class="text-slate-600">Espécie ${esc(formatarMoeda(d.pagamentoEspecie))}</span>
-            <span class="ml-auto font-medium text-slate-800">${esc(formatarMoeda((d.pagamentoContab || 0) + (d.pagamentoEspecie || 0)))}</span>
-        </div>`).join('') : '<div class="px-5 py-4 text-sm text-slate-400">Nenhum 13º lançado nesta competência.</div>';
 
-    const conta = itens.reduce((t, { d }) => t + (d.pagamentoContab || 0), 0);
-    const especie = itens.reduce((t, { d }) => t + (d.pagamentoEspecie || 0), 0);
-    const rodape = document.getElementById('decimoMesTotais');
-    if (conta + especie > 0) {
-        rodape.innerHTML = `<strong>Pago de 13º no mês:</strong> em conta ${esc(formatarMoeda(conta))} · em espécie ${esc(formatarMoeda(especie))} · <strong>total ${esc(formatarMoeda(conta + especie))}</strong>`;
-        rodape.style.display = 'block';
-    } else {
-        rodape.style.display = 'none';
-    }
+    const card = (rotulo, valor, destaque) => `<div class="rounded-xl border border-slate-200 p-3">
+        <div class="text-xs font-medium uppercase tracking-wide text-slate-400">${rotulo}</div>
+        <div class="mt-1 text-lg font-bold ${destaque ? 'text-sepres-700' : 'text-slate-800'}">${esc(formatarMoeda(valor))}</div></div>`;
+    document.getElementById('decimoMesLista').innerHTML = itens.length
+        ? card('Gerenciadora', total(itens.filter(x => x.c.empresa === 'Gerenciadora'))) +
+          card('Engenharia', total(itens.filter(x => x.c.empresa === 'Engenharia'))) +
+          card('Pago na contabilidade', soma(itens, 'pagamentoContab')) +
+          card('Pago em espécie', soma(itens, 'pagamentoEspecie')) +
+          card('Total geral', total(itens), true)
+        : '<div class="col-span-full text-sm text-slate-400">Nenhum 13º lançado nesta competência.</div>';
     painel.style.display = 'block';
 }
