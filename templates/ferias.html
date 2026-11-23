@@ -25,6 +25,7 @@
             <a href="/colaboradores" class="side-link" title="Colaboradores"><i class="fas fa-users w-5 shrink-0 text-center"></i><span class="side-label">Colaboradores</span></a>
             <a href="/lancamentos" class="side-link" title="Lançamentos"><i class="fas fa-dollar-sign w-5 shrink-0 text-center"></i><span class="side-label">Lançamentos</span></a>
             <a href="/ferias" class="side-link active" title="Férias"><i class="fas fa-umbrella-beach w-5 shrink-0 text-center"></i><span class="side-label">Férias</span></a>
+            <a href="/decimo-terceiro" class="side-link" title="13º Salário"><i class="fas fa-gift w-5 shrink-0 text-center"></i><span class="side-label">13º Salário</span></a>
             <a href="/afastamentos" class="side-link" title="Afastamentos"><i class="fas fa-briefcase-medical w-5 shrink-0 text-center"></i><span class="side-label">Afastamentos</span></a>
         </nav>
         <div class="border-t border-slate-100 p-3">
@@ -45,6 +46,9 @@
         </header>
 
         <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+            <div class="mb-4">
+                <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" onclick="window.location.href='/'"><i class="fas fa-arrow-left"></i> Voltar</button>
+            </div>
             <div class="mb-8">
                 <h1 class="font-heading text-2xl font-bold tracking-tight text-slate-900">Férias</h1>
                 <p class="mt-1 text-sm text-slate-500">Controle de quem tira férias e em quais dias. O período aparece no Dashboard, na competência correspondente.</p>
@@ -69,6 +73,19 @@
                             <label class="label">Fim *</label>
                             <input type="date" class="input" id="feriasFim" required>
                         </div>
+                        <div>
+                            <label class="label">Data do pagamento</label>
+                            <input type="date" class="input" id="feriasDataPag">
+                        </div>
+                        <div>
+                            <label class="label">Pago em conta</label>
+                            <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="feriasValorConta" value="0,00"></div>
+                        </div>
+                        <div>
+                            <label class="label">Pago em espécie</label>
+                            <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="feriasValorEspecie" value="0,00"></div>
+                        </div>
+                        <p class="self-end pb-2 text-xs text-slate-500">O valor pago entra no Dashboard no mês da data do pagamento (sem data, no mês do início das férias).</p>
                         <div class="md:col-span-4">
                             <label class="label">Observações</label>
                             <input type="text" class="input" id="feriasObs" maxlength="255" placeholder="Opcional">
@@ -97,7 +114,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                            <tr><th class="px-4 py-3">Colaborador</th><th class="px-4 py-3">Período</th><th class="px-4 py-3">Dias</th><th class="px-4 py-3">Situação</th><th class="px-4 py-3">Observações</th><th class="px-4 py-3"></th></tr>
+                            <tr><th class="px-4 py-3">Colaborador</th><th class="px-4 py-3">Período</th><th class="px-4 py-3">Dias</th><th class="px-4 py-3">Situação</th><th class="px-4 py-3">Valor pago</th><th class="px-4 py-3">Observações</th><th class="px-4 py-3"></th></tr>
                         </thead>
                         <tbody id="feriasTabela"></tbody>
                     </table>

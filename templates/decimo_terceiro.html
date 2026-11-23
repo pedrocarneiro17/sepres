@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>13º Salário · Sistema DP</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/metropolis@5.0.4/600.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/metropolis@5.0.4/700.css">
+</head>
+<body class="min-h-screen bg-slate-50 font-sans text-slate-800 antialiased">
+    <script>if(localStorage.getItem('sidebarCollapsed')==='1'){document.body.classList.add('sidebar-collapsed');}</script>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-40 flex -translate-x-full flex-col border-r border-slate-200 bg-white transition-all duration-200 lg:translate-x-0">
+        <div class="side-hdr flex h-16 items-center gap-2.5 border-b border-slate-100 px-4">
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="side-logo">
+        </div>
+        <nav class="flex-1 space-y-1 p-3">
+            <a href="/" class="side-link" title="Dashboard"><i class="fas fa-chart-line w-5 shrink-0 text-center"></i><span class="side-label">Dashboard</span></a>
+            <a href="/colaboradores" class="side-link" title="Colaboradores"><i class="fas fa-users w-5 shrink-0 text-center"></i><span class="side-label">Colaboradores</span></a>
+            <a href="/lancamentos" class="side-link" title="Lançamentos"><i class="fas fa-dollar-sign w-5 shrink-0 text-center"></i><span class="side-label">Lançamentos</span></a>
+            <a href="/ferias" class="side-link" title="Férias"><i class="fas fa-umbrella-beach w-5 shrink-0 text-center"></i><span class="side-label">Férias</span></a>
+            <a href="/decimo-terceiro" class="side-link active" title="13º Salário"><i class="fas fa-gift w-5 shrink-0 text-center"></i><span class="side-label">13º Salário</span></a>
+            <a href="/afastamentos" class="side-link" title="Afastamentos"><i class="fas fa-briefcase-medical w-5 shrink-0 text-center"></i><span class="side-label">Afastamentos</span></a>
+        </nav>
+        <div class="border-t border-slate-100 p-3">
+            <a href="/conta" class="side-link" title="Minha conta"><i class="fas fa-user-gear w-5 shrink-0 text-center"></i><span class="side-label">Minha conta</span></a>
+            <a href="/logout" class="side-link" title="Sair"><i class="fas fa-right-from-bracket w-5 shrink-0 text-center"></i><span class="side-label">Sair</span></a>
+        </div>
+        <button onclick="collapseSidebar()" title="Recolher menu" class="absolute -right-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-sepres-600 lg:flex">
+            <i id="collapseIcon" class="fas fa-angle-left text-xs"></i>
+        </button>
+    </aside>
+    <div id="sidebarBackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/40 lg:hidden" onclick="toggleSidebar()"></div>
+
+    <div class="app-shell">
+        <!-- Barra superior (mobile) -->
+        <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur lg:hidden">
+            <button onclick="toggleSidebar()" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"><i class="fas fa-bars"></i></button>
+            <img src="/static/img/logo-sepres.jpeg" alt="SEPRES" class="h-7 w-auto object-contain">
+        </header>
+
+        <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+            <div class="mb-4">
+                <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" onclick="window.location.href='/'"><i class="fas fa-arrow-left"></i> Voltar</button>
+            </div>
+            <div class="mb-8">
+                <h1 class="font-heading text-2xl font-bold tracking-tight text-slate-900">13º Salário</h1>
+                <p class="mt-1 text-sm text-slate-500">Lançamento da 1ª parcela (novembro) e da 2ª parcela (dezembro) do 13º salário dos colaboradores CLT.</p>
+            </div>
+
+            <div class="card mb-6 overflow-hidden">
+                <div class="flex items-center gap-2 border-b border-slate-200 px-6 py-4 font-heading text-sm font-semibold text-slate-700">
+                    <i class="fas fa-gift text-sepres-600"></i> <span id="formDecTitulo">Lançar 13º</span>
+                </div>
+                <form class="p-6" id="formDecimo" autocomplete="off">
+                    <input type="hidden" id="decEditId">
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div class="md:col-span-2">
+                            <label class="label">Colaborador (CLT) *</label>
+                            <select class="input" id="decColaborador" required><option value="">Selecione</option></select>
+                        </div>
+                        <div>
+                            <label class="label">Ano *</label>
+                            <select class="input" id="decAno" required></select>
+                        </div>
+                        <div>
+                            <label class="label">Parcela *</label>
+                            <select class="input" id="decParcela" required>
+                                <option value="1">1ª parcela (novembro)</option>
+                                <option value="2">2ª parcela (dezembro)</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="label">Pagamento Contabilidade</label>
+                            <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="decContab" value="0,00"></div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="label">Pagamento em Espécie</label>
+                            <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="decEspecie" value="0,00"></div>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex flex-wrap justify-end gap-3">
+                        <button type="button" id="btnExcluirDecForm" style="display: none;" class="btn-secondary mr-auto !border-rose-200 !text-rose-600 hover:!bg-rose-50" onclick="excluirDecimo(document.getElementById('decEditId').value)"><i class="fas fa-trash"></i> Excluir lançamento</button>
+                        <button type="button" class="btn-secondary" onclick="limparFormDecimo()">Cancelar</button>
+                        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4" id="decResumo"></div>
+
+            <div class="card overflow-hidden">
+                <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4">
+                    <span class="font-heading text-sm font-semibold text-slate-700"><i class="fas fa-list-ul mr-1.5 text-sepres-600"></i> 13º lançado em <span id="decAnoTitulo"></span></span>
+                    <div class="ml-auto flex flex-wrap items-center gap-2">
+                        <select class="input compact w-48" id="decExportParcela">
+                            <option value="1">1ª parcela (novembro)</option>
+                            <option value="2">2ª parcela (dezembro)</option>
+                        </select>
+                        <button type="button" class="btn-success shrink-0" onclick="exportarDecimo()" title="Planilha de pagamento em conta e em espécie da parcela, para o financeiro"><i class="fas fa-file-export"></i> Exportar planilha</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                            <tr>
+                                <th class="px-4 py-2" rowspan="2">Colaborador</th>
+                                <th class="px-4 py-2 text-center" colspan="2">1ª parcela (nov)</th>
+                                <th class="px-4 py-2 text-center" colspan="2">2ª parcela (dez)</th>
+                                <th class="px-4 py-2" rowspan="2">Total</th>
+                                <th class="px-4 py-2" rowspan="2"></th>
+                            </tr>
+                            <tr>
+                                <th class="px-4 py-2">Conta</th><th class="px-4 py-2">Espécie</th>
+                                <th class="px-4 py-2">Conta</th><th class="px-4 py-2">Espécie</th>
+                            </tr>
+                        </thead>
+                        <tbody id="decTabela"></tbody>
+                        <tfoot id="decRodape"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal do recibo do 13º (mesmo modelo do recibo em espécie, sem vale transporte) -->
+    <div id="modalReciboEva" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h3 class="flex items-center gap-2 text-lg font-semibold text-slate-900"><i class="fas fa-receipt text-sepres-600"></i> <span id="reciboEvaTitulo">Recibo</span></h3>
+                <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100" onclick="fecharModal('modalReciboEva')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="px-6 py-5">
+                <div id="reciboEvaConteudo" style="border: 2px solid #000; padding: 18px; font-family: 'Metropolis', sans-serif; font-size: 13px; max-width: 480px; margin: 0 auto;"></div>
+            </div>
+            <div class="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
+                <button type="button" class="btn-primary" onclick="imprimirRecibo('reciboEvaConteudo')"><i class="fas fa-print"></i> Imprimir</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    <script>
+        document.getElementById('formDecimo').addEventListener('submit', salvarDecimo);
+        ['decColaborador', 'decAno', 'decParcela'].forEach(id =>
+            document.getElementById(id).addEventListener('change', () => { if (!refrescandoControles) sincronizarFormDecimo(); }));
+    </script>
+</body>
+</html>

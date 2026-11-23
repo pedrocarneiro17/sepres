@@ -25,6 +25,7 @@
             <a href="/colaboradores" class="side-link" title="Colaboradores"><i class="fas fa-users w-5 shrink-0 text-center"></i><span class="side-label">Colaboradores</span></a>
             <a href="/lancamentos" class="side-link" title="Lançamentos"><i class="fas fa-dollar-sign w-5 shrink-0 text-center"></i><span class="side-label">Lançamentos</span></a>
             <a href="/ferias" class="side-link" title="Férias"><i class="fas fa-umbrella-beach w-5 shrink-0 text-center"></i><span class="side-label">Férias</span></a>
+            <a href="/decimo-terceiro" class="side-link" title="13º Salário"><i class="fas fa-gift w-5 shrink-0 text-center"></i><span class="side-label">13º Salário</span></a>
             <a href="/afastamentos" class="side-link" title="Afastamentos"><i class="fas fa-briefcase-medical w-5 shrink-0 text-center"></i><span class="side-label">Afastamentos</span></a>
         </nav>
         <div class="border-t border-slate-100 p-3">
@@ -138,6 +139,7 @@
                     <span class="ml-auto text-xs font-normal text-slate-400" id="feriasMesQtd"></span>
                 </div>
                 <div class="divide-y divide-slate-100" id="feriasMesLista"></div>
+                <div class="border-t border-slate-100 bg-slate-50 px-5 py-3 text-sm text-slate-600" id="feriasMesPagos" style="display: none;"></div>
             </div>
 
             <!-- Afastamentos (atestado / INSS) da competência escolhida -->
@@ -147,6 +149,16 @@
                     <span class="ml-auto text-xs font-normal text-slate-400" id="afastMesQtd"></span>
                 </div>
                 <div class="divide-y divide-slate-100" id="afastMesLista"></div>
+            </div>
+
+            <!-- 13º pago na competência (novembro = 1ª parcela, dezembro = 2ª) -->
+            <div class="card mb-6 overflow-hidden" id="painelDecimoMes" style="display: none;">
+                <div class="flex items-center gap-2 border-b border-slate-200 px-5 py-3 font-heading text-sm font-semibold text-slate-700">
+                    <i class="fas fa-gift text-sepres-600"></i> <span id="decimoMesTitulo">13º</span>
+                    <span class="ml-auto text-xs font-normal text-slate-400" id="decimoMesQtd"></span>
+                </div>
+                <div class="divide-y divide-slate-100" id="decimoMesLista"></div>
+                <div class="border-t border-slate-100 bg-slate-50 px-5 py-3 text-sm text-slate-600" id="decimoMesTotais" style="display: none;"></div>
             </div>
 
             <!-- Gráficos -->

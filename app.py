@@ -158,6 +158,7 @@ class Colaborador(db.Model):
     emprestimos_rel = db.relationship('Emprestimo', backref='colaborador', lazy=True, cascade="all, delete-orphan")
     ferias_rel = db.relationship('Ferias', backref='colaborador', lazy=True, cascade="all, delete-orphan")
     afastamentos_rel = db.relationship('Afastamento', backref='colaborador', lazy=True, cascade="all, delete-orphan")
+    decimo_rel = db.relationship('DecimoTerceiro', backref='colaborador', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         """Converte objeto Colaborador para dicionário (incluindo empréstimos)"""
@@ -232,6 +233,29 @@ class Afastamento(db.Model):
             "observacoes": self.observacoes
         }
 
+class DecimoTerceiro(db.Model):
+    # 13º salário (só CLT): 1ª parcela em novembro e 2ª em dezembro. Pagamento separado do
+    # pagamento mensal (não entra nos lançamentos nem no líquido).
+    id = db.Column(db.String(50), primary_key=True)
+    colaborador_id = db.Column(db.String(50), db.ForeignKey('colaborador.id'), nullable=False)
+    ano = db.Column(db.String(4), nullable=False)   # YYYY
+    parcela = db.Column(db.Integer, nullable=False)  # 1 (novembro) ou 2 (dezembro)
+    pagamentoContab = db.Column(db.Float)
+    pagamentoEspecie = db.Column(db.Float)
+    observacoes = db.Column(db.String(255))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "colaboradorId": self.colaborador_id,
+            "ano": self.ano,
+            "parcela": self.parcela,
+            "mes": f"{self.ano}-{'11' if self.parcela == 1 else '12'}",
+            "pagamentoContab": self.pagamentoContab or 0,
+            "pagamentoEspecie": self.pagamentoEspecie or 0,
+            "observacoes": self.observacoes
+        }
+
 class Ferias(db.Model):
     # Períodos de férias dos colaboradores (controle de quem sai e em quais dias)
     id = db.Column(db.String(50), primary_key=True)
@@ -239,6 +263,11 @@ class Ferias(db.Model):
     inicio = db.Column(db.String(10), nullable=False)  # YYYY-MM-DD
     fim = db.Column(db.String(10), nullable=False)     # YYYY-MM-DD
     observacoes = db.Column(db.String(255))
+    # Valores pagos das férias (informativos; entram no Dashboard no mês da data do pagamento,
+    # ou no mês do início das férias quando a data do pagamento não for informada).
+    valorConta = db.Column(db.Float)
+    valorEspecie = db.Column(db.Float)
+    dataPagamento = db.Column(db.String(10))  # YYYY-MM-DD
 
     def to_dict(self):
         return {
@@ -246,7 +275,10 @@ class Ferias(db.Model):
             "colaboradorId": self.colaborador_id,
             "inicio": self.inicio,
             "fim": self.fim,
-            "observacoes": self.observacoes
+            "observacoes": self.observacoes,
+            "valorConta": self.valorConta or 0,
+            "valorEspecie": self.valorEspecie or 0,
+            "dataPagamento": self.dataPagamento
         }
 
 class Lancamento(db.Model):
@@ -339,6 +371,12 @@ with app.app_context():
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN faltas TEXT'))
     if 'atestados' not in colunas_lancamento:
         db.session.execute(text('ALTER TABLE lancamento ADD COLUMN atestados TEXT'))
+
+    colunas_ferias = {col['name'] for col in inspector.get_columns('ferias')}
+    for nome_col, tipo_col in (('valorConta', 'FLOAT'), ('valorEspecie', 'FLOAT'), ('dataPagamento', 'VARCHAR(10)')):
+        if nome_col not in colunas_ferias:
+            db.session.execute(text(f'ALTER TABLE ferias ADD COLUMN "{nome_col}" {tipo_col}'))
+            db.session.commit()
 
     colunas_colaborador = {col['name'] for col in inspector.get_columns('colaborador')}
     if 'empresa' not in colunas_colaborador:
@@ -713,6 +751,11 @@ def pagina_afastamentos():
     """Página de atestados e afastamentos (INSS)."""
     return render_template('afastamentos.html')
 
+@app.route('/decimo-terceiro')
+def pagina_decimo_terceiro():
+    """Página do 13º salário (1ª e 2ª parcelas)."""
+    return render_template('decimo_terceiro.html')
+
 @app.route('/ferias')
 def pagina_ferias():
     """Página de controle de férias dos colaboradores."""
@@ -743,7 +786,8 @@ def obter_dados():
         'colaboradores': [c.to_dict() for c in colaboradores_list],
         'lancamentos': [l.to_dict() for l in lancamentos_list],
         'ferias': [f.to_dict() for f in Ferias.query.all()],
-        'afastamentos': [a.to_dict() for a in Afastamento.query.all()]
+        'afastamentos': [a.to_dict() for a in Afastamento.query.all()],
+        'decimoTerceiro': [d.to_dict() for d in DecimoTerceiro.query.all()]
     })
 
 @app.route('/api/colaboradores', methods=['GET'])
@@ -1258,6 +1302,10 @@ def salvar_ferias():
         ferias.inicio = inicio
         ferias.fim = fim
         ferias.observacoes = (data.get('observacoes') or '')[:255]
+        ferias.valorConta = max(0.0, float(data.get('valorConta') or 0))
+        ferias.valorEspecie = max(0.0, float(data.get('valorEspecie') or 0))
+        data_pag = data.get('dataPagamento') or None
+        ferias.dataPagamento = data_pag if data_pag and _data_valida(data_pag) else None
         db.session.commit()
         return jsonify(ferias.to_dict()), 201
     except Exception as e:
@@ -1278,6 +1326,101 @@ def excluir_ferias(id):
         db.session.rollback()
         print(f"ERRO AO EXCLUIR FÉRIAS: {e}")
         return jsonify({'erro': 'Erro interno ao excluir férias'}), 500
+
+# ==================== 13º SALÁRIO ====================
+
+@app.route('/api/decimo-terceiro', methods=['POST'])
+def salvar_decimo_terceiro():
+    """Cria ou atualiza o lançamento de uma parcela do 13º (um por colaborador/ano/parcela)."""
+    data = request.get_json(silent=True) or {}
+    colaborador = Colaborador.query.get(data.get('colaboradorId') or '')
+    if not colaborador:
+        return jsonify({'erro': 'Colaborador não encontrado'}), 400
+    if colaborador.contratacao != 'CLT':
+        return jsonify({'erro': '13º salário é só para colaboradores CLT'}), 400
+    ano = str(data.get('ano') or '')
+    if not (len(ano) == 4 and ano.isdigit() and 2000 <= int(ano) <= 2100):
+        return jsonify({'erro': 'Ano inválido'}), 400
+    try:
+        parcela = int(data.get('parcela'))
+    except (TypeError, ValueError):
+        parcela = 0
+    if parcela not in (1, 2):
+        return jsonify({'erro': 'Parcela inválida'}), 400
+    try:
+        contab = float(data.get('pagamentoContab') or 0)
+        especie = float(data.get('pagamentoEspecie') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'erro': 'Valores inválidos'}), 400
+    if contab < 0 or especie < 0:
+        return jsonify({'erro': 'Os valores não podem ser negativos'}), 400
+    try:
+        existente = DecimoTerceiro.query.filter_by(colaborador_id=colaborador.id, ano=ano, parcela=parcela).first()
+        registro = DecimoTerceiro.query.get(data.get('id')) if data.get('id') else None
+        if existente and (not registro or existente.id != registro.id):
+            return jsonify({'erro': 'Já existe lançamento desta parcela para o colaborador neste ano'}), 409
+        if not registro:
+            registro = DecimoTerceiro(id=secrets.token_hex(8))
+            db.session.add(registro)
+        registro.colaborador_id = colaborador.id
+        registro.ano = ano
+        registro.parcela = parcela
+        registro.pagamentoContab = contab
+        registro.pagamentoEspecie = especie
+        registro.observacoes = (data.get('observacoes') or '')[:255]
+        db.session.commit()
+        return jsonify(registro.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO SALVAR 13º: {e}")
+        return jsonify({'erro': 'Erro interno ao salvar 13º'}), 500
+
+@app.route('/api/decimo-terceiro/<id>', methods=['DELETE'])
+def excluir_decimo_terceiro(id):
+    registro = DecimoTerceiro.query.get(id)
+    if not registro:
+        return jsonify({'erro': 'Lançamento de 13º não encontrado'}), 404
+    try:
+        db.session.delete(registro)
+        db.session.commit()
+        return jsonify({'mensagem': '13º excluído'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO EXCLUIR 13º: {e}")
+        return jsonify({'erro': 'Erro interno ao excluir 13º'}), 500
+
+@app.route('/api/exportar-13', methods=['GET'])
+def exportar_decimo_terceiro():
+    """Planilha do 13º de uma parcela (todas as empresas): Nome, Empresa, Pagamento em Espécie
+    e Pagamento em Conta, com linha TOTAL. Só entra quem tem valor em pelo menos um dos dois."""
+    from sqlalchemy import or_
+    ano = request.args.get('ano', '')
+    if not (len(ano) == 4 and ano.isdigit()):
+        return jsonify({'erro': 'Informe o ano (AAAA).'}), 400
+    try:
+        parcela = int(request.args.get('parcela', ''))
+    except ValueError:
+        parcela = 0
+    if parcela not in (1, 2):
+        return jsonify({'erro': 'Informe a parcela (1 ou 2).'}), 400
+    linhas = (db.session.query(DecimoTerceiro, Colaborador)
+              .join(Colaborador, DecimoTerceiro.colaborador_id == Colaborador.id)
+              .filter(DecimoTerceiro.ano == ano, DecimoTerceiro.parcela == parcela)
+              .filter(or_(DecimoTerceiro.pagamentoEspecie > 0, DecimoTerceiro.pagamentoContab > 0))
+              .all())
+    if not linhas:
+        return jsonify({'erro': 'Não há 13º lançado para a parcela e o ano selecionados.'}), 404
+    registros = sorted(
+        ({'nome': (c.nome or '').strip(), 'empresa': c.empresa or '',
+          'especie': d.pagamentoEspecie or 0, 'conta': d.pagamentoContab or 0}
+         for d, c in linhas),
+        key=lambda r: r['nome'].lower())
+    colunas = [('Nome', 'nome', 0, 0, 38), ('Empresa', 'empresa', 0, 0, 16),
+               ('Pagamento em Espécie', 'especie', 1, 0, 22),
+               ('Pagamento em Conta', 'conta', 1, 0, 22)]
+    wb, estilo = _novo_workbook()
+    _preencher_aba(wb, estilo, f'13º - {parcela}ª parcela', colunas, registros, totais=True)
+    return _enviar_xlsx(wb, f'13o_{parcela}a_parcela_{ano}.xlsx')
 
 # ==================== AFASTAMENTOS ====================
 
@@ -1340,7 +1483,8 @@ def fazer_backup():
         'colaboradores': [c.to_dict() for c in colaboradores_list],
         'lancamentos': [l.to_dict() for l in lancamentos_list],
         'ferias': [f.to_dict() for f in Ferias.query.all()],
-        'afastamentos': [a.to_dict() for a in Afastamento.query.all()]
+        'afastamentos': [a.to_dict() for a in Afastamento.query.all()],
+        'decimoTerceiro': [d.to_dict() for d in DecimoTerceiro.query.all()]
     })
 
 if __name__ == '__main__':

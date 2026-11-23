@@ -110,7 +110,7 @@ diárias e recibos), com dashboard de indicadores e gráficos.
 | `contratos` | Lista de **períodos de contrato** (Mensalista/Diarista), guardada em `contratosJson`. Ver 5.2. |
 | `demitidoEm` | Data de demissão (`YYYY-MM-DD`); vazio = ativo. **Não exclui nada**: ver 5.12. |
 | `observacoes` | Texto livre. |
-| `emprestimos`, `lancamentos`, `ferias`, `afastamentos` | Relações 1:N, excluídas em cascata. |
+| `emprestimos`, `lancamentos`, `ferias`, `afastamentos`, `decimo_rel` (13º) | Relações 1:N, excluídas em cascata. |
 
 As colunas antigas `fimContrato` e `desligado` continuam no banco só por compatibilidade:
 no primeiro boot, quem tinha Fim de Contrato foi convertido em um período
@@ -147,8 +147,9 @@ Pagamento mensal de um colaborador (um por colaborador/mês).
 ### 3.4 Férias (`Ferias`)
 
 Período de férias de um colaborador (pode haver vários): `colaborador_id`, `inicio` e `fim`
-(`YYYY-MM-DD`) e `observacoes` (opcional). É só **controle** de quem sai e em quais dias:
-não altera lançamentos, cálculos nem pagamentos. Excluir o colaborador exclui as férias dele.
+(`YYYY-MM-DD`) e `observacoes` (opcional), mais os **valores pagos**: `valorConta`,
+`valorEspecie` e `dataPagamento` (opcional). É **controle** de quem sai e em quais dias, mais o
+registro do que foi pago; não altera lançamentos nem cálculos do pagamento mensal. Excluir o colaborador exclui as férias dele.
 A tabela é criada sozinha no primeiro boot (`db.create_all`).
 
 ### 3.5 Afastamento (`Afastamento`)
@@ -158,6 +159,14 @@ Atestado ou afastamento pelo INSS de um colaborador: `colaborador_id`, `tipo` (`
 (até 500 caracteres). Só **controle** de datas: não altera lançamentos nem cálculos, e é
 independente do campo de atestados dentro do lançamento. A tabela é criada sozinha no
 primeiro boot.
+
+### 3.6 13º salário (`DecimoTerceiro`)
+
+Uma linha por **colaborador CLT / ano / parcela** (a API recusa duplicata com `409` e
+colaborador que não é CLT com `400`): `ano` (`AAAA`), `parcela` (`1` = novembro, `2` =
+dezembro), `pagamentoContab` e `pagamentoEspecie` (valores digitados). É um
+pagamento **à parte** do mensal: não entra nos lançamentos nem no líquido. A tabela é criada
+sozinha no primeiro boot.
 
 ## 4. Rotas
 
@@ -169,8 +178,8 @@ primeiro boot.
 | `/redefinir-senha/<token>` | GET/POST | pública (token) | Define a nova senha. |
 | `/conta` | GET/POST | logado | Minha conta (e-mail e senha). |
 | `/logout` | GET | logado | Encerra a sessão. |
-| `/`, `/colaboradores`, `/lancamentos`, `/ferias`, `/afastamentos` | GET | logado | Páginas (as `.html` antigas redirecionam). |
-| `/api/dados` | GET | logado | Colaboradores + lançamentos + férias + afastamentos. |
+| `/`, `/colaboradores`, `/lancamentos`, `/ferias`, `/afastamentos`, `/decimo-terceiro` | GET | logado | Páginas (as `.html` antigas redirecionam). |
+| `/api/dados` | GET | logado | Colaboradores + lançamentos + férias + afastamentos + 13º. |
 | `/api/colaboradores` | GET/POST | logado | Lista / cria-edita (valida CPF único e períodos de contrato). |
 | `/api/colaboradores/<id>` | DELETE | logado | Exclui (cascata). |
 | `/api/lancamentos` | GET/POST | logado | Lista / cria-edita. |
@@ -179,6 +188,9 @@ primeiro boot.
 | `/api/lancamentos/<id>/reabrir` | PUT | logado | Status → `aberto`. |
 | `/api/ferias` | POST | logado | Cria/edita um período (valida colaborador, datas e fim ≥ início). |
 | `/api/ferias/<id>` | DELETE | logado | Exclui um período de férias. |
+| `/api/decimo-terceiro` | POST | logado | Cria/edita uma parcela do 13º (só CLT; um por colaborador/ano/parcela). |
+| `/api/decimo-terceiro/<id>` | DELETE | logado | Exclui o lançamento do 13º. |
+| `/api/exportar-13?ano=AAAA&parcela=1\|2` | GET | logado | Planilha Excel do 13º da parcela (ver 5.15). |
 | `/api/afastamentos` | POST | logado | Cria/edita (valida colaborador, tipo, datas e fim ≥ início). |
 | `/api/afastamentos/<id>` | DELETE | logado | Exclui um afastamento. |
 | `/api/lancamentos/finalizar-todos` | POST | logado | Finaliza em lote os `ids` enviados que estão em aberto. |
@@ -412,6 +424,11 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   dd/mm/aaaa" e a quantidade de dias, respeitando os filtros de contrato e empresa. Um período
   que cruza dois meses aparece nos dois. Em "Todos os meses" o painel fica oculto.
 - O antigo gráfico "Férias por mês" foi removido.
+- **Valor pago de férias**: cada período tem **Data do pagamento**, **Pago em conta** e **Pago em
+  espécie** (opcionais; a lista mostra a coluna "Valor pago"). No Dashboard, o painel de férias
+  ganha, quando há valor, a linha **"Pago de férias no mês"** (em conta, em espécie e total),
+  somando os períodos cujo **mês de pagamento** é a competência (sem data de pagamento, vale o mês
+  do início das férias). Um pagamento em novembro de férias de dezembro aparece em novembro.
 
 ### 5.14 Afastamentos (atestado e INSS)
 
@@ -426,6 +443,29 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   empresa. Em "Todos os meses" fica oculto.
 - Não interfere em lançamentos, cálculos ou pagamentos.
 
+### 5.15 13º salário
+
+- Menu **13º Salário** (`/decimo-terceiro`, abaixo de Férias), **somente CLT**. A **1ª parcela é
+  sempre em novembro** e a **2ª em dezembro**. Cada parcela tem **Pagamento Contabilidade** e
+  **Pagamento em Espécie**, digitados (a 2ª é menor que a 1ª por causa do desconto de INSS e tem
+  parte em dinheiro, então não há valor fixo). Não vincula ao pagamento mensal.
+- Ao escolher colaborador + ano + parcela já lançados, o formulário carrega o lançamento para
+  edição (e o botão **Excluir lançamento** aparece dentro dele). O select de ano oferece o ano
+  anterior, o atual e o próximo.
+- A lista do ano mostra, por colaborador, 1ª parcela (conta/espécie), 2ª parcela
+  (conta/espécie) e **total**, com linha **TOTAL** de todos; cartões acima somam a 1ª parcela, a
+  2ª, o total em conta e o **total geral do 13º**.
+- **Recibo** por parcela (botões "1ª"/"2ª" na linha): mesmo modelo do recibo em espécie, sem
+  vale transporte (nome, CPF, pagamento em espécie, data de hoje, mês e "referente ao pagamento
+  do 13º salário"); só existe se a parcela tem valor em espécie.
+- **Planilha para o financeiro** (botão **Exportar planilha**, escolhendo a parcela do ano
+  selecionado; `/api/exportar-13`): aba com **Nome, Empresa, Pagamento em Espécie e Pagamento em
+  Conta**, todas as empresas juntas, em ordem alfabética, com linha **TOTAL** (fórmula `SUM`).
+  Só entra quem tem valor em pelo menos um dos dois.
+- No **Dashboard**, em **novembro** (1ª parcela) e **dezembro** (2ª), um painel **"13º salário em
+  Mês/AAAA"** lista cada colaborador com conta, espécie e total, e o rodapé **"Pago de 13º no mês"**
+  (conta, espécie e total), respeitando os filtros de contrato e empresa.
+
 ## 6. Páginas
 
 ### 6.1 Dashboard (`/`)
@@ -434,8 +474,8 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   indicadores e gráficos; o botão "Limpar" tem a mesma altura (40 px) dos campos.
 - **6 indicadores**: Colaboradores, Líquido Pago, Adiantamentos, Empréstimos, Faltas,
   Atestados.
-- **Painéis de férias** (5.13) e de **afastamentos** (5.14) da competência escolhida, entre os
-  indicadores e os gráficos.
+- **Painéis de férias** (5.13), de **afastamentos** (5.14) e de **13º** (5.15, só em novembro e
+  dezembro) da competência escolhida, entre os indicadores e os gráficos.
 - **6 gráficos** (Chart.js, cada um com legenda expansível): líquido por empresa,
   evolução mensal do líquido, líquido por tipo de contrato, colaboradores por tipo de
   contrato, faltas por mês e atestados por mês.

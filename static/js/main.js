@@ -17,6 +17,7 @@ let colaboradores = [];
 let lancamentos = [];
 let feriasLista = [];
 let afastamentosLista = [];
+let decimoLista = [];
 let colabIdToDelete = null;
 
 // ==================== HELPERS DE MÁSCARA / MOEDA ====================
@@ -507,6 +508,7 @@ async function carregarDados() {
         lancamentos = Array.isArray(dados.lancamentos) ? dados.lancamentos : [];
         feriasLista = Array.isArray(dados.ferias) ? dados.ferias : [];
         afastamentosLista = Array.isArray(dados.afastamentos) ? dados.afastamentos : [];
+        decimoLista = Array.isArray(dados.decimoTerceiro) ? dados.decimoTerceiro : [];
 
         // Ordena por nome (A-Z) uma única vez aqui, para que toda tela que lista
         // colaboradores (selects, tabelas, filtros) já receba em ordem alfabética.
@@ -614,6 +616,8 @@ function renderizar() {
             window.history.replaceState({}, document.title, window.location.pathname);
             setTimeout(() => editarColaborador(editarId), 300);
         }
+    } else if (pathname.includes('decimo-terceiro')) {
+        renderizarDecimo();
     } else if (pathname.includes('afastamentos')) {
         renderizarAfastamentos();
     } else if (pathname.includes('ferias')) {
@@ -2391,6 +2395,7 @@ function aplicarFiltrosDashboard() {
     atualizarCardsDashboard(fatia);
     renderizarPainelFerias(fatia);
     renderizarPainelAfastamentos(fatia);
+    renderizarPainelDecimo(fatia);
     renderizarGraficos(fatia);
 }
 
@@ -2895,6 +2900,19 @@ function renderizarPainelFerias(fatia) {
             <span class="ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${sit.cor}">${sit.texto}</span>
         </div>`;
     }).join('') : '<div class="px-5 py-4 text-sm text-slate-400">Ninguém com férias registradas nesta competência.</div>';
+
+    // Pago de férias no mês: pelo mês da data do pagamento (ou do início, se não informada).
+    const pagos = feriasLista.filter(f => ids.has(f.colaboradorId) &&
+        (f.dataPagamento || f.inicio).substring(0, 7) === fatia.comp);
+    const conta = pagos.reduce((t, f) => t + (f.valorConta || 0), 0);
+    const especie = pagos.reduce((t, f) => t + (f.valorEspecie || 0), 0);
+    const rodape = document.getElementById('feriasMesPagos');
+    if (conta + especie > 0) {
+        rodape.innerHTML = `<strong>Pago de férias no mês:</strong> em conta ${esc(formatarMoeda(conta))} · em espécie ${esc(formatarMoeda(especie))} · <strong>total ${esc(formatarMoeda(conta + especie))}</strong>`;
+        rodape.style.display = 'block';
+    } else {
+        rodape.style.display = 'none';
+    }
     painel.style.display = 'block';
 }
 
@@ -2954,10 +2972,11 @@ function renderizarFerias() {
             <td class="px-4 py-3 text-slate-700">${esc(dataBR(f.inicio))} a ${esc(dataBR(f.fim))}</td>
             <td class="px-4 py-3 text-slate-600">${diasDeFerias(f)}</td>
             <td class="px-4 py-3"><span class="rounded-full px-2.5 py-0.5 text-xs font-medium ${sit.cor}">${sit.texto}</span></td>
+            <td class="px-4 py-3 text-slate-600 whitespace-nowrap" title="${esc(`Conta ${formatarMoeda(f.valorConta)} · Espécie ${formatarMoeda(f.valorEspecie)}`)}">${(f.valorConta || 0) + (f.valorEspecie || 0) > 0 ? formatarMoeda((f.valorConta || 0) + (f.valorEspecie || 0)) : '-'}</td>
             <td class="px-4 py-3 text-slate-500">${esc(f.observacoes || '')}</td>
             <td class="px-4 py-3 text-right whitespace-nowrap">${botaoAcao(`editarFerias('${esc(f.id)}')`, 'edit', 'fa-pen', 'Editar')}${botaoAcao(`excluirFerias('${esc(f.id)}')`, 'delete', 'fa-trash', 'Excluir')}</td>
         </tr>`;
-    }).join('') : '<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-400">Nenhuma férias registrada.</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-slate-400">Nenhuma férias registrada.</td></tr>';
 }
 
 function limparFormFerias() {
@@ -2975,6 +2994,9 @@ function editarFerias(id) {
     document.getElementById('feriasInicio').value = f.inicio;
     document.getElementById('feriasFim').value = f.fim;
     document.getElementById('feriasObs').value = f.observacoes || '';
+    setMoeda(document.getElementById('feriasValorConta'), f.valorConta || 0);
+    setMoeda(document.getElementById('feriasValorEspecie'), f.valorEspecie || 0);
+    document.getElementById('feriasDataPag').value = f.dataPagamento || '';
     document.getElementById('formFeriasTitulo').textContent = 'Editar férias';
     refrescarControlesCustom(document.getElementById('formFerias'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2987,7 +3009,10 @@ async function salvarFerias(e) {
         colaboradorId: document.getElementById('feriasColaborador').value,
         inicio: document.getElementById('feriasInicio').value,
         fim: document.getElementById('feriasFim').value,
-        observacoes: document.getElementById('feriasObs').value.trim()
+        observacoes: document.getElementById('feriasObs').value.trim(),
+        valorConta: lerMoeda(document.getElementById('feriasValorConta')),
+        valorEspecie: lerMoeda(document.getElementById('feriasValorEspecie')),
+        dataPagamento: document.getElementById('feriasDataPag').value || null
     };
     if (!dados.colaboradorId || !dados.inicio || !dados.fim) {
         notificar('Informe o colaborador e as datas de início e fim.', 'error');
@@ -3151,4 +3176,266 @@ async function excluirAfastamento(id) {
         console.error('Erro:', error);
         notificar('Erro ao excluir afastamento', 'error');
     }
+}
+
+
+// ==================== 13º SALÁRIO (só CLT) ====================
+
+function anoDecimoSelecionado() {
+    return document.getElementById('decAno').value || String(new Date().getFullYear());
+}
+
+function renderizarDecimo() {
+    const selAno = document.getElementById('decAno');
+    if (!selAno) return;
+    // Ano: anterior, atual e próximo (mantém o escolhido).
+    const anoAtual = new Date().getFullYear();
+    const escolhido = selAno.value || String(anoAtual);
+    selAno.innerHTML = [anoAtual - 1, anoAtual, anoAtual + 1].map(a => `<option value="${a}">${a}</option>`).join('');
+    selAno.value = escolhido;
+    const ano = anoDecimoSelecionado();
+
+    // Colaboradores CLT ainda ativos no ano.
+    const selColab = document.getElementById('decColaborador');
+    const colabAtual = selColab.value;
+    const elegiveis = colaboradores.filter(c => c.contratacao === 'CLT' &&
+        !(c.demitidoEm && c.demitidoEm.substring(0, 4) < ano));
+    selColab.innerHTML = '<option value="">Selecione</option>' +
+        elegiveis.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
+    selColab.value = colabAtual;
+    refrescarControlesCustom(document.getElementById('formDecimo'));
+
+    document.getElementById('decAnoTitulo').textContent = ano;
+
+    // Agrupa por colaborador.
+    const doAno = decimoLista.filter(d => d.ano === ano);
+    const porColab = {};
+    doAno.forEach(d => {
+        porColab[d.colaboradorId] = porColab[d.colaboradorId] || { 1: null, 2: null };
+        porColab[d.colaboradorId][d.parcela] = d;
+    });
+    const linhas = Object.keys(porColab)
+        .map(id => ({ c: colaboradores.find(co => co.id === id) || { nome: 'Desconhecido' }, p: porColab[id] }))
+        .sort((x, y) => (x.c.nome || '').localeCompare(y.c.nome || '', 'pt-BR', { sensitivity: 'base' }));
+
+    const v = (d, campo) => (d ? d[campo] || 0 : 0);
+    const tot = { c1: 0, e1: 0, c2: 0, e2: 0 };
+    const moeda = n => (n ? formatarMoeda(n) : '<span class="text-slate-300">-</span>');
+    document.getElementById('decTabela').innerHTML = linhas.length ? linhas.map(({ c, p }) => {
+        const c1 = v(p[1], 'pagamentoContab'), e1 = v(p[1], 'pagamentoEspecie');
+        const c2 = v(p[2], 'pagamentoContab'), e2 = v(p[2], 'pagamentoEspecie');
+        tot.c1 += c1; tot.e1 += e1; tot.c2 += c2; tot.e2 += e2;
+        const btn = (acao, icone, titulo, rotulo) => `<button type="button" class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100" title="${titulo}" onclick="${acao}"><i class="fas ${icone}"></i> ${rotulo}</button>`;
+        return `<tr class="border-t border-slate-100">
+            <td class="px-4 py-3 font-medium text-slate-800">${esc(c.nome)}<div class="text-xs font-normal text-slate-400">${esc(c.empresa || '')}</div></td>
+            <td class="px-4 py-3 text-slate-700">${moeda(c1)}</td><td class="px-4 py-3 text-slate-700">${moeda(e1)}</td>
+            <td class="px-4 py-3 text-slate-700">${moeda(c2)}</td><td class="px-4 py-3 text-slate-700">${moeda(e2)}</td>
+            <td class="px-4 py-3 font-semibold text-slate-900">${formatarMoeda(c1 + e1 + c2 + e2)}</td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+                ${btn(`editarDecimo('${esc(p[1]?.colaboradorId || p[2].colaboradorId)}', 1)`, 'fa-pen', 'Editar a 1ª parcela', '1ª')}
+                ${btn(`editarDecimo('${esc(p[1]?.colaboradorId || p[2].colaboradorId)}', 2)`, 'fa-pen', 'Editar a 2ª parcela', '2ª')}
+                ${btn(`gerarRecibo13('${esc(p[1]?.colaboradorId || p[2].colaboradorId)}', 1)`, 'fa-receipt', 'Recibo da 1ª parcela (espécie)', '1ª')}
+                ${btn(`gerarRecibo13('${esc(p[1]?.colaboradorId || p[2].colaboradorId)}', 2)`, 'fa-receipt', 'Recibo da 2ª parcela (espécie)', '2ª')}
+            </td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-slate-400">Nenhum 13º lançado neste ano.</td></tr>';
+
+    const totalGeral = tot.c1 + tot.e1 + tot.c2 + tot.e2;
+    document.getElementById('decRodape').innerHTML = linhas.length ? `<tr class="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-900">
+        <td class="px-4 py-3">TOTAL</td>
+        <td class="px-4 py-3">${formatarMoeda(tot.c1)}</td><td class="px-4 py-3">${formatarMoeda(tot.e1)}</td>
+        <td class="px-4 py-3">${formatarMoeda(tot.c2)}</td><td class="px-4 py-3">${formatarMoeda(tot.e2)}</td>
+        <td class="px-4 py-3">${formatarMoeda(totalGeral)}</td><td></td></tr>` : '';
+
+    const card = (rotulo, valor, destaque) => `<div class="card p-4"><div class="text-xs font-medium uppercase tracking-wide text-slate-400">${rotulo}</div><div class="mt-1 text-xl font-bold ${destaque ? 'text-sepres-700' : 'text-slate-800'}">${formatarMoeda(valor)}</div></div>`;
+    document.getElementById('decResumo').innerHTML =
+        card('1ª parcela (nov)', tot.c1 + tot.e1) + card('2ª parcela (dez)', tot.c2 + tot.e2) +
+        card('Total em conta', tot.c1 + tot.c2) + card('Total geral do 13º', totalGeral, true);
+}
+
+// Ao mudar colaborador/ano/parcela: carrega o lançamento existente (edição) ou zera os valores.
+function sincronizarFormDecimo() {
+    const colabId = document.getElementById('decColaborador').value;
+    const ano = anoDecimoSelecionado();
+    const parcela = parseInt(document.getElementById('decParcela').value, 10);
+    const existente = decimoLista.find(d => d.colaboradorId === colabId && d.ano === ano && d.parcela === parcela);
+    document.getElementById('decEditId').value = existente ? existente.id : '';
+    setMoeda(document.getElementById('decContab'), existente ? existente.pagamentoContab : 0);
+    setMoeda(document.getElementById('decEspecie'), existente ? existente.pagamentoEspecie : 0);
+    document.getElementById('formDecTitulo').textContent = existente ? 'Editar 13º' : 'Lançar 13º';
+    document.getElementById('btnExcluirDecForm').style.display = existente ? '' : 'none';
+    renderizarDecimoSomenteLista();
+}
+
+// Troca de ano reaplica a listagem sem mexer nos campos do formulário.
+function renderizarDecimoSomenteLista() {
+    const ano = anoDecimoSelecionado();
+    if (document.getElementById('decAnoTitulo').textContent !== ano) renderizarDecimo();
+}
+
+function limparFormDecimo() {
+    const ano = anoDecimoSelecionado();
+    document.getElementById('formDecimo').reset();
+    document.getElementById('decAno').value = ano;
+    document.getElementById('decEditId').value = '';
+    setMoeda(document.getElementById('decContab'), 0);
+    setMoeda(document.getElementById('decEspecie'), 0);
+    document.getElementById('formDecTitulo').textContent = 'Lançar 13º';
+    document.getElementById('btnExcluirDecForm').style.display = 'none';
+    refrescarControlesCustom(document.getElementById('formDecimo'));
+}
+
+function editarDecimo(colabId, parcela) {
+    document.getElementById('decColaborador').value = colabId;
+    document.getElementById('decParcela').value = String(parcela);
+    refrescarControlesCustom(document.getElementById('formDecimo'));
+    sincronizarFormDecimo();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function salvarDecimo(e) {
+    e.preventDefault();
+    const dados = {
+        id: document.getElementById('decEditId').value,
+        colaboradorId: document.getElementById('decColaborador').value,
+        ano: anoDecimoSelecionado(),
+        parcela: parseInt(document.getElementById('decParcela').value, 10),
+        pagamentoContab: lerMoeda(document.getElementById('decContab')),
+        pagamentoEspecie: lerMoeda(document.getElementById('decEspecie'))
+    };
+    if (!dados.colaboradorId) {
+        notificar('Selecione o colaborador.', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(`${API_URL}/decimo-terceiro`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        });
+        if (response.ok) {
+            notificar('13º salvo com sucesso!', 'success');
+            limparFormDecimo();
+            await carregarDados();
+        } else {
+            const erro = await response.json().catch(() => ({}));
+            notificar(erro.erro || 'Erro ao salvar o 13º', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao salvar o 13º', 'error');
+    }
+}
+
+async function excluirDecimo(id) {
+    if (!await confirmar('Excluir este lançamento de 13º? Esta ação não pode ser desfeita.', { titulo: 'Excluir 13º', perigo: true, confirmar: 'Excluir' })) return;
+    try {
+        const response = await fetch(`${API_URL}/decimo-terceiro/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            notificar('13º excluído!', 'success');
+            if (document.getElementById('decEditId').value === id) limparFormDecimo();
+            await carregarDados();
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        notificar('Erro ao excluir o 13º', 'error');
+    }
+}
+
+// Recibo do 13º: mesmo modelo do recibo em espécie, sem vale transporte.
+function recibo13Html(d, c) {
+    const rotuloParcela = d.parcela === 1 ? '1ª parcela' : '2ª parcela';
+    return `
+        ${logoReciboHtml()}
+        <div class="text-center" style="margin-bottom: 1.5rem;"><h4 style="font-weight:bold;">RECIBO DE PAGAMENTO EM ESPÉCIE</h4></div>
+        <p><strong>Nome:</strong> ${esc(c.nome)}</p>
+        <p><strong>CPF:</strong> ${esc(c.cpf)}</p>
+        <p><strong>Pagamento em espécie:</strong> R$ ${numeroBR(d.pagamentoEspecie || 0)}</p>
+        <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+        <p><strong>Mês:</strong> ${formatarMesAno(d.mes)}</p>
+        <hr>
+        <p>Recebi da empresa o valor acima descrito referente ao pagamento do 13º salário (${rotuloParcela}).</p>
+        <br><br>
+        <div class="text-center">
+            <p>_______________________________________</p>
+            <p>Assinatura do Colaborador</p>
+        </div>`;
+}
+
+function gerarRecibo13(colabId, parcela) {
+    const ano = anoDecimoSelecionado();
+    const d = decimoLista.find(x => x.colaboradorId === colabId && x.ano === ano && x.parcela === parcela);
+    const c = colaboradores.find(co => co.id === colabId);
+    if (!d || !c) {
+        notificar(`Não há 13º lançado na ${parcela}ª parcela para este colaborador.`, 'info');
+        return;
+    }
+    if (!(d.pagamentoEspecie > 0)) {
+        notificar(`A ${parcela}ª parcela não tem pagamento em espécie, então não há recibo a gerar.`, 'info');
+        return;
+    }
+    document.getElementById('reciboEvaTitulo').textContent = `Recibo do 13º · ${parcela}ª parcela`;
+    document.getElementById('reciboEvaConteudo').innerHTML = recibo13Html(d, c);
+    abrirModal('modalReciboEva');
+}
+
+async function exportarDecimo() {
+    const ano = anoDecimoSelecionado();
+    const parcela = document.getElementById('decExportParcela').value;
+    try {
+        const resp = await fetch(`/api/exportar-13?ano=${encodeURIComponent(ano)}&parcela=${encodeURIComponent(parcela)}`);
+        if (!resp.ok) {
+            const erro = await resp.json().catch(() => ({}));
+            notificar(erro.erro || 'Erro ao gerar a planilha do 13º.', 'info');
+            return;
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `13o_${parcela}a_parcela_${ano}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        notificar(`Planilha da ${parcela}ª parcela do 13º exportada!`, 'success');
+    } catch (e) {
+        notificar('Erro ao gerar a planilha do 13º.', 'info');
+    }
+}
+
+// Painel do Dashboard: 13º pago na competência (novembro = 1ª parcela, dezembro = 2ª).
+function renderizarPainelDecimo(fatia) {
+    const painel = document.getElementById('painelDecimoMes');
+    if (!painel) return;
+    const mesNum = fatia.comp === 'todos' ? '' : fatia.comp.substring(5, 7);
+    if (mesNum !== '11' && mesNum !== '12') { painel.style.display = 'none'; return; }
+
+    const ids = new Set(fatia.colabs.map(c => c.id));
+    const itens = decimoLista
+        .filter(d => d.mes === fatia.comp && ids.has(d.colaboradorId))
+        .map(d => ({ d, c: colaboradores.find(co => co.id === d.colaboradorId) || { nome: 'Desconhecido' } }))
+        .sort((x, y) => (x.c.nome || '').localeCompare(y.c.nome || '', 'pt-BR', { sensitivity: 'base' }));
+
+    document.getElementById('decimoMesTitulo').textContent =
+        `13º salário em ${formatarMesAno(fatia.comp)} · ${mesNum === '11' ? '1ª' : '2ª'} parcela`;
+    document.getElementById('decimoMesQtd').textContent = itens.length ? `${itens.length} ${itens.length === 1 ? 'colaborador' : 'colaboradores'}` : '';
+    document.getElementById('decimoMesLista').innerHTML = itens.length ? itens.map(({ d, c }) => `
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm">
+            <span class="min-w-[10rem] font-medium text-slate-800">${esc(c.nome)}</span>
+            <span class="text-slate-600">Conta ${esc(formatarMoeda(d.pagamentoContab))}</span>
+            <span class="text-slate-600">Espécie ${esc(formatarMoeda(d.pagamentoEspecie))}</span>
+            <span class="ml-auto font-medium text-slate-800">${esc(formatarMoeda((d.pagamentoContab || 0) + (d.pagamentoEspecie || 0)))}</span>
+        </div>`).join('') : '<div class="px-5 py-4 text-sm text-slate-400">Nenhum 13º lançado nesta competência.</div>';
+
+    const conta = itens.reduce((t, { d }) => t + (d.pagamentoContab || 0), 0);
+    const especie = itens.reduce((t, { d }) => t + (d.pagamentoEspecie || 0), 0);
+    const rodape = document.getElementById('decimoMesTotais');
+    if (conta + especie > 0) {
+        rodape.innerHTML = `<strong>Pago de 13º no mês:</strong> em conta ${esc(formatarMoeda(conta))} · em espécie ${esc(formatarMoeda(especie))} · <strong>total ${esc(formatarMoeda(conta + especie))}</strong>`;
+        rodape.style.display = 'block';
+    } else {
+        rodape.style.display = 'none';
+    }
+    painel.style.display = 'block';
 }
