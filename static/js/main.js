@@ -1558,10 +1558,8 @@ function calcularLiquidoTotal() {
     //
     // Mensalista: o Salário Bruto NÃO entra. Líquido =
     //      Pagamento Espécie + Pagamento em conta + Prêmio + Horas Extras
-    //      + Vale Transporte + Outros - Empréstimo
-    //      - Adiantamento Espécie, SOMENTE enquanto não houver Pagamento Espécie/em conta
-    //      lançado (fica negativo só com o adiantamento; ao lançar o pagamento do fim do
-    //      mês, que já vem líquido do adiantamento, o adiantamento deixa de descontar).
+    //      + Vale Transporte + Outros - Empréstimo - Adiantamento Espécie
+    //      (o adiantamento sempre desconta, como no Diarista; fica negativo se só ele foi lançado).
     //
     // Diarista: o Salário Bruto (diária x dias) NÃO entra. Líquido = Horas Extras
     //      + Pagamento Espécie + Pagamento em conta + Vale Transporte + Outros
@@ -1577,12 +1575,8 @@ function calcularLiquidoTotal() {
         liquido = baseVariavel + pagamentoEspecie + pagamentoContab
                   + valeTransporte + outros - emprestimo - adiantamentoEspecie;
     } else {
-        // O adiantamento só desconta enquanto o pagamento ainda não foi lançado; depois que
-        // há Pagamento Espécie/em conta, esse valor já vem líquido do adiantamento.
-        const pagamentoLancado = (pagamentoEspecie + pagamentoContab) > 0;
         liquido = pagamentoEspecie + pagamentoContab + baseVariavel
-                  + valeTransporte + outros - emprestimo
-                  - (pagamentoLancado ? 0 : adiantamentoEspecie);
+                  + valeTransporte + outros - emprestimo - adiantamentoEspecie;
     }
     setMoeda(document.getElementById('lancLiquidoTotal'), liquido);
 }

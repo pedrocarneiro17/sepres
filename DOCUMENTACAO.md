@@ -247,14 +247,12 @@ zero, o líquido é R$ 0,00 (ou negativo, se houver empréstimo).
 **Mensalista** (o salário bruto **não** entra)
 ```
 Líquido = Pagamento Espécie + Pagamento em conta + Prêmio + Horas Extras
-          + Vale Transporte + Outros − Empréstimo
-          − Adiantamento Espécie   (somente enquanto NÃO houver Pagamento Espécie/em conta)
+          + Vale Transporte + Outros − Empréstimo − Adiantamento Espécie
 ```
-O adiantamento do Mensalista só **desconta enquanto o pagamento não foi lançado**: com só o
+O adiantamento do Mensalista **sempre desconta** do líquido, como no Diarista: com só o
 adiantamento, o líquido fica **negativo** (ex.: −R$ 2.200); ao lançar o Pagamento Espécie ou
-em conta do fim do mês — que já vem líquido do adiantamento (ex.: salário 5.500 −
-adiantamento 2.200 = 3.300) — o adiantamento deixa de descontar e o líquido mostra o valor
-pago (R$ 3.300). O adiantamento continua registrado e marcado na lista.
+em conta, o adiantamento continua descontando (ex.: pagamento 5.500 − adiantamento 2.200 =
+R$ 3.300). O adiantamento também fica registrado e marcado na lista.
 
 **Diarista** (o Salário Bruto — diária × dias trabalhados — **não** entra, como no Mensalista)
 ```
@@ -278,8 +276,7 @@ O recibo e o Dashboard usam o líquido salvo.
 - **Alterável só no lançamento**: o usuário pode mudar o valor (inclusive zerar). Ao
   reabrir um lançamento salvo, aparece o valor **salvo**, nunca o do cadastro; mudar o
   cadastro depois não altera lançamentos existentes.
-- **Efeito no líquido**: CLT — só registro; **Mensalista — subtrai até o pagamento ser
-  lançado**; **Diarista — subtrai** (ver 5.3).
+- **Efeito no líquido**: CLT — só registro; **Mensalista e Diarista — sempre subtraem** (ver 5.3).
 - **Controle na lista**: o lançamento com adiantamento ganha uma etiqueta amarela ao lado
   do nome, escrita só **"Adiantamento"** (sem o valor, que fica no formulário).
 - O card **Adiantamentos** do Dashboard soma os adiantamentos registrados.
