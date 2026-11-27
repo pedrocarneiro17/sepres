@@ -336,20 +336,28 @@ a admissão, se não houver períodos), só para quem não é CLT.
 arquivo `pagamentos_MM-AAAA_engenharia.xlsx` ou `_gerenciadora.xlsx`). Não há mais as categorias
 "Todos", "Somente CLT" e "Somente Contrato" na tela (a rota ainda aceita `tipo=`, mas o sistema
 não a usa). Uma única aba **Pagamentos** com **Nome, Empresa, Pagamento em Espécie, Pagamento em
-Conta, Vale Transporte e Líquido Total**, em ordem alfabética. **Só entra quem tem valor em pelo
-menos um dos dois pagamentos** no mês (o CLT também entra só com Vale Transporte); o
-**Diarista entra sempre que tem lançamento no mês**, mesmo sem pagamento lançado (os
-pagamentos saem 0,00); os demais sem pagamento ficam de fora. Sem nenhum pagamento no mês/empresa, o sistema avisa e não baixa arquivo.
-"Pagamento em Conta" é o campo Pagamento Contab. (CLT) / Pagamento em conta (Mensalista e
-Diarista). O Pagamento em Espécie sai só com o valor lançado em espécie (o vale transporte tem
-coluna própria) e o **Líquido Total** é o valor salvo no lançamento, **em módulo** (saldo negativo,
-quando só o adiantamento foi lançado, sai positivo na planilha). O **Pagamento em Espécie** da planilha soma o **adiantamento em espécie** do lançamento ao
-pagamento em espécie **enquanto o pagamento do mês ainda não foi lançado**: no **CLT**, até
-preencher o *Pagamento Contab.*; no **Mensalista/Diarista**, até preencher o *Pagamento em
-Espécie*. Depois disso a planilha traz só o pagamento em espécie (já líquido do adiantamento).
-Quem só tem adiantamento também entra. O adiantamento por contabilidade (CLT) não é somado. No fim da aba, depois de uma linha em branco, há uma linha **TOTAL** com a
-soma (fórmula `SUM`) de cada coluna de valor que tenha valores; ela fica fora do filtro. As demais
-colunas são cópia do campo do lançamento.
+Conta e Líquido Total**, em ordem alfabética (o **vale transporte não tem coluna própria**: já
+vem somado no Pagamento em Espécie). **Só entra quem tem valor** em espécie, em conta ou
+adiantamento no mês (o CLT também entra só com Vale Transporte); o **Diarista entra sempre que
+tem lançamento no mês**, mesmo sem pagamento lançado. Sem nenhum pagamento no mês/empresa, o
+sistema avisa e não baixa arquivo. A planilha é feita para o **financeiro pagar**, então os
+valores seguem estas regras:
+
+- **CLT**: *Espécie* = pagamento em espécie **+ vale transporte** (e o adiantamento em espécie,
+  enquanto o Pagamento Contab. ainda não foi lançado); *Conta* = Pagamento Contab.;
+  *Líquido Total* = **Pagamento Contab. − empréstimo**, ou seja, **exatamente o valor do
+  depósito** (espécie e vale transporte **não** entram nesse líquido).
+- **Mensalista e Diarista**: *Líquido Total* = o líquido salvo no lançamento (já **sem o
+  adiantamento e sem o empréstimo**, e com o vale transporte); *Conta* = pagamento em conta;
+  *Espécie* = o que falta para completar o líquido (**conta + espécie = Líquido Total**, com o
+  vale transporte dentro da espécie; adiantamento e empréstimo já abatidos). Ex.: pagamento em espécie 5.500, adiantamento 2.000 → espécie
+  3.500 e líquido 3.500. Só com o adiantamento lançado (líquido negativo), a espécie é o próprio
+  adiantamento.
+- O Líquido Total sai **em módulo** (negativo vira positivo). Lançamentos antigos usam o líquido
+  que foi salvo na regra da época, até serem abertos e salvos de novo.
+
+No fim da aba, depois de uma linha em branco, há uma linha **TOTAL** com a soma (fórmula `SUM`) de
+cada coluna de valor que tenha valores; ela fica fora do filtro.
 
 **c) Planilha do EVA do mês (somente CLT)** — no modal de **Lançamentos → Exportar**, basta
 escolher a categoria **"EVA (somente CLT)"** (`/api/exportar-eva?mes=YYYY-MM`, arquivo
