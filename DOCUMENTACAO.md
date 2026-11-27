@@ -108,7 +108,7 @@ diárias e recibos), com dashboard de indicadores e gráficos.
 | `valeRefeicao`, `valeTransporte`, `seguroVida`, `planoOdonto`, `dependentes` | Informativos; não entram em cálculo. |
 | `temAdiantamento`, `valorAdiantamento`, `tipoAdiantamento` | Adiantamento **padrão** do colaborador (ver 5.4). `tipoAdiantamento` = `Espécie` ou `Depósito` (Depósito só para CLT). |
 | `contratos` | Lista de **períodos de contrato** (Mensalista/Diarista), guardada em `contratosJson`. Ver 5.2. |
-| `demitidoEm` | Data de demissão (`YYYY-MM-DD`); vazio = ativo. **Não exclui nada**: ver 5.12. |
+| `demitidoEm`, `rescisao`, `fgts` | Data de demissão (`YYYY-MM-DD`; vazio = ativo; **não exclui nada**, ver 5.12) e os valores de **Rescisão** e **FGTS** informados na demissão. |
 | `observacoes` | Texto livre. |
 | `emprestimos`, `lancamentos`, `ferias`, `afastamentos`, `decimo_rel` (13º) | Relações 1:N, excluídas em cascata. |
 
@@ -417,6 +417,8 @@ por nome e pede confirmação com a quantidade. Reabrir continua sendo individua
   (aparece com "Mostrar encerrados e demitidos", com a etiqueta "Demitido em dd/mm/aaaa") e da
   **exportação de colaboradores**. Com o Dashboard em "Todos os meses" ele ainda entra nas
   contagens gerais.
+- Na seção **Demissão** do cadastro também há dois campos de valor, **Rescisão** e **FGTS**, para
+  registrar o que foi pago na saída (informativos: não entram em lançamentos, cálculos nem planilhas).
 - **Excluir colaborador** continua existindo, separado, e apaga todos os registros dele.
 
 ### 5.13 Férias (controle de datas)

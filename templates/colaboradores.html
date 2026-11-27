@@ -212,7 +212,15 @@
                                 <label class="label">Data de demissão</label>
                                 <input type="date" class="input" id="colabDemitidoEm">
                             </div>
-                            <p class="self-end pb-2 text-xs text-slate-500 md:col-span-3">Preencha para marcar como demitido: o histórico é mantido, mas ele deixa de aparecer em novos lançamentos depois do mês da saída. Apague a data para reativar. O botão Excluir colaborador (no fim deste formulário) apaga todos os registros dele.</p>
+                            <div>
+                                <label class="label">Rescisão</label>
+                                <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="colabRescisao" value="0,00"></div>
+                            </div>
+                            <div>
+                                <label class="label">FGTS</label>
+                                <div class="relative"><span class="money-prefix">R$</span><input type="text" inputmode="decimal" class="input money pl-9" id="colabFgts" value="0,00"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 md:col-span-4">Preencha para marcar como demitido: o histórico é mantido, mas ele deixa de aparecer em novos lançamentos depois do mês da saída. Apague a data para reativar. O botão Excluir colaborador (no fim deste formulário) apaga todos os registros dele.</p>
                         </div>
 
                         <!-- Observações -->

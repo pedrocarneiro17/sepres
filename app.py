@@ -136,6 +136,8 @@ class Colaborador(db.Model):
     # Períodos de contrato (Mensalista/Diarista): JSON [{"inicio": "YYYY-MM-DD", "fim": "YYYY-MM-DD"|""}].
     # Lista vazia = sem controle de vigência (sempre disponível para lançamentos).
     contratosJson = db.Column(db.Text)
+    rescisao = db.Column(db.Float)  # valor da rescisão (informado na demissão)
+    fgts = db.Column(db.Float)      # valor do FGTS (informado na demissão)
     demitidoEm = db.Column(db.String(10)) # Data YYYY-MM-DD da demissão; vazio = ativo. Não exclui nada: só deixa de aparecer em novos lançamentos.
     remuneracao = db.Column(db.Float)
     premio = db.Column(db.Float)
@@ -189,6 +191,8 @@ class Colaborador(db.Model):
             "tipoAdiantamento": self.tipoAdiantamento,
             "observacoes": self.observacoes,
             "demitidoEm": self.demitidoEm,
+            "rescisao": self.rescisao or 0,
+            "fgts": self.fgts or 0,
             "emprestimos": emprestimos_data # Adiciona os empréstimos
         }
 
@@ -398,6 +402,10 @@ with app.app_context():
     if 'demitidoEm' not in colunas_colaborador:
         db.session.execute(text('ALTER TABLE colaborador ADD COLUMN "demitidoEm" VARCHAR(10)'))
         db.session.commit()
+    for nome_col in ('rescisao', 'fgts'):
+        if nome_col not in colunas_colaborador:
+            db.session.execute(text(f'ALTER TABLE colaborador ADD COLUMN "{nome_col}" FLOAT'))
+            db.session.commit()
 
     # Corrige colunas antigas criadas pequenas demais (ex.: seguroVida guardava
     # "Ativo"/"Inativo" em VARCHAR(3)). SQLite não enforce isso e não suporta
@@ -859,7 +867,9 @@ def adicionar_colaborador():
                 valorAdiantamento=data.get('valorAdiantamento', 0),
                 tipoAdiantamento=data.get('tipoAdiantamento'),
                 observacoes=data.get('observacoes'),
-                demitidoEm=data.get('demitidoEm') or None
+                demitidoEm=data.get('demitidoEm') or None,
+                rescisao=data.get('rescisao') or 0,
+                fgts=data.get('fgts') or 0
             )
             db.session.add(colaborador)
             db.session.flush() # Obtem o ID antes do commit

@@ -736,7 +736,9 @@ async function salvarColaborador(e) {
         tipoAdiantamento: document.getElementById('colabTipoAdiantamento')?.value || 'Espécie',
         emprestimos: emprestimos,
         observacoes: document.getElementById('colabObservacoes').value,
-        demitidoEm: document.getElementById('colabDemitidoEm').value || null
+        demitidoEm: document.getElementById('colabDemitidoEm').value || null,
+        rescisao: lerMoeda(document.getElementById('colabRescisao')),
+        fgts: lerMoeda(document.getElementById('colabFgts'))
     };
 
     // Remover/encurtar um período não apaga lançamentos, mas deixa meses já lançados
@@ -796,6 +798,8 @@ function limparFormColaborador() {
     setMoeda(document.getElementById('colabTotal'), 0);
     setMoeda(document.getElementById('colabValorAdiantamento'), 0);
     setMoeda(document.getElementById('colabValorDiaria'), 0);
+    setMoeda(document.getElementById('colabRescisao'), 0);
+    setMoeda(document.getElementById('colabFgts'), 0);
     if (typeof contadorEmprestimos !== 'undefined') {
         contadorEmprestimos = 0;
     }
@@ -1011,6 +1015,8 @@ function editarColaborador(id) {
     }
     document.getElementById('colabObservacoes').value = c.observacoes || '';
     document.getElementById('colabDemitidoEm').value = c.demitidoEm || '';
+    setMoeda(document.getElementById('colabRescisao'), c.rescisao || 0);
+    setMoeda(document.getElementById('colabFgts'), c.fgts || 0);
 
     // Reaplica visibilidade condicional
     if (typeof toggleDependentes === 'function') toggleDependentes();
