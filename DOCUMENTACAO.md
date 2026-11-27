@@ -343,10 +343,10 @@ tem lançamento no mês**, mesmo sem pagamento lançado. Sem nenhum pagamento no
 sistema avisa e não baixa arquivo. A planilha é feita para o **financeiro pagar**, então os
 valores seguem estas regras:
 
-- **CLT**: *Espécie* = pagamento em espécie **+ vale transporte** (e o adiantamento em espécie,
-  enquanto o Pagamento Contab. ainda não foi lançado); *Conta* = Pagamento Contab.;
-  *Líquido Total* = **Pagamento Contab. − empréstimo**, ou seja, **exatamente o valor do
-  depósito** (espécie e vale transporte **não** entram nesse líquido).
+- **CLT**: *Conta* = Pagamento Contab. **− empréstimo**, ou seja, **o valor do depósito já sai
+  com o desconto do empréstimo**; *Líquido Total* = esse mesmo valor (espécie e vale transporte
+  **não** entram nesse líquido); *Espécie* = pagamento em espécie **+ vale transporte** (e o
+  adiantamento em espécie, enquanto o Pagamento Contab. ainda não foi lançado).
 - **Mensalista e Diarista**: *Líquido Total* = o líquido salvo no lançamento (já **sem o
   adiantamento e sem o empréstimo**, e com o vale transporte); *Conta* = pagamento em conta;
   *Espécie* = o que falta para completar o líquido (**conta + espécie = Líquido Total**, com o

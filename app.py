@@ -1136,10 +1136,10 @@ def exportar_planilha():
 
     def _valores(l, c):
         """(espécie, conta, líquido) da planilha, para o financeiro pagar.
-        - CLT: Espécie = pagamento em espécie + vale transporte (uma coluna só; soma também o
-          adiantamento em espécie enquanto o Pagamento Contab. não foi lançado). Conta = Pagamento
-          Contab. Líquido Total = Pagamento Contab. - empréstimo, ou seja, exatamente o valor do
-          depósito (espécie e vale transporte NÃO entram no líquido da planilha).
+        - CLT: Conta = Pagamento Contab. - empréstimo (o valor do depósito já sai com o desconto) e
+          Líquido Total = esse mesmo valor (espécie e vale transporte NÃO entram no líquido da
+          planilha). Espécie = pagamento em espécie + vale transporte (uma coluna só; soma também
+          o adiantamento em espécie enquanto o Pagamento Contab. não foi lançado).
         - Mensalista/Diarista: Líquido Total = líquido salvo no lançamento (já sem adiantamento e
           sem empréstimo, com vale transporte). Conta = pagamento em conta e Espécie = o que falta
           para completar o líquido (inclui o vale transporte), de modo que conta + espécie = líquido.
@@ -1148,7 +1148,8 @@ def exportar_planilha():
         conta = l.pagamentoContab or 0
         if c.contratacao == 'CLT':
             especie = especie_l + (l.valeTransporte or 0) + (0 if conta > 0 else (l.adiantamentoEspecie or 0))
-            return especie, conta, abs(conta - (l.emprestimo or 0))
+            deposito = conta - (l.emprestimo or 0)  # depósito = contabilidade - empréstimo
+            return especie, max(0, deposito), abs(deposito)
         liquido = l.liquidoTotal or 0
         if liquido >= 0:
             especie = max(0, liquido - conta)
